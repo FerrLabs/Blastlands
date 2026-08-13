@@ -1,0 +1,1 @@
+{"$schema":"https://ferrflow.com/schema/ferrflow.json","workspace":{"versioning":"calver-short","tagTemplate":"v{version}"},"package":[{"name":"blastlands","path":".","changelog":"CHANGELOG.md","versionedFiles":[{"path":"VERSION","format":"txt"}]}]}
