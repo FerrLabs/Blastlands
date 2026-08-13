@@ -49,9 +49,9 @@ namespace Blastlands.Core.Tests
 
             ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 });
 
-            Assert.That(result.FlameTiles, Does.Contain(new GridPos(4, 3)));
-            Assert.That(result.FlameTiles, Does.Not.Contain(new GridPos(5, 3)));
-            Assert.That(result.FlameTiles, Does.Not.Contain(new GridPos(6, 3)));
+            Assert.That(result.FlameTiles, Has.Member(new GridPos(4, 3)));
+            Assert.That(result.FlameTiles, Has.No.Member(new GridPos(5, 3)));
+            Assert.That(result.FlameTiles, Has.No.Member(new GridPos(6, 3)));
         }
 
         [Test]
@@ -65,8 +65,8 @@ namespace Blastlands.Core.Tests
             ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 });
 
             Assert.That(result.DestroyedSoftBlocks, Is.EquivalentTo(new[] { new GridPos(4, 3) }));
-            Assert.That(result.FlameTiles, Does.Contain(new GridPos(4, 3)));
-            Assert.That(result.FlameTiles, Does.Not.Contain(new GridPos(5, 3)));
+            Assert.That(result.FlameTiles, Has.Member(new GridPos(4, 3)));
+            Assert.That(result.FlameTiles, Has.No.Member(new GridPos(5, 3)));
         }
 
         [Test]
@@ -82,7 +82,7 @@ namespace Blastlands.Core.Tests
             ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 });
 
             Assert.That(result.DetonatedBombs, Is.EquivalentTo(new[] { 0, 1 }));
-            Assert.That(result.FlameTiles, Does.Contain(new GridPos(6, 3)));
+            Assert.That(result.FlameTiles, Has.Member(new GridPos(6, 3)));
         }
 
         [Test]
