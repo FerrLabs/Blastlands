@@ -33,6 +33,28 @@ and every client.
   which is why the resolver is breadth-first rather than recursive.
 - Flame kills any player it touches, including the owner.
 
+## Bomb kinds
+
+Variety in a bomber game comes from **blast shape**, not from damage numbers — there is only one
+kind of damage and it is lethal. The kinds differ in where the fire goes, which changes which
+tiles are safe and therefore how players move.
+
+| Kind | Behaviour | Why it is interesting |
+|---|---|---|
+| **Standard** | Cross blast. Destroys the first soft block in each arm and stops there. | The baseline, readable at a glance. |
+| **Pierce** | Punches through soft blocks, destroying every one in the arm until a hard block stops it. | Turns a wall of blocks from cover into a liability, and opens the map fast. |
+| **Cluster** | Normal cross, then each arm flares one tile in every direction around where it stopped. | Reaches past its own range and around corners, so the safe-tile maths a player does at a glance stops working. |
+
+A cluster flare is deliberately not itself a cluster. That is what bounds the recursion, and it
+keeps the shape readable instead of turning every cluster into an unpredictable chain.
+
+Kinds are per-bomb rather than permanent: a pickup grants a kind, the player holds it until they
+use it. That stops one lucky drop from deciding the whole round.
+
+Kinds that change *when* a bomb goes off rather than *where* the fire lands — remote detonation,
+proximity mines, sticky bombs — are deferred until the tick loop exists, because they need a
+trigger the resolver has no concept of today.
+
 ## Power-ups
 
 Dropped by destroyed soft blocks at a fixed drop rate. V1 set, kept deliberately small:
@@ -42,6 +64,8 @@ Dropped by destroyed soft blocks at a fixed drop rate. V1 set, kept deliberately
 | Bomb up | +1 simultaneous bomb |
 | Fire up | +1 flame range |
 | Speed up | +1 movement speed step |
+| Pierce bomb | The next bomb dropped is a Pierce |
+| Cluster bomb | The next bomb dropped is a Cluster |
 
 Kick, punch, remote detonators and pass-through are explicitly out of V1. They each change
 the movement and collision model significantly and are worth their own issues once the base

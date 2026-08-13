@@ -5,6 +5,11 @@ namespace Blastlands.Core
     public readonly struct Bomb
     {
         public Bomb(GridPos position, int ownerId, int fireRange)
+            : this(position, ownerId, fireRange, BombKind.Standard)
+        {
+        }
+
+        public Bomb(GridPos position, int ownerId, int fireRange, BombKind kind)
         {
             if (fireRange < 1)
             {
@@ -14,6 +19,7 @@ namespace Blastlands.Core
             Position = position;
             OwnerId = ownerId;
             FireRange = fireRange;
+            Kind = kind;
         }
 
         public GridPos Position { get; }
@@ -21,5 +27,7 @@ namespace Blastlands.Core
         public int OwnerId { get; }
 
         public int FireRange { get; }
+
+        public BombKind Kind { get; }
     }
 }

@@ -97,30 +97,35 @@ namespace Blastlands.Core
 
             private void Spread(Bomb bomb, GridPos direction)
             {
+                GridPos tip = bomb.Position;
+
                 for (int step = 1; step <= bomb.FireRange; step++)
                 {
                     GridPos tile = bomb.Position.Offset(direction.X * step, direction.Y * step);
                     if (!arena.Contains(tile))
                     {
-                        return;
+                        break;
                     }
 
                     TileKind kind = arena[tile];
                     if (kind == TileKind.HardBlock)
                     {
-                        return;
+                        break;
                     }
 
                     AddFlame(tile);
+                    tip = tile;
 
                     if (kind == TileKind.SoftBlock)
                     {
-                        if (destroyedTiles.Add(tile))
+                        Destroy(tile);
+
+                        if (bomb.Kind != BombKind.Pierce)
                         {
-                            destroyed.Add(tile);
+                            break;
                         }
 
-                        return;
+                        continue;
                     }
 
                     int chained;
@@ -128,6 +133,53 @@ namespace Blastlands.Core
                     {
                         Enqueue(chained);
                     }
+                }
+
+                if (bomb.Kind == BombKind.Cluster && tip != bomb.Position)
+                {
+                    Scatter(tip);
+                }
+            }
+
+            // Cluster arms flare one tile around where they stopped. The flare is
+            // deliberately not itself a cluster, which is what bounds the recursion.
+            private void Scatter(GridPos origin)
+            {
+                foreach (GridPos direction in Cardinals)
+                {
+                    GridPos tile = origin.Offset(direction.X, direction.Y);
+                    if (!arena.Contains(tile))
+                    {
+                        continue;
+                    }
+
+                    TileKind kind = arena[tile];
+                    if (kind == TileKind.HardBlock)
+                    {
+                        continue;
+                    }
+
+                    AddFlame(tile);
+
+                    if (kind == TileKind.SoftBlock)
+                    {
+                        Destroy(tile);
+                        continue;
+                    }
+
+                    int chained;
+                    if (bombsByTile.TryGetValue(tile, out chained))
+                    {
+                        Enqueue(chained);
+                    }
+                }
+            }
+
+            private void Destroy(GridPos tile)
+            {
+                if (destroyedTiles.Add(tile))
+                {
+                    destroyed.Add(tile);
                 }
             }
 
