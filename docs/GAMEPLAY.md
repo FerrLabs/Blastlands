@@ -98,7 +98,21 @@ cheating with hidden information.
 
 ## Art direction
 
-Low-poly 3D, Synty POLYGON assets, same family as the other FerrLabs game projects. Fixed
-isometric-ish camera framing the whole arena — no camera control, the arena always fits on
-screen. Readability beats spectacle: a player must be able to tell at a glance which tiles
+Low-poly 3D, Synty assets. The **SIMPLE** family rather than POLYGON: a POLYGON pack is
+130 MB and change against roughly 5 MB for a SIMPLE one, and SIMPLE's flat chunky shapes read
+better at the size a tile occupies on screen. Blocks, props, characters and FX all come from
+there, so the arena stays visually consistent.
+
+Fixed isometric-ish camera framing the whole arena — no camera control, the arena always fits
+on screen. Readability beats spectacle: a player must be able to tell at a glance which tiles
 are about to be on fire.
+
+Two things bite when using Synty art on a grid, both handled in `TileFitter` and `MatchView`
+rather than by hand-tuning numbers per prefab:
+
+- Prefabs come in their own world scale with off-centre pivots, so they are measured from
+  their renderer bounds and normalised into a tile-sized box.
+- The FX prefabs are authored for set dressing: `FX_Fire` simulates in world space, ignores
+  transform scale for particle size, and lives four seconds. Pooled flame objects move between
+  tiles, so those defaults smear fire across the arena. The instances are retuned on spawn;
+  the source assets are never modified.

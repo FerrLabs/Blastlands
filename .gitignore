@@ -137,3 +137,7 @@ client/[Rr]ecordings/
 
 # Editor-local
 .vscode/
+
+# Editor-captured screenshots, not project content
+client/Assets/Screenshots/
+client/Assets/Screenshots.meta

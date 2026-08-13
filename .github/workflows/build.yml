@@ -45,6 +45,14 @@ jobs:
             targetPlatform: StandaloneLinux64
             customParameters: -standaloneBuildSubtarget Server
     steps:
+      # The unityci/editor image is around 10 GB and the hosted runner does not have
+      # the headroom out of the box: the pull fails with "no space left on device".
+      - name: Free disk space for the Unity image
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup \
+                      /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          df -h /
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           lfs: true
