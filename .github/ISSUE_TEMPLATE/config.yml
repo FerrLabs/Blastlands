@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Architecture and gameplay design
+    url: https://github.com/FerrLabs/Blastlands/blob/main/docs/ARCHITECTURE.md
+    about: Read the netcode topology and the gameplay rules before proposing a change to either.
+  - name: Security issue
+    url: https://github.com/FerrLabs/Blastlands/security/advisories/new
+    about: Report anything remotely exploitable privately, not as a public issue.

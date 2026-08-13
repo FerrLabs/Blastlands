@@ -1,0 +1,33 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{json,yml,yaml,md}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.rs]
+indent_size = 4
+
+[*.cs]
+indent_size = 4
+csharp_new_line_before_open_brace = all
+csharp_style_namespace_declarations = block_scoped:warning
+dotnet_sort_system_directives_first = true
+dotnet_diagnostic.IDE0005.severity = warning
+
+[*.{asmdef,asmref,inputactions,shadergraph}]
+indent_size = 4
+
+[*.{meta,unity,asset,prefab,mat,anim,controller}]
+indent_size = 2
+trim_trailing_whitespace = false
+insert_final_newline = false

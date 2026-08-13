@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  core:
+    name: Simulation core
+    runs-on: ferrlabs-k8s
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Test
+        run: dotnet test tests/Blastlands.Core.Tests --configuration Release
+
+  lobby:
+    name: Lobby
+    uses: FerrLabs/.github/.github/workflows/reusable-ci-rust.yml@ea1f4120a477cc6206e745c1f3519c4b6adcfca2 # main
+    with:
+      working-directory: server
+      rust-toolchain: '1.88'
+      cargo-flags: --all-targets --all-features
+      clippy-args: -D warnings
+      enable-coverage: false
+      enable-typos: false
+      enable-deny: false
+    secrets: inherit

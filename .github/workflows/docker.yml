@@ -1,0 +1,50 @@
+name: Docker
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version (without the v prefix)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    name: Resolve version
+    runs-on: ferrlabs-k8s
+    outputs:
+      value: ${{ steps.resolve.outputs.value }}
+    steps:
+      - id: resolve
+        env:
+          EVENT: ${{ github.event_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          if [ "${EVENT}" = "workflow_dispatch" ]; then
+            echo "value=${INPUT_VERSION}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=${RELEASE_TAG#v}" >> "$GITHUB_OUTPUT"
+          fi
+
+  lobby:
+    name: Lobby image
+    needs: version
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    uses: FerrLabs/.github/.github/workflows/reusable-docker-build.yml@ea1f4120a477cc6206e745c1f3519c4b6adcfca2 # main
+    with:
+      image-name: ghcr.io/ferrlabs/blastlands/lobby
+      tag: ${{ needs.version.outputs.value }}
+      context: server
+      dockerfile: Dockerfile
+      extra-tags: ghcr.io/ferrlabs/blastlands/lobby:sha-${{ github.sha }}
+      runner: ferrlabs-k8s
+    secrets: inherit

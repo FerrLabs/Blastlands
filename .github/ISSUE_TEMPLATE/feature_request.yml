@@ -1,0 +1,38 @@
+name: Feature request
+description: Propose something to build
+labels: [enhancement]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Simulation (bombs, blasts, arena)
+        - Netcode
+        - Lobby
+        - Bots
+        - Client (rendering, input, UI)
+        - Content (maps, power-ups, cosmetics)
+        - Infrastructure / CI
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What is bad or missing today. Not the solution.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered and why they lose

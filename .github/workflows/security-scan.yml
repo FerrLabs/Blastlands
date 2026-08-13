@@ -1,0 +1,22 @@
+name: Security scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  scan:
+    name: Secrets + CVE
+    uses: FerrLabs/.github/.github/workflows/reusable-security-scan.yml@ea1f4120a477cc6206e745c1f3519c4b6adcfca2 # main
+    with:
+      run-on-private: true
+    secrets: inherit

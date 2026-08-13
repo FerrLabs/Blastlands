@@ -1,0 +1,54 @@
+name: Bug report
+description: Something behaves incorrectly
+labels: [bug]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Simulation (bombs, blasts, arena)
+        - Netcode / desync
+        - Lobby (match list, join, create)
+        - Bots
+        - Client (rendering, input, UI)
+        - Dedicated server / deployment
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should have happened
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Create a match with 4 players
+        2. Drop a bomb next to a soft block
+        3. ...
+    validations:
+      required: true
+
+  - type: input
+    id: seed
+    attributes:
+      label: Arena seed
+      description: If the bug involves the arena or the simulation, the seed makes it reproducible.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Build, platform, logs
