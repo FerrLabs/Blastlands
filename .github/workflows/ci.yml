@@ -7,17 +7,20 @@ on:
     branches: [main]
   workflow_dispatch:
 
-permissions:
-  contents: read
-
 jobs:
   core:
+    permissions:
+      contents: read
     name: Simulation core
     runs-on: ferrlabs-k8s
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
+      # The ARC runners run as non-root, so setup-dotnet cannot write its default
+      # /usr/share/dotnet. Install into the runner temp dir instead.
       - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        env:
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/dotnet
         with:
           dotnet-version: '9.0.x'
 
@@ -26,7 +29,10 @@ jobs:
 
   lobby:
     name: Lobby
-    uses: FerrLabs/.github/.github/workflows/reusable-ci-rust.yml@ea1f4120a477cc6206e745c1f3519c4b6adcfca2 # main
+    # Pinned behind main: ea1f412 carries FerrLabs/.github#217, which grants the nested
+    # sonarqube job pull-requests: write while the reusable workflow still caps itself at
+    # contents: read. Every caller startup-fails. Unpin once .github is fixed.
+    uses: FerrLabs/.github/.github/workflows/reusable-ci-rust.yml@d3ce80b43af8b567b503ab4c3ee44d6e33c246f5 # main
     with:
       working-directory: server
       rust-toolchain: '1.88'

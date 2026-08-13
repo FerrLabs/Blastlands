@@ -131,3 +131,9 @@ client/[Rr]ecordings/
 [Oo]bj/
 !tests/**/*.csproj
 !server/**/*.toml
+
+# Unity 6 generates the solution alongside the legacy .sln
+*.slnx
+
+# Editor-local
+.vscode/

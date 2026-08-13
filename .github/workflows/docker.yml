@@ -10,13 +10,12 @@ on:
         required: true
         type: string
 
-permissions:
-  contents: read
-
 jobs:
   version:
     name: Resolve version
     runs-on: ferrlabs-k8s
+    permissions:
+      contents: read
     outputs:
       value: ${{ steps.resolve.outputs.value }}
     steps:
@@ -39,6 +38,8 @@ jobs:
       contents: read
       packages: write
       id-token: write
+      attestations: write
+      security-events: write
     uses: FerrLabs/.github/.github/workflows/reusable-docker-build.yml@ea1f4120a477cc6206e745c1f3519c4b6adcfca2 # main
     with:
       image-name: ghcr.io/ferrlabs/blastlands/lobby
