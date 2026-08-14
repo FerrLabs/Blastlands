@@ -431,10 +431,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Blastlands.Runtime::Blastlands.Runtime.MatchHud
   art: {fileID: 11400000, guid: 60607a3b2b9136d4d94e66a78b3d7b32, type: 2}
-  panelSize: {x: 3.3, y: 1.15}
-  margin: 0.35
-  iconScale: 0.42
-  digitScale: 0.44
+  panelSize: {x: 340, y: 156}
+  margin: 26
+  plateTint: {r: 0.24, g: 0.23, b: 0.21, a: 0.95}
 --- !u!1 &1120936998
 GameObject:
   m_ObjectHideFlags: 0

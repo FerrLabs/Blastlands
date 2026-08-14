@@ -1,58 +1,47 @@
 using System.Collections.Generic;
 using Blastlands.Core;
 using UnityEngine;
-using UnityEngine.Rendering.Universal;
+using UnityEngine.UI;
 
 namespace Blastlands.Runtime
 {
-    // One framed panel per player, pinned to a corner. Like MatchView it renders state
-    // and owns none of it, so it can be switched off without changing a match.
+    // One panel per player, pinned to a corner, built from the Synty Apocalypse HUD
+    // pack. Like MatchView it renders state and owns none of it, so it can be switched
+    // off without changing a match.
     //
-    // Built from the Synty icon meshes rather than from UI sprites, because the packs
-    // ship no interface art: the icons, digits and letters are all 3D. They are drawn by
-    // their own orthographic camera over the top of the arena, which is what keeps the
-    // panels a fixed size on screen while the arena camera moves.
+    // Stats are bars rather than numbers because each one is small and capped, so what
+    // matters is how close to the cap it is. It also keeps the HUD clear of TextMeshPro.
     public sealed class MatchHud : MonoBehaviour
     {
-        private const float CameraSize = 5f;
-
-        // The icon meshes face -Z, so seen from a camera looking down +Z they are drawn
-        // back to front and every digit comes out mirrored: a 2 reads as an S.
-        private static readonly Quaternion FaceCamera = Quaternion.Euler(0f, 180f, 0f);
-
         private static readonly Vector2[] Corners =
         {
-            new Vector2(-1f, 1f),
+            new Vector2(0f, 1f),
             new Vector2(1f, 1f),
-            new Vector2(-1f, -1f),
-            new Vector2(1f, -1f)
+            new Vector2(0f, 0f),
+            new Vector2(1f, 0f)
         };
 
         [SerializeField] private HudArt art;
-        [SerializeField] private Vector2 panelSize = new Vector2(3.3f, 1.15f);
-        [SerializeField] private float margin = 0.35f;
-        [SerializeField] private float iconScale = 0.42f;
-        [SerializeField] private float digitScale = 0.44f;
+        [SerializeField] private Vector2 panelSize = new Vector2(340f, 156f);
+        [SerializeField] private float margin = 26f;
+
+        // The pack's plate is light metal, which leaves the white icons and the bars
+        // sitting on top of it with almost no contrast.
+        [SerializeField] private Color plateTint = new Color(0.24f, 0.23f, 0.21f, 0.95f);
+
+        // The pack authors the diode large enough to headline a panel of its own.
+        [SerializeField] private float diodeSize = 26f;
 
         private readonly List<Panel> panels = new List<Panel>();
         private MatchState state;
-        private Camera hudCamera;
-        private Material plateMaterial;
-        private int hudLayer = -1;
+        private Canvas canvas;
 
         private sealed class Panel
         {
-            public Transform Root;
-            public Renderer[] Frame;
-            public Transform Skull;
-            public Readout[] Readouts;
-        }
-
-        private sealed class Readout
-        {
-            public Transform Anchor;
-            public int Shown = -1;
-            public readonly List<GameObject> Digits = new List<GameObject>();
+            public CanvasGroup Group;
+            public Slider[] Bars;
+            public Image[] Fills;
+            public GameObject Skull;
         }
 
         public void Bind(MatchState matchState)
@@ -63,7 +52,7 @@ namespace Blastlands.Runtime
 
         public void Render()
         {
-            if (state == null || hudCamera == null)
+            if (state == null)
             {
                 return;
             }
@@ -73,41 +62,41 @@ namespace Blastlands.Runtime
                 PlayerState player = state.Players[i];
                 Panel panel = panels[i];
 
-                Place(panel.Root, i);
-                SetDigits(panel.Readouts[0], player.BombCapacity);
-                SetDigits(panel.Readouts[1], player.FireRange);
-                SetDigits(panel.Readouts[2], player.SpeedSteps + 1);
+                Show(panel, 0, player.BombCapacity, state.Settings.MaxBombs);
+                Show(panel, 1, player.FireRange, state.Settings.MaxFireRange);
+                Show(panel, 2, player.SpeedSteps + 1, state.Settings.MaxSpeedSteps + 1);
 
                 // A dead player keeps their corner. Who is left is the state of the
                 // round, and a panel that vanished would reshuffle the others.
                 if (panel.Skull != null)
                 {
-                    panel.Skull.gameObject.SetActive(!player.Alive);
+                    panel.Skull.SetActive(!player.Alive);
+                }
+
+                if (panel.Group != null)
+                {
+                    panel.Group.alpha = player.Alive ? 1f : 0.45f;
                 }
             }
         }
 
-        private void Place(Transform root, int index)
+        private static void Show(Panel panel, int index, int value, int max)
         {
-            Vector2 corner = Corners[index % Corners.Length];
-            int row = index / Corners.Length;
+            if (index >= panel.Bars.Length || panel.Bars[index] == null)
+            {
+                return;
+            }
 
-            float halfHeight = CameraSize;
-            float halfWidth = CameraSize * hudCamera.aspect;
-
-            float x = corner.x * (halfWidth - margin - (panelSize.x * 0.5f));
-            float y = corner.y * (halfHeight - margin - (panelSize.y * 0.5f) - (row * (panelSize.y + 0.15f)));
-
-            root.localPosition = new Vector3(x, y, 10f);
+            panel.Bars[index].value = max <= 0 ? 0f : Mathf.Clamp01(value / (float)max);
         }
 
         private void Rebuild()
         {
             for (int i = 0; i < panels.Count; i++)
             {
-                if (panels[i].Root != null)
+                if (panels[i].Group != null)
                 {
-                    Destroy(panels[i].Root.gameObject);
+                    Destroy(panels[i].Group.gameObject);
                 }
             }
 
@@ -118,7 +107,7 @@ namespace Blastlands.Runtime
                 return;
             }
 
-            EnsureCamera();
+            EnsureCanvas();
 
             for (int i = 0; i < state.Players.Count; i++)
             {
@@ -128,220 +117,192 @@ namespace Blastlands.Runtime
             Render();
         }
 
-        private void EnsureCamera()
+        private void EnsureCanvas()
         {
-            if (hudCamera != null)
+            if (canvas != null)
             {
                 return;
             }
 
-            hudLayer = LayerMask.NameToLayer("Hud");
-
-            var host = new GameObject("MatchHud Camera", typeof(Camera));
+            var host = new GameObject("MatchHud Canvas", typeof(Canvas), typeof(CanvasScaler));
             host.transform.SetParent(transform, false);
 
-            hudCamera = host.GetComponent<Camera>();
-            hudCamera.orthographic = true;
-            hudCamera.orthographicSize = CameraSize;
-            hudCamera.cullingMask = hudLayer >= 0 ? 1 << hudLayer : 0;
-            hudCamera.nearClipPlane = 0.1f;
-            hudCamera.farClipPlane = 40f;
+            canvas = host.GetComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
 
-            // URP ignores clearFlags on a base camera and wipes the colour buffer, so a
-            // second camera drawn on top by depth alone erases the arena instead of
-            // overlaying it. Overlays have to be stacked onto the camera they sit over.
-            hudCamera.GetUniversalAdditionalCameraData().renderType = CameraRenderType.Overlay;
-
-            Camera main = Camera.main;
-            if (main != null)
-            {
-                List<Camera> stack = main.GetUniversalAdditionalCameraData().cameraStack;
-                if (!stack.Contains(hudCamera))
-                {
-                    stack.Add(hudCamera);
-                }
-            }
-
-            plateMaterial = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
-            plateMaterial.color = new Color(0.05f, 0.04f, 0.03f, 1f);
-
-            // The icons are Lit meshes, so without a light of their own they render as
-            // silhouettes over the arena.
-            var lamp = new GameObject("MatchHud Light", typeof(Light));
-            lamp.transform.SetParent(host.transform, false);
-            lamp.transform.localRotation = Quaternion.Euler(35f, 15f, 0f);
-
-            Light light = lamp.GetComponent<Light>();
-            light.type = LightType.Directional;
-            light.intensity = 1.5f;
-            light.cullingMask = hudCamera.cullingMask;
+            CanvasScaler scaler = host.GetComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920f, 1080f);
+            scaler.matchWidthOrHeight = 0.5f;
         }
 
         private Panel BuildPanel(int index)
         {
-            var root = new GameObject("Player " + (index + 1));
-            root.transform.SetParent(hudCamera.transform, false);
+            Vector2 corner = Corners[index % Corners.Length];
+
+            // Past four players the corners are taken, so the extras stack inwards along
+            // the same edge rather than landing on top of each other.
+            int row = index / Corners.Length;
+
+            var root = new GameObject("Player " + (index + 1), typeof(RectTransform), typeof(CanvasGroup), typeof(Image));
+            root.transform.SetParent(canvas.transform, false);
+
+            var rect = root.GetComponent<RectTransform>();
+            rect.anchorMin = corner;
+            rect.anchorMax = corner;
+            rect.pivot = corner;
+            rect.sizeDelta = panelSize;
+            rect.anchoredPosition = new Vector2(
+                corner.x > 0.5f ? -margin : margin,
+                (corner.y > 0.5f ? -1f : 1f) * (margin + (row * (panelSize.y + 10f))));
 
             Color accent = MatchPalette.ForPlayer(index);
 
-            // The camera looks down +Z, so the backing sits at a larger z than the icons
-            // it is meant to sit behind.
-            Plate(root.transform, "Plate", Vector3.zero, panelSize, plateMaterial.color, 0.08f);
+            Image background = root.GetComponent<Image>();
+            background.color = plateTint;
 
-            var frame = new List<Renderer>
+            if (art != null && art.Panel != null)
             {
-                Border(root.transform, accent, new Vector2(0f, 1f)),
-                Border(root.transform, accent, new Vector2(0f, -1f)),
-                Border(root.transform, accent, new Vector2(-1f, 0f)),
-                Border(root.transform, accent, new Vector2(1f, 0f))
-            };
+                background.sprite = art.Panel;
+                background.type = Image.Type.Sliced;
+            }
 
-            var readouts = new Readout[3];
-            GameObject[] icons = { IconFor(HudIcon.Bombs), IconFor(HudIcon.Fire), IconFor(HudIcon.Speed) };
+            BuildDiode(root.transform, accent);
 
-            float slot = panelSize.x / 3f;
-            for (int i = 0; i < 3; i++)
+            var bars = new Slider[3];
+            var fills = new Image[3];
+            GameObject skull = BuildSkull(root.transform);
+
+            if (art != null && art.StatsList != null)
             {
-                float left = (-panelSize.x * 0.5f) + (slot * i) + 0.28f;
+                GameObject list = Instantiate(art.StatsList, root.transform);
+                var listRect = list.GetComponent<RectTransform>();
+                listRect.anchorMin = Vector2.zero;
+                listRect.anchorMax = Vector2.one;
+                listRect.offsetMin = new Vector2(12f, 10f);
+                listRect.offsetMax = new Vector2(-12f, -34f);
 
-                if (icons[i] != null)
+                Sprite[] icons = { art.Bombs, art.Fire, art.Speed };
+
+                for (int i = 0; i < list.transform.childCount; i++)
                 {
-                    GameObject icon = Instantiate(icons[i], root.transform);
-                    icon.transform.localPosition = new Vector3(left, 0f, 0f);
-                    icon.transform.localRotation = FaceCamera;
-                    icon.transform.localScale = Vector3.one * iconScale;
-                    SetLayer(icon, hudLayer);
+                    Transform child = list.transform.GetChild(i);
+
+                    if (i >= bars.Length)
+                    {
+                        child.gameObject.SetActive(false);
+                        continue;
+                    }
+
+                    bars[i] = child.GetComponentInChildren<Slider>(true);
+                    if (bars[i] != null)
+                    {
+                        bars[i].minValue = 0f;
+                        bars[i].maxValue = 1f;
+                        bars[i].interactable = false;
+                        bars[i].transition = Selectable.Transition.None;
+
+                        // The handle is for dragging, which these never are.
+                        if (bars[i].handleRect != null)
+                        {
+                            bars[i].handleRect.gameObject.SetActive(false);
+                            bars[i].handleRect = null;
+                        }
+
+                        if (bars[i].fillRect != null)
+                        {
+                            fills[i] = bars[i].fillRect.GetComponent<Image>();
+                            if (fills[i] != null)
+                            {
+                                fills[i].color = accent;
+                            }
+                        }
+                    }
+
+                    Transform icon = child.Find("Icon");
+                    if (icon != null && icons[i] != null)
+                    {
+                        Image image = icon.GetComponent<Image>();
+                        image.sprite = icons[i];
+
+                        // The slot is wider than it is tall, and these icons are not.
+                        image.preserveAspect = true;
+                    }
                 }
-
-                var anchor = new GameObject("Value " + i);
-                anchor.transform.SetParent(root.transform, false);
-                anchor.transform.localPosition = new Vector3(left + 0.42f, 0f, 0f);
-
-                readouts[i] = new Readout { Anchor = anchor.transform };
             }
-
-            Transform skull = null;
-            if (art != null && art.Dead != null)
-            {
-                GameObject dead = Instantiate(art.Dead, root.transform);
-                dead.transform.localPosition = new Vector3((panelSize.x * 0.5f) - 0.28f, 0f, -0.08f);
-                dead.transform.localRotation = FaceCamera;
-                dead.transform.localScale = Vector3.one * (iconScale * 1.15f);
-                SetLayer(dead, hudLayer);
-                skull = dead.transform;
-            }
-
-            SetLayer(root, hudLayer);
 
             return new Panel
             {
-                Root = root.transform,
-                Frame = frame.ToArray(),
-                Skull = skull,
-                Readouts = readouts
+                Group = root.GetComponent<CanvasGroup>(),
+                Bars = bars,
+                Fills = fills,
+                Skull = skull
             };
         }
 
-        private enum HudIcon
+        private GameObject BuildSkull(Transform parent)
         {
-            Bombs,
-            Fire,
-            Speed
-        }
-
-        private GameObject IconFor(HudIcon icon)
-        {
-            if (art == null)
+            if (art == null || art.Icon == null || art.Dead == null)
             {
                 return null;
             }
 
-            switch (icon)
+            GameObject skull = Instantiate(art.Icon, parent);
+            skull.name = "Dead";
+
+            var rect = skull.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(1f, 1f);
+            rect.anchorMax = new Vector2(1f, 1f);
+            rect.pivot = new Vector2(1f, 1f);
+            rect.sizeDelta = new Vector2(40f, 40f);
+            rect.anchoredPosition = new Vector2(-14f, -14f);
+
+            Image image = skull.GetComponent<Image>();
+            if (image != null)
             {
-                case HudIcon.Bombs: return art.Bombs;
-                case HudIcon.Fire: return art.Fire;
-                default: return art.Speed;
+                image.sprite = art.Dead;
+                image.preserveAspect = true;
             }
+
+            skull.transform.SetAsLastSibling();
+            skull.SetActive(false);
+            return skull;
         }
 
-        private Renderer Border(Transform parent, Color color, Vector2 edge)
+        // The pack's indicator light, tinted to the player. A HUD diode is already the
+        // thing that says "this panel is yours" without any text.
+        private void BuildDiode(Transform parent, Color accent)
         {
-            const float thickness = 0.07f;
-
-            var size = new Vector2(
-                edge.x == 0f ? panelSize.x : thickness,
-                edge.y == 0f ? panelSize.y : thickness);
-
-            var at = new Vector3(
-                edge.x * (panelSize.x - thickness) * 0.5f,
-                edge.y * (panelSize.y - thickness) * 0.5f,
-                0f);
-
-            return Plate(parent, "Frame", at, size, color, 0.06f);
-        }
-
-        private Renderer Plate(Transform parent, string name, Vector3 at, Vector2 size, Color color, float z)
-        {
-            GameObject quad = GameObject.CreatePrimitive(PrimitiveType.Quad);
-            quad.name = name;
-            Destroy(quad.GetComponent<Collider>());
-
-            quad.transform.SetParent(parent, false);
-            quad.transform.localPosition = new Vector3(at.x, at.y, z);
-            quad.transform.localScale = new Vector3(size.x, size.y, 1f);
-
-            var renderer = quad.GetComponent<Renderer>();
-            renderer.sharedMaterial = new Material(plateMaterial) { color = color };
-            return renderer;
-        }
-
-        // Digits are meshes, so a changed value means rebuilding the row. Values only
-        // ever move on a pickup, which is why this is not a per-frame cost.
-        private void SetDigits(Readout readout, int value)
-        {
-            if (readout.Shown == value || art == null)
+            if (art == null || art.Diode == null)
             {
                 return;
             }
 
-            readout.Shown = value;
+            GameObject diode = Instantiate(art.Diode, parent);
+            diode.name = "Identity";
 
-            for (int i = 0; i < readout.Digits.Count; i++)
+            // The glow is a particle system, which a RectTransform cannot size: it keeps
+            // its authored scale and spills across the arena. The lit sprite alone is
+            // what carries the colour anyway.
+            foreach (ParticleSystem system in diode.GetComponentsInChildren<ParticleSystem>(true))
             {
-                Destroy(readout.Digits[i]);
+                system.gameObject.SetActive(false);
             }
 
-            readout.Digits.Clear();
+            var rect = diode.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0f, 1f);
+            rect.anchorMax = new Vector2(0f, 1f);
+            rect.pivot = new Vector2(0f, 1f);
 
-            string text = Mathf.Max(0, value).ToString();
-            for (int i = 0; i < text.Length; i++)
+            // Sizing the root leaves the children at their authored size, so the whole
+            // thing is scaled instead.
+            float scale = rect.rect.width > 0f ? diodeSize / rect.rect.width : 1f;
+            diode.transform.localScale = Vector3.one * scale;
+            rect.anchoredPosition = new Vector2(12f, -6f);
+
+            foreach (Image image in diode.GetComponentsInChildren<Image>(true))
             {
-                GameObject prefab = art.Digit(text[i] - '0');
-                if (prefab == null)
-                {
-                    continue;
-                }
-
-                GameObject digit = Instantiate(prefab, readout.Anchor);
-                digit.transform.localPosition = new Vector3(i * 0.3f, 0f, 0f);
-                digit.transform.localRotation = FaceCamera;
-                digit.transform.localScale = Vector3.one * digitScale;
-                SetLayer(digit, hudLayer);
-                readout.Digits.Add(digit);
-            }
-        }
-
-        private static void SetLayer(GameObject target, int layer)
-        {
-            if (layer < 0)
-            {
-                return;
-            }
-
-            target.layer = layer;
-            foreach (Transform child in target.transform)
-            {
-                SetLayer(child.gameObject, layer);
+                image.color = accent;
             }
         }
     }
