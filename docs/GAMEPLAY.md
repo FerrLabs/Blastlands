@@ -98,10 +98,18 @@ cheating with hidden information.
 
 ## Art direction
 
-Low-poly 3D, Synty assets. The **SIMPLE** family rather than POLYGON: a POLYGON pack is
-130 MB and change against roughly 5 MB for a SIMPLE one, and SIMPLE's flat chunky shapes read
-better at the size a tile occupies on screen. Blocks, props, characters and FX all come from
-there, so the arena stays visually consistent.
+Low-poly 3D, Synty **SIMPLE Apocalypse**: dirt and rubble, rusted barrels, burnt-out vehicles
+and building ruins. The setting earns the mechanics — a game about blowing things up reads
+better in a wasteland than in a tidy park.
+
+SIMPLE rather than POLYGON: a POLYGON pack is 130 MB and change against roughly 30 MB for a
+SIMPLE one, and SIMPLE's flat chunky shapes read better at the size a tile occupies on screen.
+
+**Variety in form, never in meaning.** Destructible blocks are always barrels — three colours,
+one silhouette. An earlier pass mixed in medical crates and toolboxes, and they read as
+pickups to grab rather than blocks to destroy. Indestructible blocks are always grey rock,
+which is also why the ground is uniform dirt: a mixed concrete-and-dirt floor produced a grey
+checkerboard that camouflaged the grey walls standing on it.
 
 Fixed isometric-ish camera framing the whole arena — no camera control, the arena always fits
 on screen. Readability beats spectacle: a player must be able to tell at a glance which tiles
@@ -111,7 +119,10 @@ Two things bite when using Synty art on a grid, both handled in `TileFitter` and
 rather than by hand-tuning numbers per prefab:
 
 - Prefabs come in their own world scale with off-centre pivots, so they are measured from
-  their renderer bounds and normalised into a tile-sized box.
+  their renderer bounds and normalised into a tile-sized box. The ground sections are the
+  exception: they are 15x15 unit slabs meant to be laid as-is, so the floor is one stretched
+  slab rather than one shrunk copy per tile, which would squeeze a whole texture into each
+  tile and turn the floor into noise.
 - The FX prefabs are authored for set dressing: `FX_Fire` simulates in world space, ignores
   transform scale for particle size, and lives four seconds. Pooled flame objects move between
   tiles, so those defaults smear fire across the arena. The instances are retuned on spawn;

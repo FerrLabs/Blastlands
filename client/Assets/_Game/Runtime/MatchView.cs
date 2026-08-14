@@ -10,14 +10,21 @@ namespace Blastlands.Runtime
     {
         [SerializeField] private MatchArt art;
         [SerializeField] private float blockFootprint = 0.92f;
-        [SerializeField] private float playerFootprint = 0.62f;
-        [SerializeField] private float playerHeight = 1.1f;
+        [SerializeField] private float playerHeight = 1.15f;
+        [SerializeField] private float bombFootprint = 0.72f;
 
         // Particle prefabs carry no useful renderer bounds, so they cannot be measured
-        // like meshes: the Synty fire is built for a campfire and needs scaling down
-        // by hand to sit inside one tile.
-        [SerializeField] private float flameScale = 0.9f;
-        [SerializeField] private float burstScale = 0.4f;
+        // like meshes. The Synty FX are authored as set dressing and are far too large
+        // for a single tile.
+        [SerializeField] private float flameScale = 0.18f;
+        [SerializeField] private float burstScale = 0.22f;
+        [SerializeField] private float flameLifetime = 0.4f;
+        [SerializeField] private float burstLifetime = 0.7f;
+
+        [SerializeField] private int sceneryRing = 5;
+        [SerializeField] private int sceneryDensityPercent = 26;
+        [SerializeField] private float sceneryMinSize = 0.8f;
+        [SerializeField] private float sceneryMaxSize = 2.6f;
 
         private readonly Dictionary<GridPos, GameObject> blocks = new Dictionary<GridPos, GameObject>();
         private readonly List<GameObject> bombPool = new List<GameObject>();
@@ -62,7 +69,8 @@ namespace Blastlands.Runtime
             playerViews.Clear();
             burningTiles.Clear();
 
-            BuildFloor();
+            BuildGround();
+            BuildScenery();
             BuildBlocks();
             BuildPlayers();
         }
@@ -80,24 +88,80 @@ namespace Blastlands.Runtime
             SyncPlayers();
         }
 
-        private void BuildFloor()
+        private int Variant(GridPos tile, int salt)
         {
-            for (int y = 0; y < state.Arena.Height; y++)
-            {
-                for (int x = 0; x < state.Arena.Width; x++)
-                {
-                    GameObject tile = Spawn(art != null ? art.FloorTile : null, PrimitiveType.Cube, MatchPalette.Floor, "Floor");
+            return TileHash.At(tile.X + (salt * 977), tile.Y - (salt * 389), state.Seed);
+        }
 
-                    if (art == null || art.FloorTile == null)
+        // One slab stretched over the whole area rather than a prefab per tile. The
+        // Synty ground sections are 15x15 units: shrinking one into a single tile
+        // squeezes its entire texture into that tile, which turns the floor into
+        // noise and camouflages the blocks standing on it.
+        private void BuildGround()
+        {
+            int reach = art != null && art.HasScenery ? sceneryRing : 0;
+            float width = state.Arena.Width + (reach * 2f);
+            float depth = state.Arena.Height + (reach * 2f);
+            var centre = new Vector3((state.Arena.Width - 1) * 0.5f, 0f, -(state.Arena.Height - 1) * 0.5f);
+
+            GameObject prefab = art == null ? null : art.FloorTile(0);
+            GameObject ground = Spawn(prefab, PrimitiveType.Cube, MatchPalette.Floor, "Ground");
+
+            if (prefab == null)
+            {
+                ground.transform.localScale = new Vector3(width, 0.2f, depth);
+                ground.transform.position = centre + new Vector3(0f, -0.1f, 0f);
+                return;
+            }
+
+            if (!TileFitter.TryMeasure(ground, out Bounds bounds) || bounds.size.x <= 0.001f || bounds.size.z <= 0.001f)
+            {
+                return;
+            }
+
+            Vector3 scale = ground.transform.localScale;
+            ground.transform.localScale = new Vector3(
+                scale.x * (width / bounds.size.x),
+                scale.y,
+                scale.z * (depth / bounds.size.z));
+
+            TileFitter.PlaceAsGround(ground, centre);
+        }
+
+        // Decoration lives strictly outside the arena walls. Anything inside would
+        // compete with the blocks for the player's attention, and the whole point of
+        // the fixed camera is that the playfield reads at a glance.
+        private void BuildScenery()
+        {
+            if (art == null || !art.HasScenery || sceneryRing <= 0)
+            {
+                return;
+            }
+
+            for (int y = -sceneryRing; y < state.Arena.Height + sceneryRing; y++)
+            {
+                for (int x = -sceneryRing; x < state.Arena.Width + sceneryRing; x++)
+                {
+                    bool insideArena = x >= 0 && x < state.Arena.Width && y >= 0 && y < state.Arena.Height;
+                    if (insideArena)
                     {
-                        tile.transform.localScale = new Vector3(1f, 0.1f, 1f);
-                        tile.transform.position = ToWorld(new GridPos(x, y), -0.05f);
+                        continue;
                     }
-                    else
+
+                    var tile = new GridPos(x, y);
+                    int hash = Variant(tile, 3);
+                    if (hash % 100 >= sceneryDensityPercent)
                     {
-                        TileFitter.FitInBox(tile, 1f);
-                        TileFitter.PlaceAsGround(tile, ToWorld(new GridPos(x, y), 0f));
+                        continue;
                     }
+
+                    GameObject prop = Spawn(art.Scenery(hash / 100), PrimitiveType.Cube, MatchPalette.HardBlock, "Scenery");
+                    prop.transform.rotation = Quaternion.Euler(0f, hash % 360, 0f);
+
+                    // Wide range on purpose: a building ruin capped at one tile reads as
+                    // a pebble, and the surroundings are meant to have a sense of depth.
+                    TileFitter.FitInBox(prop, sceneryMinSize + (((hash / 7) % 100) / 100f * (sceneryMaxSize - sceneryMinSize)));
+                    TileFitter.PlaceOnTile(prop, ToWorld(tile, 0f));
                 }
             }
         }
@@ -121,7 +185,9 @@ namespace Blastlands.Runtime
         private GameObject CreateBlock(GridPos tile, TileKind kind)
         {
             bool hard = kind == TileKind.HardBlock;
-            GameObject prefab = art == null ? null : (hard ? art.HardBlock : art.SoftBlock);
+            int variant = Variant(tile, hard ? 4 : 5);
+
+            GameObject prefab = art == null ? null : (hard ? art.HardBlock(variant) : art.SoftBlock(variant));
             Color fallback = hard ? MatchPalette.HardBlock : MatchPalette.SoftBlock;
 
             GameObject block = Spawn(prefab, PrimitiveType.Cube, fallback, kind.ToString());
@@ -133,19 +199,16 @@ namespace Blastlands.Runtime
                 return block;
             }
 
-            block.transform.rotation = Quaternion.Euler(0f, QuarterTurn(tile), 0f);
+            block.transform.rotation = Quaternion.Euler(0f, QuarterTurn(variant), 0f);
             TileFitter.FitInBox(block, hard ? 1f : blockFootprint);
             TileFitter.PlaceOnTile(block, ToWorld(tile, 0f));
 
             return block;
         }
 
-        // Rocks and crates repeated across a grid read as wallpaper; a deterministic
-        // quarter turn per tile breaks the pattern without touching the simulation.
-        private static float QuarterTurn(GridPos tile)
+        private static float QuarterTurn(int variant)
         {
-            int index = (((tile.X * 7) + (tile.Y * 13)) % 4 + 4) % 4;
-            return index * 90f;
+            return (variant % 4) * 90f;
         }
 
         private void SyncBlocks()
@@ -184,11 +247,11 @@ namespace Blastlands.Runtime
                 bool created = bombPool.Count <= i;
                 GameObject view = TakeAt(bombPool, i, art != null ? art.Bomb : null, PrimitiveType.Sphere, MatchPalette.Bomb, "Bomb");
 
-                // FitToTile multiplies the current scale, so it runs once per instance
+                // FitInBox multiplies the current scale, so it runs once per instance
                 // and the fuse pulse is applied on top of the scale it settled on.
                 if (created)
                 {
-                    TileFitter.FitInBox(view, 0.78f);
+                    TileFitter.FitInBox(view, bombFootprint);
                     bombBaseScales.Add(view.transform.localScale);
                 }
 
@@ -214,13 +277,14 @@ namespace Blastlands.Runtime
 
                 if (created)
                 {
-                    view.transform.localScale = hasArt
-                        ? Vector3.one * flameScale
-                        : new Vector3(0.94f, 0.5f, 0.94f);
-
                     if (hasArt)
                     {
-                        TuneFlameParticles(view);
+                        view.transform.localScale = Vector3.one * flameScale;
+                        TuneParticles(view, flameLifetime);
+                    }
+                    else
+                    {
+                        view.transform.localScale = new Vector3(0.94f, 0.5f, 0.94f);
                     }
                 }
 
@@ -232,11 +296,11 @@ namespace Blastlands.Runtime
             EmitBursts();
         }
 
-        // The Synty fire is authored as a campfire: it simulates in world space, ignores
-        // transform scale for particle size, and lives four seconds. Pooled flame objects
-        // move between tiles, so world-space particles smear across the arena and the long
-        // lifetime piles them into one plume. Retune the instance, never the source asset.
-        private void TuneFlameParticles(GameObject instance)
+        // The Synty FX are authored as scenery: they simulate in world space, ignore
+        // transform scale for particle size, and run for seconds. Pooled objects move
+        // between tiles, so world-space particles smear across the arena and the long
+        // lifetimes pile up into one plume. Retune the instance, never the source asset.
+        private static void TuneParticles(GameObject instance, float lifetime)
         {
             ParticleSystem[] systems = instance.GetComponentsInChildren<ParticleSystem>(true);
 
@@ -245,7 +309,7 @@ namespace Blastlands.Runtime
                 ParticleSystem.MainModule main = systems[i].main;
                 main.scalingMode = ParticleSystemScalingMode.Hierarchy;
                 main.simulationSpace = ParticleSystemSimulationSpace.Local;
-                main.startLifetime = 0.45f;
+                main.startLifetime = lifetime;
             }
         }
 
@@ -255,19 +319,20 @@ namespace Blastlands.Runtime
         {
             GameObject prefab = art == null ? null : art.ExplosionBurst;
 
-            for (int i = 0; i < state.Flames.Count; i++)
+            if (prefab != null)
             {
-                GridPos tile = state.Flames[i].Tile;
-                if (burningTiles.Contains(tile))
+                for (int i = 0; i < state.Flames.Count; i++)
                 {
-                    continue;
-                }
+                    GridPos tile = state.Flames[i].Tile;
+                    if (burningTiles.Contains(tile))
+                    {
+                        continue;
+                    }
 
-                if (prefab != null)
-                {
-                    GameObject burst = Instantiate(prefab, ToWorld(tile, 0.1f), Quaternion.identity, root);
+                    GameObject burst = Instantiate(prefab, ToWorld(tile, 0.05f), Quaternion.identity, root);
                     burst.transform.localScale = Vector3.one * burstScale;
-                    Destroy(burst, 2.5f);
+                    TuneParticles(burst, burstLifetime);
+                    Destroy(burst, 2f);
                 }
             }
 
@@ -287,7 +352,7 @@ namespace Blastlands.Runtime
 
                 if (prefab == null)
                 {
-                    view.transform.localScale = new Vector3(playerFootprint, 0.42f, playerFootprint);
+                    view.transform.localScale = new Vector3(0.62f, 0.42f, 0.62f);
                 }
                 else
                 {

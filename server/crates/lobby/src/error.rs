@@ -4,6 +4,8 @@ use axum::Json;
 use serde::Serialize;
 use thiserror::Error;
 
+use crate::version::ClientVersion;
+
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum LobbyError {
     #[error("match not found")]
@@ -26,6 +28,15 @@ pub enum LobbyError {
 
     #[error("player count must be between {min} and {max}")]
     InvalidPlayerCount { min: u8, max: u8 },
+
+    #[error("invalid client version: {0}")]
+    InvalidVersion(String),
+
+    #[error("client {client} is older than the minimum supported {minimum}")]
+    ClientTooOld {
+        client: ClientVersion,
+        minimum: ClientVersion,
+    },
 }
 
 impl LobbyError {
@@ -35,7 +46,12 @@ impl LobbyError {
             Self::MatchFull | Self::MatchAlreadyStarted => StatusCode::CONFLICT,
             Self::NoCapacity => StatusCode::SERVICE_UNAVAILABLE,
             Self::Unauthorized => StatusCode::UNAUTHORIZED,
-            Self::InvalidName(_) | Self::InvalidPlayerCount { .. } => StatusCode::BAD_REQUEST,
+            Self::InvalidName(_) | Self::InvalidPlayerCount { .. } | Self::InvalidVersion(_) => {
+                StatusCode::BAD_REQUEST
+            }
+            // 426 tells the client the request would succeed on a newer build, which
+            // is exactly the signal the updater needs.
+            Self::ClientTooOld { .. } => StatusCode::UPGRADE_REQUIRED,
         }
     }
 
@@ -48,6 +64,8 @@ impl LobbyError {
             Self::Unauthorized => "unauthorized",
             Self::InvalidName(_) => "invalid_name",
             Self::InvalidPlayerCount { .. } => "invalid_player_count",
+            Self::InvalidVersion(_) => "invalid_version",
+            Self::ClientTooOld { .. } => "client_too_old",
         }
     }
 }

@@ -4,10 +4,17 @@ use std::ops::RangeInclusive;
 
 use thiserror::Error;
 
+use crate::release::ReleaseInfo;
+use crate::version::ClientVersion;
+
 const BIND: &str = "BLASTLANDS_BIND";
 const GAME_SERVER_HOST: &str = "BLASTLANDS_GAME_SERVER_HOST";
 const PORT_RANGE: &str = "BLASTLANDS_PORT_RANGE";
 const INSTANCE_TOKEN: &str = "BLASTLANDS_INSTANCE_TOKEN";
+const CLIENT_LATEST: &str = "BLASTLANDS_CLIENT_LATEST";
+const CLIENT_MINIMUM: &str = "BLASTLANDS_CLIENT_MINIMUM";
+const CLIENT_URL: &str = "BLASTLANDS_CLIENT_URL";
+const CLIENT_SHA256: &str = "BLASTLANDS_CLIENT_SHA256";
 
 const DEFAULT_BIND: &str = "0.0.0.0:8080";
 const DEFAULT_PORT_RANGE: &str = "7000-7099";
@@ -27,6 +34,7 @@ pub struct Config {
     pub game_server_host: String,
     pub port_range: RangeInclusive<u16>,
     pub instance_token: String,
+    pub release: ReleaseInfo,
 }
 
 impl Config {
@@ -42,13 +50,37 @@ impl Config {
         let instance_token = non_empty(INSTANCE_TOKEN)?;
         let port_range = parse_port_range(&required_or(PORT_RANGE, DEFAULT_PORT_RANGE))?;
 
+        let latest = parse_version(CLIENT_LATEST, &non_empty(CLIENT_LATEST)?)?;
+        let minimum = parse_version(CLIENT_MINIMUM, &non_empty(CLIENT_MINIMUM)?)?;
+
+        if minimum > latest {
+            return Err(ConfigError::Invalid {
+                name: CLIENT_MINIMUM,
+                reason: format!("minimum {minimum} is newer than latest {latest}"),
+            });
+        }
+
         Ok(Self {
             bind,
             game_server_host,
             port_range,
             instance_token,
+            release: ReleaseInfo {
+                latest,
+                minimum,
+                download_url: non_empty(CLIENT_URL)?,
+                sha256: non_empty(CLIENT_SHA256)?,
+            },
         })
     }
+}
+
+fn parse_version(name: &'static str, raw: &str) -> Result<ClientVersion, ConfigError> {
+    raw.parse::<ClientVersion>()
+        .map_err(|_| ConfigError::Invalid {
+            name,
+            reason: format!("{raw} is not a three-part version"),
+        })
 }
 
 fn required_or(name: &'static str, fallback: &str) -> String {

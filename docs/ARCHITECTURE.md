@@ -95,6 +95,45 @@ client                    lobby                     game server
 Other clients see the match via `GET /v1/matches` between creation and start, and join the
 same way.
 
+## Updating the client
+
+There is no launcher, so nothing else can update the game. That makes the update path part
+of the architecture rather than a packaging detail.
+
+The failure it exists to prevent is not "the player misses a feature". It is an outdated
+client joining a current match: the simulation is deterministic and lockstep-ish, so a client
+running different rules **desyncs silently** rather than failing loudly. Everyone's match is
+quietly wrong. Refusing that client up front is the whole point.
+
+**The lobby is the gate.** `GET /v1/version` returns:
+
+```json
+{ "latest": "26.9.0", "minimum": "26.8.0",
+  "download_url": "https://…/blastlands-26.9.0.zip", "sha256": "…" }
+```
+
+Every client sends `x-blastlands-version` on match create and join. Below `minimum` the lobby
+answers **426 Upgrade Required** — a status that says "this would work on a newer build",
+which is exactly the signal an updater needs. A missing or malformed header is a 400: a client
+that does not identify itself is either ancient or not ours.
+
+Two deliberate asymmetries:
+
+- `GET /v1/version` is **ungated**. A client too old to play still has to be able to ask what
+  to upgrade to, or it is stuck with no way out.
+- A client **newer** than `latest` is allowed in. A developer build must not be locked out by
+  its own lobby.
+
+`minimum` moves only when the wire format or the simulation rules change. Bumping `latest`
+alone offers an update; bumping `minimum` forces one.
+
+**Applying the update** is the client's half and is not built yet (see the tracking issue).
+The mechanic worth writing down: on Windows a running executable cannot replace itself. The
+download therefore lands in a temporary directory, is verified against the published SHA-256,
+and a small updater process is launched that waits for the game to exit, swaps the files, and
+relaunches. Verifying the hash before swapping is not optional — an update path that installs
+whatever it downloaded is a remote code execution vector.
+
 ## Deployment
 
 Single VPS to start. Both images run under Docker on the same host:

@@ -97,7 +97,7 @@ namespace Blastlands.Runtime
             instance.transform.localScale *= target / largest;
         }
 
-        private static bool TryMeasure(GameObject instance, out Bounds bounds)
+        public static bool TryMeasure(GameObject instance, out Bounds bounds)
         {
             Renderer[] renderers = instance.GetComponentsInChildren<Renderer>();
             if (renderers.Length == 0)

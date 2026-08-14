@@ -56,6 +56,7 @@ namespace Blastlands.Core
 
             Arena = arena;
             Settings = settings;
+            Seed = seed;
             Random = new DeterministicRandom(seed);
             Outcome = RoundOutcome.Running;
             WinnerId = -1;
@@ -64,6 +65,10 @@ namespace Blastlands.Core
         public Arena Arena { get; }
 
         public MatchSettings Settings { get; }
+
+        // Kept so presentation can derive stable per-tile variation without consuming
+        // the simulation's random stream, which would desync it.
+        public uint Seed { get; }
 
         public DeterministicRandom Random { get; }
 

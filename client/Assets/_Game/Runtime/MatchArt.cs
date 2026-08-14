@@ -4,31 +4,20 @@ namespace Blastlands.Runtime
 {
     // The art the view instantiates. Every field may be left empty: the view falls
     // back to primitives so the game still runs with no art in the project.
+    //
+    // Blocks and floor are arrays rather than single prefabs. A grid built from one
+    // repeated mesh reads as wallpaper, and the eye stops parsing it.
     [CreateAssetMenu(fileName = "MatchArt", menuName = "Blastlands/Match Art")]
     public sealed class MatchArt : ScriptableObject
     {
-        [SerializeField] private GameObject floorTile;
-        [SerializeField] private GameObject hardBlock;
-        [SerializeField] private GameObject softBlock;
+        [SerializeField] private GameObject[] floorTiles;
+        [SerializeField] private GameObject[] hardBlocks;
+        [SerializeField] private GameObject[] softBlocks;
+        [SerializeField] private GameObject[] scenery;
         [SerializeField] private GameObject bomb;
         [SerializeField] private GameObject flame;
         [SerializeField] private GameObject explosionBurst;
         [SerializeField] private GameObject[] players;
-
-        public GameObject FloorTile
-        {
-            get { return floorTile; }
-        }
-
-        public GameObject HardBlock
-        {
-            get { return hardBlock; }
-        }
-
-        public GameObject SoftBlock
-        {
-            get { return softBlock; }
-        }
 
         public GameObject Bomb
         {
@@ -45,14 +34,44 @@ namespace Blastlands.Runtime
             get { return explosionBurst; }
         }
 
+        public bool HasScenery
+        {
+            get { return scenery != null && scenery.Length > 0; }
+        }
+
+        public GameObject FloorTile(int variant)
+        {
+            return Pick(floorTiles, variant);
+        }
+
+        public GameObject HardBlock(int variant)
+        {
+            return Pick(hardBlocks, variant);
+        }
+
+        public GameObject SoftBlock(int variant)
+        {
+            return Pick(softBlocks, variant);
+        }
+
+        public GameObject Scenery(int variant)
+        {
+            return Pick(scenery, variant);
+        }
+
         public GameObject PlayerFor(int index)
         {
-            if (players == null || players.Length == 0)
+            return Pick(players, index);
+        }
+
+        private static GameObject Pick(GameObject[] set, int variant)
+        {
+            if (set == null || set.Length == 0)
             {
                 return null;
             }
 
-            return players[((index % players.Length) + players.Length) % players.Length];
+            return set[((variant % set.Length) + set.Length) % set.Length];
         }
     }
 }

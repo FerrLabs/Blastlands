@@ -24,10 +24,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             PortPool::new(config.port_range.clone()),
         )),
         instance_token: Arc::from(config.instance_token.as_str()),
+        release: Arc::new(config.release.clone()),
     };
 
     let listener = TcpListener::bind(config.bind).await?;
-    tracing::info!(address = %config.bind, "lobby listening");
+    tracing::info!(
+        address = %config.bind,
+        latest = %config.release.latest,
+        minimum = %config.release.minimum,
+        "lobby listening"
+    );
 
     axum::serve(listener, app(state))
         .with_graceful_shutdown(shutdown())

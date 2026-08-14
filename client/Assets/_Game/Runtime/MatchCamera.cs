@@ -9,7 +9,9 @@ namespace Blastlands.Runtime
     public sealed class MatchCamera : MonoBehaviour
     {
         [SerializeField] private float tiltDegrees = 55f;
-        [SerializeField] private float margin = 1.4f;
+        // Wide enough to show a band of the surrounding scenery. Framing the arena
+        // exactly slices the decoration at the edges, which looks like a bug.
+        [SerializeField] private float margin = 2.8f;
 
         private Camera view;
         private Arena framed;

@@ -4,4 +4,6 @@ pub mod error;
 pub mod matches;
 pub mod names;
 pub mod ports;
+pub mod release;
 pub mod routes;
+pub mod version;

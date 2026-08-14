@@ -11,11 +11,13 @@ use crate::auth::require_instance_token;
 use crate::error::LobbyError;
 use crate::matches::{CreateMatch, GameServerEndpoint, JoinTicket, Match, MatchDirectory, MatchId};
 use crate::names::DisplayName;
+use crate::release::ReleaseInfo;
 
 #[derive(Clone)]
 pub struct AppState {
     pub directory: Arc<MatchDirectory>,
     pub instance_token: Arc<str>,
+    pub release: Arc<ReleaseInfo>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -68,6 +70,7 @@ pub struct JoinAccepted {
 pub fn app(state: AppState) -> Router {
     Router::new()
         .route("/healthz", get(health))
+        .route("/v1/version", get(version))
         .route("/v1/matches", get(list_matches).post(create_match))
         .route("/v1/matches/{id}/join", post(join_match))
         .route("/v1/matches/{id}/start", post(start_match))
@@ -78,6 +81,12 @@ pub fn app(state: AppState) -> Router {
 
 async fn health() -> StatusCode {
     StatusCode::NO_CONTENT
+}
+
+// Deliberately ungated: a client too old to be allowed in still has to be able to
+// ask what it should upgrade to.
+async fn version(State(state): State<AppState>) -> Json<ReleaseInfo> {
+    Json((*state.release).clone())
 }
 
 async fn list_matches(State(state): State<AppState>) -> Json<Vec<MatchSummary>> {
@@ -93,8 +102,11 @@ async fn list_matches(State(state): State<AppState>) -> Json<Vec<MatchSummary>> 
 
 async fn create_match(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Json(request): Json<CreateMatchRequest>,
 ) -> Result<(StatusCode, Json<MatchCreated>), LobbyError> {
+    state.release.require_supported(&headers)?;
+
     let (entry, ticket) = state.directory.create(CreateMatch {
         name: request.name,
         host: request.host,
@@ -113,8 +125,11 @@ async fn create_match(
 async fn join_match(
     State(state): State<AppState>,
     Path(id): Path<MatchId>,
+    headers: HeaderMap,
     Json(request): Json<JoinRequest>,
 ) -> Result<Json<JoinAccepted>, LobbyError> {
+    state.release.require_supported(&headers)?;
+
     let admitted = state.directory.join(id, request.player)?;
 
     Ok(Json(JoinAccepted {
@@ -152,7 +167,19 @@ mod tests {
     use super::*;
     use crate::ports::PortPool;
 
+    use crate::release::VERSION_HEADER;
+
     const TOKEN: &str = "instance-token";
+    const CURRENT: &str = "26.9.0";
+
+    fn release() -> ReleaseInfo {
+        ReleaseInfo {
+            latest: "26.9.0".parse().unwrap(),
+            minimum: "26.8.0".parse().unwrap(),
+            download_url: "https://example.test/blastlands.zip".to_owned(),
+            sha256: "abc123".to_owned(),
+        }
+    }
 
     fn router() -> Router {
         app(AppState {
@@ -161,14 +188,25 @@ mod tests {
                 PortPool::new(7000..=7001),
             )),
             instance_token: Arc::from(TOKEN),
+            release: Arc::new(release()),
         })
     }
 
     fn post_json(uri: &str, body: Value) -> Request<Body> {
-        Request::builder()
+        post_json_as(uri, body, Some(CURRENT))
+    }
+
+    fn post_json_as(uri: &str, body: Value, version: Option<&str>) -> Request<Body> {
+        let mut builder = Request::builder()
             .method("POST")
             .uri(uri)
-            .header(header::CONTENT_TYPE, "application/json")
+            .header(header::CONTENT_TYPE, "application/json");
+
+        if let Some(v) = version {
+            builder = builder.header(VERSION_HEADER, v);
+        }
+
+        builder
             .body(Body::from(body.to_string()))
             .expect("request should build")
     }
@@ -192,6 +230,90 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::CREATED);
         body_json(response).await
+    }
+
+    #[tokio::test]
+    async fn the_version_endpoint_is_reachable_without_a_version_header() {
+        // A client too old to play still has to learn what to upgrade to.
+        let response = router()
+            .oneshot(
+                Request::builder()
+                    .uri("/v1/version")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = body_json(response).await;
+        assert_eq!(body["latest"], "26.9.0");
+        assert_eq!(body["minimum"], "26.8.0");
+        assert_eq!(body["download_url"], "https://example.test/blastlands.zip");
+    }
+
+    #[tokio::test]
+    async fn an_outdated_client_cannot_create_a_match() {
+        let response = router()
+            .oneshot(post_json_as(
+                "/v1/matches",
+                json!({ "name": "Old build", "host": "Bryan", "max_players": 4 }),
+                Some("26.7.9"),
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::UPGRADE_REQUIRED);
+        assert_eq!(body_json(response).await["code"], "client_too_old");
+    }
+
+    #[tokio::test]
+    async fn a_client_without_a_version_header_cannot_create_a_match() {
+        let response = router()
+            .oneshot(post_json_as(
+                "/v1/matches",
+                json!({ "name": "No header", "host": "Bryan", "max_players": 4 }),
+                None,
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(body_json(response).await["code"], "invalid_version");
+    }
+
+    #[tokio::test]
+    async fn an_outdated_client_cannot_join_a_match() {
+        let router = router();
+        let created = create_match_on(&router, "Friday night").await;
+        let id = created["id"].as_str().unwrap().to_owned();
+
+        let response = router
+            .clone()
+            .oneshot(post_json_as(
+                &format!("/v1/matches/{id}/join"),
+                json!({ "player": "Alex" }),
+                Some("26.0.0"),
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::UPGRADE_REQUIRED);
+    }
+
+    #[tokio::test]
+    async fn a_build_newer_than_the_lobby_is_still_allowed_in() {
+        let response = router()
+            .oneshot(post_json_as(
+                "/v1/matches",
+                json!({ "name": "Dev build", "host": "Bryan", "max_players": 4 }),
+                Some("99.0.0"),
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::CREATED);
     }
 
     #[tokio::test]
