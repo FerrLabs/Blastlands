@@ -12,6 +12,7 @@ namespace Blastlands.Runtime
     {
         [SerializeField] private MatchView view;
         [SerializeField] private MatchCamera matchCamera;
+        [SerializeField] private MatchHud hud;
         [SerializeField] private int arenaWidth = 15;
         [SerializeField] private int arenaHeight = 13;
         [SerializeField] private int softBlockPercent = 70;
@@ -91,6 +92,11 @@ namespace Blastlands.Runtime
                 view.Render();
             }
 
+            if (hud != null)
+            {
+                hud.Bind(state);
+            }
+
             if (matchCamera != null)
             {
                 matchCamera.Bind(state.Arena);
@@ -140,6 +146,11 @@ namespace Blastlands.Runtime
             if (view != null)
             {
                 view.Render();
+            }
+
+            if (hud != null)
+            {
+                hud.Render();
             }
         }
     }

@@ -227,6 +227,9 @@ GameObject:
   - component: {fileID: 613233827}
   - component: {fileID: 613233826}
   - component: {fileID: 613233825}
+  - component: {fileID: 613233829}
+  - component: {fileID: 613233828}
+  - component: {fileID: 613233830}
   m_Layer: 0
   m_Name: Match
   m_TagString: Untagged
@@ -248,11 +251,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Blastlands.Runtime::Blastlands.Runtime.LocalMatchDriver
   view: {fileID: 613233826}
   matchCamera: {fileID: 1120936999}
+  hud: {fileID: 613233830}
   arenaWidth: 15
   arenaHeight: 13
   softBlockPercent: 70
   playerCount: 4
   seed: 0
+  botSkill: 1
 --- !u!114 &613233826
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -267,7 +272,23 @@ MonoBehaviour:
   m_EditorClassIdentifier: Blastlands.Runtime::Blastlands.Runtime.MatchView
   art: {fileID: 11400000, guid: 09e34950f7f41e2408f09c7b75c21e2a, type: 2}
   blockFootprint: 0.92
-  playerFootprint: 0.62
+  playerHeight: 1.15
+  bombFootprint: 0.72
+  powerUpSize: 0.78
+  sfx: {fileID: 613233828}
+  flameScale: 0.18
+  burstScale: 0.22
+  flameLifetime: 0.4
+  burstLifetime: 0.7
+  sceneryRing: 5
+  sceneryDensityPercent: 26
+  sceneryMinSize: 0.8
+  sceneryMaxSize: 2.6
+  groundDetailPercent: 22
+  groundDetailMinSize: 0.9
+  groundDetailMaxSize: 2.4
+  groundDetailLift: 0.02
+  hardBlockSizeJitter: 0.16
 --- !u!4 &613233827
 Transform:
   m_ObjectHideFlags: 0
@@ -283,6 +304,137 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &613233828
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 613233824}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e0f2d46a8e02f9748a3c5ff7dcb99500, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Blastlands.Runtime::Blastlands.Runtime.MatchAudio
+  bombDrop: {fileID: 0}
+  explosion: {fileID: 0}
+  pickup: {fileID: 0}
+  death: {fileID: 0}
+  volume: 0.8
+--- !u!82 &613233829
+AudioSource:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 613233824}
+  m_Enabled: 1
+  serializedVersion: 4
+  OutputAudioMixerGroup: {fileID: 0}
+  m_audioClip: {fileID: 0}
+  m_Resource: {fileID: 0}
+  m_PlayOnAwake: 1
+  m_Volume: 1
+  m_Pitch: 1
+  Loop: 0
+  Mute: 0
+  Spatialize: 0
+  SpatializePostEffects: 0
+  Priority: 128
+  DopplerLevel: 1
+  MinDistance: 1
+  MaxDistance: 500
+  Pan2D: 0
+  rolloffMode: 0
+  BypassEffects: 0
+  BypassListenerEffects: 0
+  BypassReverbZones: 0
+  rolloffCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  panLevelCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  spreadCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  reverbZoneMixCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+--- !u!114 &613233830
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 613233824}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5e462e9aa5ab9248aca430625fbd49b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Blastlands.Runtime::Blastlands.Runtime.MatchHud
+  art: {fileID: 11400000, guid: 60607a3b2b9136d4d94e66a78b3d7b32, type: 2}
+  panelSize: {x: 3.3, y: 1.15}
+  margin: 0.35
+  iconScale: 0.42
+  digitScale: 0.44
 --- !u!1 &1120936998
 GameObject:
   m_ObjectHideFlags: 0
@@ -294,6 +446,7 @@ GameObject:
   - component: {fileID: 1120937001}
   - component: {fileID: 1120937000}
   - component: {fileID: 1120936999}
+  - component: {fileID: 1120937002}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -381,6 +534,14 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!81 &1120937002
+AudioListener:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1120936998}
+  m_Enabled: 1
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

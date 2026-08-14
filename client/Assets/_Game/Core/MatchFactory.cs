@@ -18,6 +18,12 @@ namespace Blastlands.Core
             Arena arena = ArenaGenerator.Generate(arenaSettings, seed);
             var state = new MatchState(arena, matchSettings, seed);
 
+            foreach (KeyValuePair<GridPos, PowerUpKind> hidden
+                in PowerUpPlacer.Place(arena, matchSettings.PowerUpDropPercent, seed))
+            {
+                state.HidePowerUp(hidden.Key, hidden.Value);
+            }
+
             for (int i = 0; i < playerCount; i++)
             {
                 state.AddPlayer(spawns[i]);

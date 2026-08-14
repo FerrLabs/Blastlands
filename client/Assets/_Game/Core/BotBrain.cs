@@ -20,6 +20,7 @@ namespace Blastlands.Core
 
         private int cooldown;
         private Direction heading;
+        private Direction plannedEscape;
 
         public BotBrain(int playerId, BotSettings settings)
         {
@@ -46,7 +47,11 @@ namespace Blastlands.Core
 
             cooldown = settings.ReactionTicks;
             PlayerInput decision = Decide(state, player);
-            heading = decision.Move;
+
+            // Dropping carries no direction, so taking the heading from it would leave
+            // the bot standing on its own bomb for the whole reaction delay. It leaves
+            // along the route the escape check already proved was open.
+            heading = decision.DropBomb ? plannedEscape : decision.Move;
             return decision;
         }
 
@@ -64,10 +69,14 @@ namespace Blastlands.Core
 
             if (player.CanDropBomb
                 && !state.HasBombAt(tile)
-                && (TouchesSoftBlock(state, tile) || EnemyInBlastLine(state, player, tile))
-                && CanEscapeAfterBombing(state, player, tile, ticksPerTile))
+                && (TouchesSoftBlock(state, tile) || EnemyInBlastLine(state, player, tile)))
             {
-                return PlayerInput.Dropping();
+                Direction escape = EscapeAfterBombing(state, player, tile, ticksPerTile);
+                if (escape != Direction.None)
+                {
+                    plannedEscape = escape;
+                    return PlayerInput.Dropping();
+                }
             }
 
             return PlayerInput.Moving(StepTowardTarget(state, blast, player, tile, ticksPerTile));
@@ -92,8 +101,23 @@ namespace Blastlands.Core
             return speed <= 0 ? SubPos.UnitsPerTile : ((SubPos.UnitsPerTile + speed - 1) / speed);
         }
 
+        // Fleeing to a tile that merely burns later is what gets a bot cornered: it
+        // outruns one blast into the next one, and each hop has fewer ways out than the
+        // last. Aim for ground the current bombs cannot reach at all, and settle for
+        // buying time only when there is none.
         private Direction StepToSafety(MatchState state, BlastMap blast, GridPos from, int ticksPerTile)
         {
+            Direction clear = FirstStepToward(
+                state,
+                from,
+                (tile, depth) => blast.TicksUntilFire(tile) == BlastMap.Never,
+                (tile, depth) => blast.SurvivesArrival(tile, depth * ticksPerTile, 0));
+
+            if (clear != Direction.None)
+            {
+                return clear;
+            }
+
             return FirstStepToward(
                 state,
                 from,
@@ -113,8 +137,9 @@ namespace Blastlands.Core
         }
 
         // The check that stops a bot killing itself: place the bomb it is considering,
-        // recompute the danger it would create, and require a reachable way out.
-        private bool CanEscapeAfterBombing(MatchState state, PlayerState player, GridPos tile, int ticksPerTile)
+        // recompute the danger it would create, and return the way out, or None when
+        // there is not one.
+        private Direction EscapeAfterBombing(MatchState state, PlayerState player, GridPos tile, int ticksPerTile)
         {
             var hypothetical = new List<ActiveBomb>(state.Bombs.Count + 1);
             for (int i = 0; i < state.Bombs.Count; i++)
@@ -128,7 +153,7 @@ namespace Blastlands.Core
 
             BlastMap after = BlastMap.From(state, hypothetical);
 
-            return StepToSafety(state, after, tile, ticksPerTile) != Direction.None;
+            return StepToSafety(state, after, tile, ticksPerTile);
         }
 
         private static bool TouchesSoftBlock(MatchState state, GridPos tile)

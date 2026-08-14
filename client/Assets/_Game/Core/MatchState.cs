@@ -23,15 +23,37 @@ namespace Blastlands.Core
 
     public sealed class ActiveFlame
     {
-        public ActiveFlame(GridPos tile, int ticks)
+        public ActiveFlame(GridPos tile, int ticks, int spawnedTick)
         {
             Tile = tile;
             TicksRemaining = ticks;
+            SpawnedTick = spawnedTick;
         }
 
         public GridPos Tile { get; }
 
         public int TicksRemaining { get; set; }
+
+        // A flame outlives the tick that created it, so "is this tile on fire" cannot
+        // tell a pickup whether the fire is the one that just uncovered it. Refreshing
+        // a burning tile counts as fresh fire, so this tracks the latest ignition.
+        public int SpawnedTick { get; set; }
+    }
+
+    public sealed class PowerUp
+    {
+        public PowerUp(GridPos tile, PowerUpKind kind, int revealedTick)
+        {
+            Tile = tile;
+            Kind = kind;
+            RevealedTick = revealedTick;
+        }
+
+        public GridPos Tile { get; }
+
+        public PowerUpKind Kind { get; }
+
+        public int RevealedTick { get; }
     }
 
     public enum RoundOutcome : byte
@@ -46,6 +68,8 @@ namespace Blastlands.Core
         private readonly List<PlayerState> players = new List<PlayerState>();
         private readonly List<ActiveBomb> bombs = new List<ActiveBomb>();
         private readonly List<ActiveFlame> flames = new List<ActiveFlame>();
+        private readonly List<PowerUp> powerUps = new List<PowerUp>();
+        private readonly Dictionary<GridPos, PowerUpKind> hiddenPowerUps = new Dictionary<GridPos, PowerUpKind>();
 
         public MatchState(Arena arena, MatchSettings settings, uint seed)
         {
@@ -110,23 +134,66 @@ namespace Blastlands.Core
             bombs.RemoveAt(index);
         }
 
-        public void AddFlame(GridPos tile, int ticks)
+        public void AddFlame(GridPos tile, int ticks, int spawnedTick)
         {
             for (int i = 0; i < flames.Count; i++)
             {
                 if (flames[i].Tile == tile)
                 {
                     flames[i].TicksRemaining = ticks;
+                    flames[i].SpawnedTick = spawnedTick;
                     return;
                 }
             }
 
-            flames.Add(new ActiveFlame(tile, ticks));
+            flames.Add(new ActiveFlame(tile, ticks, spawnedTick));
         }
 
         public void RemoveFlameAt(int index)
         {
             flames.RemoveAt(index);
+        }
+
+        public IReadOnlyList<PowerUp> PowerUps
+        {
+            get { return powerUps; }
+        }
+
+        public void HidePowerUp(GridPos tile, PowerUpKind kind)
+        {
+            hiddenPowerUps[tile] = kind;
+        }
+
+        // Reveals whatever was under a block, once. The entry is removed so a tile
+        // cannot produce two pickups if it is somehow destroyed twice.
+        public bool TryRevealPowerUp(GridPos tile, out PowerUpKind kind)
+        {
+            if (!hiddenPowerUps.TryGetValue(tile, out kind))
+            {
+                return false;
+            }
+
+            hiddenPowerUps.Remove(tile);
+            powerUps.Add(new PowerUp(tile, kind, Tick));
+            return true;
+        }
+
+        public int PowerUpIndexAt(GridPos tile)
+        {
+            for (int i = 0; i < powerUps.Count; i++)
+            {
+                if (powerUps[i].Tile == tile)
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
+        public void RemovePowerUpAt(int index)
+        {
+            powerUps.RemoveAt(index);
         }
 
         public bool HasBombAt(GridPos tile)
