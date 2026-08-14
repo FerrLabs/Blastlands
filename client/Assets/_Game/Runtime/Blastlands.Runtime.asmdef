@@ -3,8 +3,7 @@
     "rootNamespace": "Blastlands.Runtime",
     "references": [
         "Blastlands.Core",
-        "Unity.InputSystem",
-        "Unity.RenderPipelines.Universal.Runtime"
+        "Unity.InputSystem"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

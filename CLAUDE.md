@@ -52,6 +52,35 @@ server/crates/lobby/            Service lobby Rust
 tests/Blastlands.Core.Tests/    Projet .NET qui compile Core/ + Tests/ hors Unity
 ```
 
+## UI : toujours du Synty, jamais du fait main
+
+**Ne jamais fabriquer un composant d'interface soi-même.** Pas de `Image` posée à la
+main pour faire un cadre, pas de barre construite en `RectTransform`, pas de bouton ou
+de panneau assemblé dans le code. Tout élément visible d'UI vient d'un prefab Synty.
+
+Si le composant n'existe pas dans les packs déjà présents dans le projet, **importer le
+pack qui le contient** depuis `C:\Users\bryan\Documents\Workspace\SyntyPass\Downloads\`
+(`.unitypackage`, import via `AssetDatabase.ImportPackage`) plutôt que de le recréer.
+Les packs d'interface disponibles :
+
+| Pack | Fichier |
+|---|---|
+| Apocalypse HUD (celui du jeu) | `INTERFACE_Apocalypse_HUD_*.unitypackage` |
+| Military Combat HUD | `INTERFACE_Military_Combat_HUD_*.unitypackage` |
+| Sci-Fi Soldier HUD | `INTERFACE_SciFi_Soldier_HUD_*.unitypackage` |
+| Menus (Modern / SciFi / Fantasy) | `INTERFACE_*_Menus_*.unitypackage` |
+
+Le code d'UI se limite à instancier le prefab, le positionner et lui pousser des
+valeurs. Il ne dessine rien.
+
+Le HUD du jeu est `Assets/Synty/InterfaceApocalypseHUD`. Ne pas commiter les dossiers
+`Samples/` des packs : ce sont les scènes de démo de Synty, réimportables à volonté, et
+elles pèsent plus lourd que le pack utile.
+
+Une seule famille d'icônes à la fois. Les `ICON_Apocalpyse_Map_*` sont des glyphes
+blancs plats ; les `ICON_SM_*` sont des vignettes 3D sombres. Mélanger les deux donne
+une ligne lisible et la suivante invisible.
+
 ## Conventions de code
 
 - **Pas de commentaires** (cf. règle globale). Noms parlants, fonctions courtes.
