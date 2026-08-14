@@ -12,8 +12,14 @@ namespace Blastlands.Core
             int speedStep,
             int maxSpeedSteps,
             int startingBombs,
-            int startingFireRange)
+            int startingFireRange,
+            int maxBombs,
+            int maxFireRange,
+            int powerUpDropPercent)
         {
+            MaxBombs = maxBombs;
+            MaxFireRange = maxFireRange;
+            PowerUpDropPercent = powerUpDropPercent;
             TicksPerSecond = ticksPerSecond;
             FuseTicks = fuseTicks;
             FlameTicks = flameTicks;
@@ -40,9 +46,17 @@ namespace Blastlands.Core
 
         public int StartingFireRange { get; }
 
+        // Caps exist so a long round does not end with someone holding a screen-wide
+        // blast that nobody can play around.
+        public int MaxBombs { get; }
+
+        public int MaxFireRange { get; }
+
+        public int PowerUpDropPercent { get; }
+
         public static MatchSettings Default
         {
-            get { return new MatchSettings(30, 75, 15, 26, 6, 4, 1, 2); }
+            get { return new MatchSettings(30, 75, 15, 26, 6, 4, 1, 2, 6, 8, 35); }
         }
 
         public int SpeedFor(int speedSteps)

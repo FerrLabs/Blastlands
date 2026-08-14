@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d6f7e68fa1c29bc49afe0441a33b8688, type: 3}
+  m_Name: HudArt
+  m_EditorClassIdentifier: Blastlands.Runtime::Blastlands.Runtime.HudArt
+  bombs: {fileID: 2922536489695953661, guid: 2ec7ae406fca7d34894b691474a4aac4, type: 3}
+  fire: {fileID: 3001770915896808819, guid: 0c34b15199c390c44842c9ac674657b2, type: 3}
+  speed: {fileID: 6245511822919368876, guid: 0a17eaa994683a040b092591a41680ee, type: 3}
+  dead: {fileID: 2331476444188341938, guid: 0927d8ae6352ff548bb0676fe4276ab1, type: 3}
+  digits:
+  - {fileID: 6773979078143365092, guid: 56142ca769116744eac41809467beab1, type: 3}
+  - {fileID: 1078587599942297537, guid: 7b3ffe34032512b4ca65a26b549ac9b3, type: 3}
+  - {fileID: 4302284014163114061, guid: a825c87c3527bb14f876f17f5952d835, type: 3}
+  - {fileID: 4893788766346825636, guid: c4d8e752eaf358443b150740c941537f, type: 3}
+  - {fileID: 237106818637563044, guid: a7e2d8b7d70c2e040a5a5c5033dac6be, type: 3}
+  - {fileID: 3314944865114376295, guid: 835ab09ddfd5c1d47a6726f1e75c0651, type: 3}
+  - {fileID: 9129200861755656357, guid: 29006ae5da3c40849a25ffc11b9a8384, type: 3}
+  - {fileID: 5766588165791566576, guid: f238468ba2d56974c89928757cf5bd47, type: 3}
+  - {fileID: 3706374638169772542, guid: 848a9ea129233d448ba63e4e97d03171, type: 3}
+  - {fileID: 1977016296964042071, guid: 8b738415088d75e4fb230bf3604db5e4, type: 3}

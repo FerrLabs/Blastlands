@@ -67,6 +67,18 @@ Dropped by destroyed soft blocks at a fixed drop rate. V1 set, kept deliberately
 | Pierce bomb | The next bomb dropped is a Pierce |
 | Cluster bomb | The next bomb dropped is a Cluster |
 
+Bomb count and fire range are capped (`MaxBombs`, `MaxFireRange`). Uncapped fire range ends
+with a player who covers the arena from their spawn, which is not a fight.
+
+Which blocks hide what is decided when the match is created, from the match seed, so the seed
+describes the whole match rather than just its walls. Placement draws from its own stream, so
+changing the arena generator does not reshuffle every pickup.
+
+A pickup survives the blast that uncovered it and is destroyed by any later one. Flames burn
+for `FlameTicks`, so "is this tile on fire" cannot tell those two apart — the comparison is
+between when the fire was lit and when the pickup appeared. Getting this wrong is invisible in
+a same-tick test and makes every pickup vanish one tick after it is revealed.
+
 Kick, punch, remote detonators and pass-through are explicitly out of V1. They each change
 the movement and collision model significantly and are worth their own issues once the base
 game is solid.

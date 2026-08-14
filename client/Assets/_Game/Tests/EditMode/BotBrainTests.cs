@@ -98,21 +98,80 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
-        public void ABotLeftAloneNeverDiesToItsOwnBombs()
+        public void MostBotsLeftAloneStillBlowThemselvesUp()
         {
-            // The real proof that the escape check works: let one play unsupervised for
-            // over a minute of game time and it should still be standing.
-            MatchState state = MatchFactory.Create(ArenaSettings.Default, Settings, 1, 4242u);
-            var brain = new BotBrain(0, BotSettings.Hard);
+            // This documents a deficiency, it does not bless one. A Hard bot survives 13
+            // of these 40 unsupervised matches: it bombs itself into a pocket its own
+            // blasts cover, then has nowhere left to stand. Raise the bar here as the
+            // planner improves.
+            //
+            // The previous version of this test ran one seed that happened to be among
+            // the survivors, and so reported the bots as safe for as long as it existed.
+            int survived = 0;
+            for (uint seed = 1; seed <= 40; seed++)
+            {
+                if (SurvivesAlone(seed, BotSettings.Hard, 3000))
+                {
+                    survived++;
+                }
+            }
+
+            Assert.That(survived, Is.GreaterThanOrEqualTo(10), "bot self-preservation has regressed");
+        }
+
+        [Test]
+        public void ABotKeepsMovingTheTickAfterDroppingABomb()
+        {
+            // Dropping carries no direction. Taking the heading from it parked the bot on
+            // its own bomb for its whole reaction delay, which is the entire budget an
+            // Easy bot has to get clear.
+            foreach (BotSettings level in new[] { BotSettings.Easy, BotSettings.Normal, BotSettings.Hard })
+            {
+                for (uint seed = 1; seed <= 10; seed++)
+                {
+                    MatchState state = MatchFactory.Create(ArenaSettings.Default, Settings, 1, seed);
+                    var brain = new BotBrain(0, level);
+                    var inputs = new PlayerInput[1];
+
+                    for (int tick = 0; tick < 400 && state.Players[0].Alive; tick++)
+                    {
+                        inputs[0] = brain.Think(state);
+                        bool dropped = inputs[0].DropBomb;
+                        MatchSim.Tick(state, inputs);
+
+                        if (!dropped)
+                        {
+                            continue;
+                        }
+
+                        Assert.That(
+                            brain.Think(state).Move,
+                            Is.Not.EqualTo(Direction.None),
+                            $"froze on its own bomb (seed {seed})");
+                        break;
+                    }
+                }
+            }
+        }
+
+        private static bool SurvivesAlone(uint seed, BotSettings level, int ticks)
+        {
+            MatchState state = MatchFactory.Create(ArenaSettings.Default, Settings, 1, seed);
+            var brain = new BotBrain(0, level);
             var inputs = new PlayerInput[1];
 
-            for (int tick = 0; tick < 3000; tick++)
+            for (int tick = 0; tick < ticks; tick++)
             {
                 inputs[0] = brain.Think(state);
                 MatchSim.Tick(state, inputs);
+
+                if (!state.Players[0].Alive)
+                {
+                    return false;
+                }
             }
 
-            Assert.That(state.Players[0].Alive, Is.True, $"the bot blew itself up on tick {state.Tick}");
+            return true;
         }
 
         [Test]

@@ -50,6 +50,12 @@ MonoBehaviour:
   - {fileID: 124012, guid: eea241c4741862242b490597dd263352, type: 3}
   - {fileID: 131856, guid: 2920f563725d6584b98fa67022d5309e, type: 3}
   - {fileID: 124566, guid: b81d7e0e52523784cb01267ad33e5fb6, type: 3}
+  powerUps:
+  - {fileID: 190316, guid: 0ecf40dcf02a1c64e8876b2e85f73314, type: 3}
+  - {fileID: 100000, guid: 1d51fd171c7a61b40b85e2306881707a, type: 3}
+  - {fileID: 100000, guid: f9125fa89572f1e40bb082978a85b951, type: 3}
+  - {fileID: 100000, guid: 864e9c2aaa070ad4c9c04b6b4de7ebf2, type: 3}
+  - {fileID: 104092, guid: 5f58efde17f00ff4cb7bf1e0941f4d93, type: 3}
   bomb: {fileID: 100000, guid: 1d51fd171c7a61b40b85e2306881707a, type: 3}
   flame: {fileID: 100000, guid: 756d99540142b5e4a8d174e18a6310d9, type: 3}
   explosionBurst: {fileID: 191186, guid: 079954accd64b32419ec069129c81273, type: 3}

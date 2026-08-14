@@ -1,3 +1,4 @@
+using Blastlands.Core;
 using UnityEngine;
 
 namespace Blastlands.Runtime
@@ -23,6 +24,10 @@ namespace Blastlands.Runtime
         // Left where a player died. Blood scattered at random is noise; blood that
         // marks a death tells you what happened while you were looking elsewhere.
         [SerializeField] private GameObject[] deathMarkers;
+
+        // One per PowerUpKind, in enum order. They hover and spin in the view: a pickup
+        // that sits still like a block gets read as a block.
+        [SerializeField] private GameObject[] powerUps;
         [SerializeField] private GameObject bomb;
         [SerializeField] private GameObject flame;
         [SerializeField] private GameObject explosionBurst;
@@ -81,6 +86,11 @@ namespace Blastlands.Runtime
         public GameObject DeathMarker(int variant)
         {
             return Pick(deathMarkers, variant);
+        }
+
+        public GameObject PowerUp(PowerUpKind kind)
+        {
+            return Pick(powerUps, (int)kind);
         }
 
         public GameObject PlayerFor(int index)

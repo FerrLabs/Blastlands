@@ -12,6 +12,8 @@ namespace Blastlands.Runtime
         [SerializeField] private float blockFootprint = 0.92f;
         [SerializeField] private float playerHeight = 1.15f;
         [SerializeField] private float bombFootprint = 0.72f;
+        [SerializeField] private float powerUpSize = 0.78f;
+        [SerializeField] private MatchAudio sfx;
 
         // Particle prefabs carry no useful renderer bounds, so they cannot be measured
         // like meshes. The Synty FX are authored as set dressing and are far too large
@@ -46,6 +48,11 @@ namespace Blastlands.Runtime
         private readonly List<Vector3> bombBaseScales = new List<Vector3>();
         private readonly List<GameObject> flamePool = new List<GameObject>();
         private readonly List<GameObject> playerViews = new List<GameObject>();
+        private readonly List<GameObject> powerUpViews = new List<GameObject>();
+        private readonly List<PowerUpKind> powerUpKinds = new List<PowerUpKind>();
+        private readonly HashSet<GridPos> bombTiles = new HashSet<GridPos>();
+        private readonly List<GridPos> pickupTiles = new List<GridPos>();
+        private readonly List<GridPos> detonated = new List<GridPos>();
         private readonly List<bool> wasAlive = new List<bool>();
         private readonly HashSet<GridPos> burningTiles = new HashSet<GridPos>();
 
@@ -83,6 +90,11 @@ namespace Blastlands.Runtime
             bombBaseScales.Clear();
             flamePool.Clear();
             playerViews.Clear();
+            powerUpViews.Clear();
+            powerUpKinds.Clear();
+            bombTiles.Clear();
+            pickupTiles.Clear();
+            detonated.Clear();
             wasAlive.Clear();
             burningTiles.Clear();
 
@@ -101,6 +113,7 @@ namespace Blastlands.Runtime
             }
 
             SyncBlocks();
+            SyncPowerUps();
             SyncBombs();
             SyncFlames();
             SyncPlayers();
@@ -309,6 +322,81 @@ namespace Blastlands.Runtime
             }
         }
 
+        // Pickups are pooled per kind rather than in one list: a pool entry keeps the
+        // prefab it was built from, so a bomb-up view cannot end up standing in for a
+        // fire-up when the list shifts.
+        private void SyncPowerUps()
+        {
+            for (int i = 0; i < powerUpViews.Count; i++)
+            {
+                powerUpViews[i].SetActive(false);
+            }
+
+            for (int i = 0; i < state.PowerUps.Count; i++)
+            {
+                PowerUp pickup = state.PowerUps[i];
+                GameObject view = TakePowerUpView(pickup.Kind);
+                if (view == null)
+                {
+                    continue;
+                }
+
+                float bob = Mathf.Sin((Time.time * 2.6f) + (pickup.Tile.X + pickup.Tile.Y)) * 0.08f;
+                view.transform.position = ToWorld(pickup.Tile, 0.42f + bob);
+                view.transform.rotation = Quaternion.Euler(0f, Time.time * 70f, 0f);
+                view.SetActive(true);
+            }
+
+            ReportCollectedPickups();
+        }
+
+        // A pickup leaves the state either because someone walked onto it or because a
+        // blast took it. The flame still burning on the tile is what tells them apart.
+        private void ReportCollectedPickups()
+        {
+            for (int i = 0; i < pickupTiles.Count; i++)
+            {
+                GridPos tile = pickupTiles[i];
+                if (state.PowerUpIndexAt(tile) < 0 && !state.HasFlameAt(tile) && sfx != null)
+                {
+                    sfx.PickedUp();
+                }
+            }
+
+            pickupTiles.Clear();
+            for (int i = 0; i < state.PowerUps.Count; i++)
+            {
+                pickupTiles.Add(state.PowerUps[i].Tile);
+            }
+        }
+
+        private GameObject TakePowerUpView(PowerUpKind kind)
+        {
+            for (int i = 0; i < powerUpViews.Count; i++)
+            {
+                if (!powerUpViews[i].activeSelf && powerUpKinds[i] == kind)
+                {
+                    return powerUpViews[i];
+                }
+            }
+
+            GameObject prefab = art == null ? null : art.PowerUp(kind);
+            GameObject created = Spawn(prefab, PrimitiveType.Capsule, MatchPalette.ForPlayer((int)kind), "PowerUp " + kind);
+
+            if (prefab == null)
+            {
+                created.transform.localScale = Vector3.one * 0.34f;
+            }
+            else
+            {
+                TileFitter.FitInBox(created, powerUpSize);
+            }
+
+            powerUpViews.Add(created);
+            powerUpKinds.Add(kind);
+            return created;
+        }
+
         private void SyncBombs()
         {
             for (int i = 0; i < state.Bombs.Count; i++)
@@ -333,6 +421,36 @@ namespace Blastlands.Runtime
             }
 
             HideFrom(bombPool, state.Bombs.Count);
+            ReportNewBombs();
+        }
+
+        // Counting bombs would miss the tick where one detonates and another is dropped,
+        // so the tiles are diffed instead. A bomb tile that is gone and now alight is a
+        // bomb that went off, which is where the blast is staged from.
+        private void ReportNewBombs()
+        {
+            for (int i = 0; i < state.Bombs.Count; i++)
+            {
+                if (!bombTiles.Contains(state.Bombs[i].Bomb.Position) && sfx != null)
+                {
+                    sfx.BombDropped();
+                }
+            }
+
+            detonated.Clear();
+            foreach (GridPos tile in bombTiles)
+            {
+                if (!state.HasBombAt(tile) && state.HasFlameAt(tile))
+                {
+                    detonated.Add(tile);
+                }
+            }
+
+            bombTiles.Clear();
+            for (int i = 0; i < state.Bombs.Count; i++)
+            {
+                bombTiles.Add(state.Bombs[i].Bomb.Position);
+            }
         }
 
         private void SyncFlames()
@@ -379,30 +497,44 @@ namespace Blastlands.Runtime
                 main.scalingMode = ParticleSystemScalingMode.Hierarchy;
                 main.simulationSpace = ParticleSystemSimulationSpace.Local;
                 main.startLifetime = lifetime;
+
+                // The smoke layer is authored to start a full second in, which reads as
+                // the explosion smoking a beat after it went off. A blast is one moment.
+                main.startDelay = 0f;
             }
         }
 
-        // One burst per tile that has just caught fire, so a blast reads as an event
-        // rather than as flames quietly appearing.
+        // One burst per bomb that went off, staged where the bomb was. Firing one per
+        // burning tile meant a single range-three blast stacked nine smoke plumes on
+        // top of each other and the arena stayed fogged in. The flames along the arms
+        // already draw the shape of the blast.
         private void EmitBursts()
         {
             GameObject prefab = art == null ? null : art.ExplosionBurst;
+            int caught = 0;
+
+            for (int i = 0; i < state.Flames.Count; i++)
+            {
+                if (!burningTiles.Contains(state.Flames[i].Tile))
+                {
+                    caught++;
+                }
+            }
 
             if (prefab != null)
             {
-                for (int i = 0; i < state.Flames.Count; i++)
+                for (int i = 0; i < detonated.Count; i++)
                 {
-                    GridPos tile = state.Flames[i].Tile;
-                    if (burningTiles.Contains(tile))
-                    {
-                        continue;
-                    }
-
-                    GameObject burst = Instantiate(prefab, ToWorld(tile, 0.05f), Quaternion.identity, root);
+                    GameObject burst = Instantiate(prefab, ToWorld(detonated[i], 0.05f), Quaternion.identity, root);
                     burst.transform.localScale = Vector3.one * burstScale;
                     TuneParticles(burst, burstLifetime);
                     Destroy(burst, 2f);
                 }
+            }
+
+            if (caught > 0 && sfx != null)
+            {
+                sfx.Exploded(caught);
             }
 
             burningTiles.Clear();
@@ -437,6 +569,11 @@ namespace Blastlands.Runtime
         // someone dies, and where it happened is worth knowing.
         private void MarkDeath(PlayerState player)
         {
+            if (sfx != null)
+            {
+                sfx.Died();
+            }
+
             GameObject prefab = art == null ? null : art.DeathMarker(player.Id);
             if (prefab == null)
             {

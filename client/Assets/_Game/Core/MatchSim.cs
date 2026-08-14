@@ -23,9 +23,11 @@ namespace Blastlands.Core
             }
 
             MovePlayers(state, inputs);
+            CollectPowerUps(state);
             DropBombs(state, inputs);
             ExpireFlames(state);
             DetonateDueBombs(state);
+            BurnPowerUps(state);
             KillPlayersInFlames(state);
             ResolveOutcome(state);
 
@@ -131,6 +133,87 @@ namespace Blastlands.Core
             }
         }
 
+        private static void CollectPowerUps(MatchState state)
+        {
+            for (int i = 0; i < state.Players.Count; i++)
+            {
+                PlayerState player = state.Players[i];
+                if (!player.Alive)
+                {
+                    continue;
+                }
+
+                int index = state.PowerUpIndexAt(player.Tile);
+                if (index < 0)
+                {
+                    continue;
+                }
+
+                Apply(state, player, state.PowerUps[index].Kind);
+                state.RemovePowerUpAt(index);
+            }
+        }
+
+        private static void Apply(MatchState state, PlayerState player, PowerUpKind kind)
+        {
+            switch (kind)
+            {
+                case PowerUpKind.BombUp:
+                    if (player.BombCapacity < state.Settings.MaxBombs)
+                    {
+                        player.BombCapacity++;
+                    }
+
+                    break;
+
+                case PowerUpKind.FireUp:
+                    if (player.FireRange < state.Settings.MaxFireRange)
+                    {
+                        player.FireRange++;
+                    }
+
+                    break;
+
+                case PowerUpKind.SpeedUp:
+                    if (player.SpeedSteps < state.Settings.MaxSpeedSteps)
+                    {
+                        player.SpeedSteps++;
+                    }
+
+                    break;
+
+                case PowerUpKind.PierceBomb:
+                    player.NextBombKind = BombKind.Pierce;
+                    break;
+
+                case PowerUpKind.ClusterBomb:
+                    player.NextBombKind = BombKind.Cluster;
+                    break;
+            }
+        }
+
+        // A later blast destroys a pickup, but the blast that uncovered it does not.
+        // Flames last longer than a tick, so the test is which fire is burning, not
+        // whether the tile is on fire: the flame that revealed it was lit no later
+        // than the pickup appeared.
+        private static void BurnPowerUps(MatchState state)
+        {
+            for (int i = state.PowerUps.Count - 1; i >= 0; i--)
+            {
+                PowerUp pickup = state.PowerUps[i];
+
+                for (int f = 0; f < state.Flames.Count; f++)
+                {
+                    ActiveFlame flame = state.Flames[f];
+                    if (flame.Tile == pickup.Tile && flame.SpawnedTick > pickup.RevealedTick)
+                    {
+                        state.RemovePowerUpAt(i);
+                        break;
+                    }
+                }
+            }
+        }
+
         private static void ExpireFlames(MatchState state)
         {
             for (int i = state.Flames.Count - 1; i >= 0; i--)
@@ -170,12 +253,16 @@ namespace Blastlands.Core
 
             for (int i = 0; i < result.DestroyedSoftBlocks.Count; i++)
             {
-                state.Arena[result.DestroyedSoftBlocks[i]] = TileKind.Floor;
+                GridPos cleared = result.DestroyedSoftBlocks[i];
+                state.Arena[cleared] = TileKind.Floor;
+
+                PowerUpKind revealed;
+                state.TryRevealPowerUp(cleared, out revealed);
             }
 
             for (int i = 0; i < result.FlameTiles.Count; i++)
             {
-                state.AddFlame(result.FlameTiles[i], state.Settings.FlameTicks);
+                state.AddFlame(result.FlameTiles[i], state.Settings.FlameTicks, state.Tick);
             }
 
             var detonated = new List<int>(result.DetonatedBombs);
