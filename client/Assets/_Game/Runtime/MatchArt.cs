@@ -19,6 +19,10 @@ namespace Blastlands.Runtime
         // must never read as obstacles: anything with height on a walkable tile makes
         // the player misjudge where they can go.
         [SerializeField] private GameObject[] groundDetail;
+
+        // Left where a player died. Blood scattered at random is noise; blood that
+        // marks a death tells you what happened while you were looking elsewhere.
+        [SerializeField] private GameObject[] deathMarkers;
         [SerializeField] private GameObject bomb;
         [SerializeField] private GameObject flame;
         [SerializeField] private GameObject explosionBurst;
@@ -72,6 +76,11 @@ namespace Blastlands.Runtime
         public GameObject GroundDetail(int variant)
         {
             return Pick(groundDetail, variant);
+        }
+
+        public GameObject DeathMarker(int variant)
+        {
+            return Pick(deathMarkers, variant);
         }
 
         public GameObject PlayerFor(int index)

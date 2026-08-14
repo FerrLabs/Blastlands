@@ -30,6 +30,13 @@ namespace Blastlands.Runtime
         [SerializeField] private float groundDetailMinSize = 0.9f;
         [SerializeField] private float groundDetailMaxSize = 2.4f;
 
+        // Several of the Synty ground sections are perfectly flat: SA_Env_Concrete has
+        // a height of exactly 0. Laid at ground level they end up coplanar with the
+        // floor slab and the two fight for depth, which is the striped moiré that looks
+        // like a texture bug. Each patch is lifted by a slightly different amount so
+        // they do not fight each other either.
+        [SerializeField] private float groundDetailLift = 0.02f;
+
         // Rocks laid out at one uniform size make the lattice look manufactured. A
         // little variation reads as terrain without moving anything off its tile.
         [SerializeField] private float hardBlockSizeJitter = 0.16f;
@@ -39,6 +46,7 @@ namespace Blastlands.Runtime
         private readonly List<Vector3> bombBaseScales = new List<Vector3>();
         private readonly List<GameObject> flamePool = new List<GameObject>();
         private readonly List<GameObject> playerViews = new List<GameObject>();
+        private readonly List<bool> wasAlive = new List<bool>();
         private readonly HashSet<GridPos> burningTiles = new HashSet<GridPos>();
 
         private MatchState state;
@@ -75,6 +83,7 @@ namespace Blastlands.Runtime
             bombBaseScales.Clear();
             flamePool.Clear();
             playerViews.Clear();
+            wasAlive.Clear();
             burningTiles.Clear();
 
             BuildGround();
@@ -170,7 +179,7 @@ namespace Blastlands.Runtime
                     float offsetZ = ((hash / 29) % 100) / 100f;
                     var centre = new Vector3(
                         ((x + offsetX) / (float)SubSteps) - 0.5f,
-                        0f,
+                        groundDetailLift * (1f + ((hash / 17) % 40) / 40f),
                         -(((y + offsetZ) / (float)SubSteps) - 0.5f));
 
                     patch.transform.rotation = Quaternion.Euler(0f, hash % 360, 0f);
@@ -420,7 +429,30 @@ namespace Blastlands.Runtime
                 }
 
                 playerViews.Add(view);
+                wasAlive.Add(state.Players[i].Alive);
             }
+        }
+
+        // The stain stays for the round: in a four-way match you often miss the moment
+        // someone dies, and where it happened is worth knowing.
+        private void MarkDeath(PlayerState player)
+        {
+            GameObject prefab = art == null ? null : art.DeathMarker(player.Id);
+            if (prefab == null)
+            {
+                return;
+            }
+
+            int hash = TileHash.At(player.Tile.X, player.Tile.Y, state.Seed + (uint)player.Id);
+
+            GameObject stain = Instantiate(prefab, root);
+            stain.name = "Death " + player.Id;
+            stain.transform.rotation = Quaternion.Euler(0f, hash % 360, 0f);
+            TileFitter.FitInBox(stain, 0.8f + (((hash / 7) % 40) / 100f));
+
+            // Lifted above both the floor and the ground detail, or it z-fights with them.
+            Vector3 where = ToWorld(player.Position, groundDetailLift * 3f);
+            TileFitter.PlaceAsGround(stain, where);
         }
 
         private void SyncPlayers()
@@ -432,6 +464,12 @@ namespace Blastlands.Runtime
 
                 if (!player.Alive)
                 {
+                    if (i < wasAlive.Count && wasAlive[i])
+                    {
+                        wasAlive[i] = false;
+                        MarkDeath(player);
+                    }
+
                     view.SetActive(false);
                     continue;
                 }
