@@ -14,6 +14,11 @@ namespace Blastlands.Runtime
         [SerializeField] private GameObject[] hardBlocks;
         [SerializeField] private GameObject[] softBlocks;
         [SerializeField] private GameObject[] scenery;
+
+        // Flat patches laid across the floor without regard for tile boundaries. They
+        // must never read as obstacles: anything with height on a walkable tile makes
+        // the player misjudge where they can go.
+        [SerializeField] private GameObject[] groundDetail;
         [SerializeField] private GameObject bomb;
         [SerializeField] private GameObject flame;
         [SerializeField] private GameObject explosionBurst;
@@ -57,6 +62,16 @@ namespace Blastlands.Runtime
         public GameObject Scenery(int variant)
         {
             return Pick(scenery, variant);
+        }
+
+        public bool HasGroundDetail
+        {
+            get { return groundDetail != null && groundDetail.Length > 0; }
+        }
+
+        public GameObject GroundDetail(int variant)
+        {
+            return Pick(groundDetail, variant);
         }
 
         public GameObject PlayerFor(int index)

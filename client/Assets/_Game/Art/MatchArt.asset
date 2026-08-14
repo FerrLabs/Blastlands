@@ -39,6 +39,13 @@ MonoBehaviour:
   - {fileID: 172214, guid: 29b6693ede34b1e488d00089580ef9ab, type: 3}
   - {fileID: 151030, guid: 65c97d195de1b0541a2b02d8fecf18dd, type: 3}
   - {fileID: 152450, guid: 82238ffef11f0b4408ccf2c69a301ed6, type: 3}
+  groundDetail:
+  - {fileID: 185920, guid: 9026b30b758d4fd4fbf54cd5452a51c9, type: 3}
+  - {fileID: 176584806730288110, guid: a06310b64bac3af44abb7ea158c2f4b8, type: 3}
+  - {fileID: 120508, guid: b5980e7d90b5fb54bbfed13c8d1de193, type: 3}
+  - {fileID: 173408, guid: 679f8552de7b49e49b067c82f87df7c1, type: 3}
+  - {fileID: 106024, guid: 10fb44be36c39a147a8aab66cfe8d88b, type: 3}
+  - {fileID: 198728, guid: 3c5180e1de411804fa9158eb2be5ef69, type: 3}
   bomb: {fileID: 100000, guid: 1d51fd171c7a61b40b85e2306881707a, type: 3}
   flame: {fileID: 100000, guid: 756d99540142b5e4a8d174e18a6310d9, type: 3}
   explosionBurst: {fileID: 191186, guid: 079954accd64b32419ec069129c81273, type: 3}

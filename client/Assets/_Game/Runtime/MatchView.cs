@@ -26,6 +26,14 @@ namespace Blastlands.Runtime
         [SerializeField] private float sceneryMinSize = 0.8f;
         [SerializeField] private float sceneryMaxSize = 2.6f;
 
+        [SerializeField] private int groundDetailPercent = 22;
+        [SerializeField] private float groundDetailMinSize = 0.9f;
+        [SerializeField] private float groundDetailMaxSize = 2.4f;
+
+        // Rocks laid out at one uniform size make the lattice look manufactured. A
+        // little variation reads as terrain without moving anything off its tile.
+        [SerializeField] private float hardBlockSizeJitter = 0.16f;
+
         private readonly Dictionary<GridPos, GameObject> blocks = new Dictionary<GridPos, GameObject>();
         private readonly List<GameObject> bombPool = new List<GameObject>();
         private readonly List<Vector3> bombBaseScales = new List<Vector3>();
@@ -70,6 +78,7 @@ namespace Blastlands.Runtime
             burningTiles.Clear();
 
             BuildGround();
+            BuildGroundDetail();
             BuildScenery();
             BuildBlocks();
             BuildPlayers();
@@ -126,6 +135,50 @@ namespace Blastlands.Runtime
                 scale.z * (depth / bounds.size.z));
 
             TileFitter.PlaceAsGround(ground, centre);
+        }
+
+        // What makes an arena read as a grid is not the texture, it is that everything
+        // sits dead centre on a tile. These patches deliberately ignore tile boundaries:
+        // placed on a finer lattice, freely rotated and scaled, they cut across the
+        // squares and break the eye's habit of reading rows and columns first.
+        //
+        // They stay flat on purpose. Anything with height on a walkable tile would make
+        // the player misjudge where they can walk, and readability outranks decoration.
+        private void BuildGroundDetail()
+        {
+            if (art == null || !art.HasGroundDetail || groundDetailPercent <= 0)
+            {
+                return;
+            }
+
+            int reach = art.HasScenery ? sceneryRing : 0;
+            const int SubSteps = 2;
+
+            for (int y = -reach * SubSteps; y < (state.Arena.Height + reach) * SubSteps; y++)
+            {
+                for (int x = -reach * SubSteps; x < (state.Arena.Width + reach) * SubSteps; x++)
+                {
+                    int hash = TileHash.At(x + 6151, y - 2749, state.Seed);
+                    if (hash % 100 >= groundDetailPercent)
+                    {
+                        continue;
+                    }
+
+                    GameObject patch = Spawn(art.GroundDetail(hash / 100), PrimitiveType.Quad, MatchPalette.Floor, "GroundDetail");
+
+                    float offsetX = ((hash / 13) % 100) / 100f;
+                    float offsetZ = ((hash / 29) % 100) / 100f;
+                    var centre = new Vector3(
+                        ((x + offsetX) / (float)SubSteps) - 0.5f,
+                        0f,
+                        -(((y + offsetZ) / (float)SubSteps) - 0.5f));
+
+                    patch.transform.rotation = Quaternion.Euler(0f, hash % 360, 0f);
+                    TileFitter.FitInBox(patch, groundDetailMinSize
+                        + (((hash / 7) % 100) / 100f * (groundDetailMaxSize - groundDetailMinSize)));
+                    TileFitter.PlaceAsGround(patch, centre);
+                }
+            }
         }
 
         // Decoration lives strictly outside the arena walls. Anything inside would
@@ -199,8 +252,15 @@ namespace Blastlands.Runtime
                 return block;
             }
 
-            block.transform.rotation = Quaternion.Euler(0f, QuarterTurn(variant), 0f);
-            TileFitter.FitInBox(block, hard ? 1f : blockFootprint);
+            // Rocks are organic, so any angle suits them; crates and barrels only look
+            // right on a quarter turn.
+            block.transform.rotation = Quaternion.Euler(0f, hard ? variant % 360 : QuarterTurn(variant), 0f);
+
+            float size = hard
+                ? 1f + ((((variant / 11) % 100) / 100f) - 0.5f) * 2f * hardBlockSizeJitter
+                : blockFootprint;
+
+            TileFitter.FitInBox(block, size);
             TileFitter.PlaceOnTile(block, ToWorld(tile, 0f));
 
             return block;
