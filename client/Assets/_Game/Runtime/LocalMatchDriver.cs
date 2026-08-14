@@ -1,5 +1,7 @@
 using Blastlands.Core;
 using UnityEngine;
+using UnityEngine.InputSystem;
+using PlayerInput = Blastlands.Core.PlayerInput;
 
 namespace Blastlands.Runtime
 {
@@ -22,9 +24,12 @@ namespace Blastlands.Runtime
 
         private const int MaxCatchUpTicks = 5;
 
+        [SerializeField] private BotSkill botSkill = BotSkill.Normal;
+
         private MatchState state;
         private PlayerInput[] inputs;
         private PlayerDevices devices;
+        private BotBrain[] bots;
         private float accumulator;
         private uint activeSeed;
 
@@ -68,7 +73,17 @@ namespace Blastlands.Runtime
             devices = new PlayerDevices(state.Players.Count);
             accumulator = 0f;
 
-            Debug.Log("Blastlands controls: " + devices.DescribeAssignment());
+            // Every seat a human is not holding gets a bot, so a match is full whether
+            // one person is playing or four.
+            bots = new BotBrain[state.Players.Count];
+            int humans = Mathf.Clamp(Gamepad.all.Count, 1, bots.Length);
+            for (int i = humans; i < bots.Length; i++)
+            {
+                bots[i] = new BotBrain(i, BotSkills.SettingsFor(botSkill));
+            }
+
+            Debug.Log("Blastlands controls: " + devices.DescribeAssignment()
+                + " | humans: " + humans + ", bots: " + (bots.Length - humans) + " (" + botSkill + ")");
 
             if (view != null)
             {
@@ -111,7 +126,7 @@ namespace Blastlands.Runtime
 
                 for (int i = 0; i < inputs.Length; i++)
                 {
-                    inputs[i] = devices.Sample(i);
+                    inputs[i] = bots[i] != null ? bots[i].Think(state) : devices.Sample(i);
                 }
 
                 MatchSim.Tick(state, inputs);
