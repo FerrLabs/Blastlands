@@ -43,5 +43,11 @@ namespace Blastlands.Runtime
             Keyboard keyboard = Keyboard.current;
             return keyboard != null && keyboard.spaceKey.wasPressedThisFrame;
         }
+
+        public static bool RerollPressed()
+        {
+            Keyboard keyboard = Keyboard.current;
+            return keyboard != null && keyboard.rKey.wasPressedThisFrame;
+        }
     }
 }

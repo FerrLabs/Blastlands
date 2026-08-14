@@ -252,7 +252,7 @@ MonoBehaviour:
   arenaHeight: 13
   softBlockPercent: 70
   playerCount: 4
-  seed: 20260813
+  seed: 0
 --- !u!114 &613233826
 MonoBehaviour:
   m_ObjectHideFlags: 0
