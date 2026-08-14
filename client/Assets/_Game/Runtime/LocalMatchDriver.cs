@@ -24,8 +24,8 @@ namespace Blastlands.Runtime
 
         private MatchState state;
         private PlayerInput[] inputs;
+        private PlayerDevices devices;
         private float accumulator;
-        private bool dropQueued;
         private uint activeSeed;
 
         public MatchState State
@@ -65,8 +65,10 @@ namespace Blastlands.Runtime
             state = MatchFactory.Create(arenaSettings, MatchSettings.Default, playerCount, activeSeed);
             Debug.Log("Blastlands arena seed " + activeSeed);
             inputs = new PlayerInput[state.Players.Count];
+            devices = new PlayerDevices(state.Players.Count);
             accumulator = 0f;
-            dropQueued = false;
+
+            Debug.Log("Blastlands controls: " + devices.DescribeAssignment());
 
             if (view != null)
             {
@@ -89,19 +91,14 @@ namespace Blastlands.Runtime
 
             // Rerolling the arena on demand is how the generator gets exercised: a
             // layout flaw only shows up across many maps, not one.
-            if (KeyboardInput.RerollPressed())
+            if (devices.RerollPressed())
             {
                 seed = 0u;
                 StartMatch();
                 return;
             }
 
-            // A bomb press between two ticks must not be swallowed by the frame that
-            // happens to fall between them.
-            if (KeyboardInput.DropPressed())
-            {
-                dropQueued = true;
-            }
+            devices.PollPresses();
 
             float step = 1f / state.Settings.TicksPerSecond;
             accumulator += Time.deltaTime;
@@ -112,12 +109,9 @@ namespace Blastlands.Runtime
                 accumulator -= step;
                 ticked++;
 
-                inputs[0] = KeyboardInput.Sample(dropQueued);
-                dropQueued = false;
-
-                for (int i = 1; i < inputs.Length; i++)
+                for (int i = 0; i < inputs.Length; i++)
                 {
-                    inputs[i] = PlayerInput.None;
+                    inputs[i] = devices.Sample(i);
                 }
 
                 MatchSim.Tick(state, inputs);
