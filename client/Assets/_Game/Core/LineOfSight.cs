@@ -6,13 +6,14 @@ namespace Blastlands.Core
     // This is what makes cover mean something. A blast without it is a distance check,
     // and a distance check turns a placement game into a reflex game: there is no point
     // stepping behind a corner if the corner does not stop anything.
+    //
+    // Two properties of Bresenham that are deliberate here rather than overlooked. It
+    // squeezes through a diagonal gap between two blocks that only touch at a corner,
+    // and it is not symmetric: A may see B where B would not see A. Neither matters for
+    // a blast, which is always traced outwards from the bomb, and closing the diagonal
+    // would make cover far stronger than intended.
     public static class LineOfSight
     {
-        public static bool Between(Arena arena, GridPos from, GridPos to)
-        {
-            return Between(arena, from, to, true);
-        }
-
         // `softBlocksCover` is what separates a Pierce bomb from a Standard one: it sees
         // past the crates but not through the structure. Letting it ignore hard blocks
         // as well would mean no cover exists at all against it, which is not a bomb any

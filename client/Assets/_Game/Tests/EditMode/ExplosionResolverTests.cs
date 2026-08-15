@@ -68,6 +68,24 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
+        public void Resolve_LeaksThroughADiagonalGap()
+        {
+            // Documented, not accidental. Bresenham squeezes between two blocks that
+            // only touch at a corner, so standing diagonally behind a lone pillar is not
+            // cover. Closing it means treating a corner touch as solid, which makes
+            // cover markedly stronger everywhere — a balance decision, not a bug fix.
+            var arena = new Arena(9, 9);
+            arena[new GridPos(5, 4)] = TileKind.HardBlock;
+            arena[new GridPos(4, 5)] = TileKind.HardBlock;
+
+            var bombs = new[] { new Bomb(new GridPos(4, 4), 0, 3) };
+
+            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 });
+
+            Assert.That(result.FlameTiles, Has.Member(new GridPos(5, 5)), "it slips through the corner");
+        }
+
+        [Test]
         public void Resolve_TreatsAWallOfCratesAsCover()
         {
             var arena = new Arena(9, 9);
