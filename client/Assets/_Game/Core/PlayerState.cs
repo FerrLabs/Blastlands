@@ -7,7 +7,8 @@ namespace Blastlands.Core
             Id = id;
             Position = position;
             Alive = true;
-            BombCapacity = settings.StartingBombs;
+            BombsHeld = settings.StartingHeldBombs;
+            CarryCapacity = settings.StartingCarryCapacity;
             FireRange = settings.StartingFireRange;
             SpeedSteps = 0;
             NextBombKind = BombKind.Standard;
@@ -20,13 +21,15 @@ namespace Blastlands.Core
 
         public bool Alive { get; set; }
 
-        public int BombCapacity { get; set; }
+        // Spent on placement and never returned. Running out is the normal state of
+        // affairs, not an edge case: it is what sends a player back into the open.
+        public int BombsHeld { get; set; }
+
+        public int CarryCapacity { get; set; }
 
         public int FireRange { get; set; }
 
         public int SpeedSteps { get; set; }
-
-        public int BombsPlaced { get; set; }
 
         public BombKind NextBombKind { get; set; }
 
@@ -39,7 +42,12 @@ namespace Blastlands.Core
 
         public bool CanDropBomb
         {
-            get { return Alive && BombsPlaced < BombCapacity; }
+            get { return Alive && BombsHeld > 0; }
+        }
+
+        public bool CanCarryMore
+        {
+            get { return BombsHeld < CarryCapacity; }
         }
     }
 }

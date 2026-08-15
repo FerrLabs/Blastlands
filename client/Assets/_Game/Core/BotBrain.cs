@@ -125,9 +125,31 @@ namespace Blastlands.Core
                 (tile, depth) => blast.SurvivesArrival(tile, depth * ticksPerTile, 0));
         }
 
+        // Restocking comes first for a bot with nothing to place: it cannot threaten
+        // anyone and cannot open a wall, so nothing else it does leads anywhere.
+        //
+        // It has to be a fallback chain rather than a choice, though. An empty bot with
+        // no reachable bomb that returns None stands still, and standing still next to
+        // its own fuse is how it dies — which is exactly what happened when this picked
+        // one target set instead of trying both.
         private Direction StepTowardTarget(
             MatchState state, BlastMap blast, PlayerState player, GridPos from, int ticksPerTile)
         {
+            if (player.CanCarryMore)
+            {
+                Direction toBomb = FirstStepToward(
+                    state,
+                    from,
+                    (tile, depth) => blast.SurvivesArrival(tile, depth * ticksPerTile, settings.SafetyMarginTicks)
+                                     && state.LooseBombIndexAt(tile) >= 0,
+                    (tile, depth) => blast.SurvivesArrival(tile, depth * ticksPerTile, 0));
+
+                if (toBomb != Direction.None)
+                {
+                    return toBomb;
+                }
+            }
+
             return FirstStepToward(
                 state,
                 from,
@@ -153,7 +175,17 @@ namespace Blastlands.Core
 
             BlastMap after = BlastMap.From(state, hypothetical);
 
-            return StepToSafety(state, after, tile, ticksPerTile);
+            // Only ground the hypothetical bombs cannot reach at all counts here, with
+            // none of the fallback StepToSafety allows. Settling for a tile that merely
+            // burns later is reasonable when you are already in danger and have to pick
+            // the least bad option; it is not reasonable when you are choosing to
+            // create the danger. Taking the fallback is how a bot bombs its own last
+            // exit and stands in the corner waiting.
+            return FirstStepToward(
+                state,
+                tile,
+                (candidate, depth) => after.TicksUntilFire(candidate) == BlastMap.Never,
+                (candidate, depth) => after.SurvivesArrival(candidate, depth * ticksPerTile, settings.SafetyMarginTicks));
         }
 
         private static bool TouchesSoftBlock(MatchState state, GridPos tile)

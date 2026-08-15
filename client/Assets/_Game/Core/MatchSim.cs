@@ -5,6 +5,9 @@ namespace Blastlands.Core
 {
     public static class MatchSim
     {
+        // A bomb set off by fire rather than placed by anyone.
+        private const int NoOwner = -1;
+
         public static void Tick(MatchState state, IReadOnlyList<PlayerInput> inputs)
         {
             if (state == null)
@@ -24,12 +27,15 @@ namespace Blastlands.Core
 
             MovePlayers(state, inputs);
             CollectPowerUps(state);
+            CollectLooseBombs(state);
             DropBombs(state, inputs);
             ExpireFlames(state);
             DetonateDueBombs(state);
             BurnPowerUps(state);
+            IgniteLooseBombs(state);
             KillPlayersInFlames(state);
             ResolveOutcome(state);
+            BombSpawner.Tick(state);
 
             state.Tick++;
         }
@@ -129,7 +135,7 @@ namespace Blastlands.Core
 
                 var bomb = new Bomb(player.Tile, player.Id, player.FireRange, player.NextBombKind);
                 state.AddBomb(new ActiveBomb(bomb, state.Settings.FuseTicks));
-                player.BombsPlaced++;
+                player.BombsHeld--;
             }
         }
 
@@ -154,14 +160,54 @@ namespace Blastlands.Core
             }
         }
 
+        private static void CollectLooseBombs(MatchState state)
+        {
+            for (int i = 0; i < state.Players.Count; i++)
+            {
+                PlayerState player = state.Players[i];
+                if (!player.Alive || !player.CanCarryMore)
+                {
+                    continue;
+                }
+
+                int index = state.LooseBombIndexAt(player.Tile);
+                if (index < 0)
+                {
+                    continue;
+                }
+
+                player.BombsHeld++;
+                state.RemoveLooseBombAt(index);
+            }
+        }
+
+        // A bomb in a fire goes off. Anything else would have players sheltering behind
+        // a pile of explosives, and it makes a stocked corner of the arena worth a shot
+        // from a distance.
+        private static void IgniteLooseBombs(MatchState state)
+        {
+            for (int i = state.LooseBombs.Count - 1; i >= 0; i--)
+            {
+                GridPos tile = state.LooseBombs[i];
+                if (!state.HasFlameAt(tile) || state.HasBombAt(tile))
+                {
+                    continue;
+                }
+
+                state.RemoveLooseBombAt(i);
+                state.AddBomb(new ActiveBomb(
+                    new Bomb(tile, NoOwner, state.Settings.StartingFireRange, BombKind.Standard), 1));
+            }
+        }
+
         private static void Apply(MatchState state, PlayerState player, PowerUpKind kind)
         {
             switch (kind)
             {
                 case PowerUpKind.BombUp:
-                    if (player.BombCapacity < state.Settings.MaxBombs)
+                    if (player.CarryCapacity < state.Settings.MaxCarryCapacity)
                     {
-                        player.BombCapacity++;
+                        player.CarryCapacity++;
                     }
 
                     break;
@@ -268,24 +314,11 @@ namespace Blastlands.Core
             var detonated = new List<int>(result.DetonatedBombs);
             detonated.Sort();
 
+            // Nothing is handed back to the owner: the bomb was spent when it was
+            // placed, and getting another one means finding one.
             for (int i = detonated.Count - 1; i >= 0; i--)
             {
-                int index = detonated[i];
-                ReturnCapacity(state, state.Bombs[index].Bomb.OwnerId);
-                state.RemoveBombAt(index);
-            }
-        }
-
-        private static void ReturnCapacity(MatchState state, int ownerId)
-        {
-            for (int i = 0; i < state.Players.Count; i++)
-            {
-                PlayerState player = state.Players[i];
-                if (player.Id == ownerId && player.BombsPlaced > 0)
-                {
-                    player.BombsPlaced--;
-                    return;
-                }
+                state.RemoveBombAt(detonated[i]);
             }
         }
 

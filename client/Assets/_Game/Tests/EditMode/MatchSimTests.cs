@@ -76,18 +76,18 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
-        public void ABombIsRefusedOnceTheCapacityIsSpent()
+        public void ABombIsRefusedOnceTheLastOneIsSpent()
         {
             MatchState state = OpenMatch(9, 9, new GridPos(1, 1));
 
             MatchSim.Tick(state, new[] { PlayerInput.Dropping() });
             Assert.That(state.Bombs.Count, Is.EqualTo(1));
-            Assert.That(state.Players[0].BombsPlaced, Is.EqualTo(1));
+            Assert.That(state.Players[0].BombsHeld, Is.EqualTo(0), "placing spends it");
 
             Run(state, 12, PlayerInput.Moving(Direction.Right));
             MatchSim.Tick(state, new[] { PlayerInput.Dropping() });
 
-            Assert.That(state.Bombs.Count, Is.EqualTo(1), "capacity is 1, the second bomb must be refused");
+            Assert.That(state.Bombs.Count, Is.EqualTo(1), "nothing left to place");
         }
 
         [Test]
@@ -104,14 +104,17 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
-        public void DetonationReturnsTheBombToItsOwner()
+        public void DetonationDoesNotGiveTheBombBack()
         {
+            // The point of the change: a bomb is spent when placed, so going off is not
+            // a refill. A player who has thrown everything has to go and find more,
+            // which is what puts them back in the open.
             MatchState state = OpenMatch(9, 9, new GridPos(1, 1), new GridPos(7, 7));
             MatchSim.Tick(state, new[] { PlayerInput.Dropping(), PlayerInput.None });
 
             RunUntilFlames(state, new[] { PlayerInput.Moving(Direction.Right), PlayerInput.None });
 
-            Assert.That(state.Players[0].BombsPlaced, Is.EqualTo(0));
+            Assert.That(state.Players[0].BombsHeld, Is.EqualTo(0));
         }
 
         [Test]
@@ -216,7 +219,7 @@ namespace Blastlands.Core.Tests
                 builder.Append(" p").Append(player.Id)
                     .Append(player.Position)
                     .Append(player.Alive ? "A" : "D")
-                    .Append(player.BombsPlaced);
+                    .Append(player.BombsHeld);
             }
 
             builder.Append(" bombs=").Append(state.Bombs.Count).Append(" flames=").Append(state.Flames.Count);

@@ -134,7 +134,7 @@ namespace Blastlands.Core.Tests
         {
             var cases = new Dictionary<PowerUpKind, System.Func<PlayerState, int>>
             {
-                { PowerUpKind.BombUp, p => p.BombCapacity },
+                { PowerUpKind.BombUp, p => p.CarryCapacity },
                 { PowerUpKind.FireUp, p => p.FireRange },
                 { PowerUpKind.SpeedUp, p => p.SpeedSteps },
             };
@@ -168,7 +168,7 @@ namespace Blastlands.Core.Tests
             MatchState state = OpenMatch(new GridPos(1, 1));
             PlayerState player = state.Players[0];
             player.FireRange = Settings.MaxFireRange;
-            player.BombCapacity = Settings.MaxBombs;
+            player.CarryCapacity = Settings.MaxCarryCapacity;
 
             PlaceVisible(state, new GridPos(2, 1), PowerUpKind.FireUp);
             Run(state, 12, PlayerInput.Moving(Direction.Right));

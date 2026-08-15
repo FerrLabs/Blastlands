@@ -29,6 +29,9 @@ namespace Blastlands.Core
                 state.AddPlayer(spawns[i]);
             }
 
+            // After the players, so seeding never drops a bomb onto a spawn.
+            BombSpawner.Seed(state);
+
             return state;
         }
     }

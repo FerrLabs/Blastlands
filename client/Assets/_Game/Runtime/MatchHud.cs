@@ -62,7 +62,9 @@ namespace Blastlands.Runtime
                 PlayerState player = state.Players[i];
                 Panel panel = panels[i];
 
-                Show(panel, 0, player.BombCapacity, state.Settings.MaxBombs);
+                // What is carried, against what could be carried. The bar empties as
+                // bombs are spent, which is the number that decides what you can do.
+                Show(panel, 0, player.BombsHeld, player.CarryCapacity);
                 Show(panel, 1, player.FireRange, state.Settings.MaxFireRange);
                 Show(panel, 2, player.SpeedSteps + 1, state.Settings.MaxSpeedSteps + 1);
 

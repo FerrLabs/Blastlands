@@ -29,7 +29,23 @@ and every client.
 
 ## Bombs
 
-- A player drops a bomb on their current tile, up to their bomb capacity.
+Bombs are found, not owned. They lie around the arena, get picked up by walking over them,
+and are **spent when placed** — a bomb going off does not hand it back. Running out is the
+normal state of affairs, and it is what sends a player back into the open.
+
+The arena tops itself up toward `LooseBombTarget` every `BombRespawnTicks`, on floor the
+players can actually reach. Reachability is not a detail: a free tile can be sealed inside a
+ring of soft blocks, and bombs dropped there make the count say the arena is stocked while
+nobody can get to a single one.
+
+**`BombRespawnTicks` must stay above `FuseTicks`.** Below it a player finds their next bomb
+before the last has gone off, which is the only way to have two live at once — and two live
+bombs is how you wall yourself into your own blast. Solo bot survival falls off a cliff at
+exactly that boundary: 35 seeds of 40 at 90 ticks, 11 at 60. A test pins the invariant.
+
+A bomb lying in fire goes off, so a stocked corner is worth a shot from a distance.
+
+- A player drops a bomb on their current tile if they are carrying one.
 - Fuse is a fixed tick count (~2.5 s).
 - On detonation, flame extends from the bomb tile in the four cardinal directions, up to the
   player's fire range.
@@ -66,7 +82,7 @@ Dropped by destroyed soft blocks at a fixed drop rate. V1 set, kept deliberately
 
 | Power-up | Effect |
 |---|---|
-| Bomb up | +1 simultaneous bomb |
+| Bomb up | +1 carrying capacity |
 | Fire up | +1 flame range |
 | Speed up | +1 movement speed step |
 | Pierce bomb | The next bomb dropped is a Pierce |

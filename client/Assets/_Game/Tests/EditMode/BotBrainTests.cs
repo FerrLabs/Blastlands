@@ -98,15 +98,15 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
-        public void MostBotsLeftAloneStillBlowThemselvesUp()
+        public void MostBotsLeftAloneSurviveThemselves()
         {
-            // This documents a deficiency, it does not bless one. A Hard bot survives 13
-            // of these 40 unsupervised matches: it bombs itself into a pocket its own
-            // blasts cover, then has nowhere left to stand. Raise the bar here as the
-            // planner improves.
+            // A Hard bot survives 35 of these 40 unsupervised matches, up from 13 before
+            // the bombing check stopped accepting ground that merely burns later. Still
+            // not all of them, so the bar stays below the real figure and moves up as
+            // the planner does.
             //
-            // The previous version of this test ran one seed that happened to be among
-            // the survivors, and so reported the bots as safe for as long as it existed.
+            // An earlier version of this test ran one seed that happened to be among the
+            // survivors, and reported the bots as safe for as long as it existed.
             int survived = 0;
             for (uint seed = 1; seed <= 40; seed++)
             {
@@ -116,7 +116,7 @@ namespace Blastlands.Core.Tests
                 }
             }
 
-            Assert.That(survived, Is.GreaterThanOrEqualTo(10), "bot self-preservation has regressed");
+            Assert.That(survived, Is.GreaterThanOrEqualTo(30), "bot self-preservation has regressed");
         }
 
         [Test]

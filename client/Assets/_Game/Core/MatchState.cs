@@ -70,6 +70,7 @@ namespace Blastlands.Core
         private readonly List<ActiveFlame> flames = new List<ActiveFlame>();
         private readonly List<PowerUp> powerUps = new List<PowerUp>();
         private readonly Dictionary<GridPos, PowerUpKind> hiddenPowerUps = new Dictionary<GridPos, PowerUpKind>();
+        private readonly List<GridPos> looseBombs = new List<GridPos>();
 
         public MatchState(Arena arena, MatchSettings settings, uint seed)
         {
@@ -194,6 +195,34 @@ namespace Blastlands.Core
         public void RemovePowerUpAt(int index)
         {
             powerUps.RemoveAt(index);
+        }
+
+        public IReadOnlyList<GridPos> LooseBombs
+        {
+            get { return looseBombs; }
+        }
+
+        public void AddLooseBomb(GridPos tile)
+        {
+            looseBombs.Add(tile);
+        }
+
+        public int LooseBombIndexAt(GridPos tile)
+        {
+            for (int i = 0; i < looseBombs.Count; i++)
+            {
+                if (looseBombs[i] == tile)
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
+        public void RemoveLooseBombAt(int index)
+        {
+            looseBombs.RemoveAt(index);
         }
 
         public bool HasBombAt(GridPos tile)

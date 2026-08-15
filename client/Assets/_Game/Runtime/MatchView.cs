@@ -45,6 +45,7 @@ namespace Blastlands.Runtime
 
         private readonly Dictionary<GridPos, GameObject> blocks = new Dictionary<GridPos, GameObject>();
         private readonly List<GameObject> bombPool = new List<GameObject>();
+        private readonly List<GameObject> looseBombPool = new List<GameObject>();
         private readonly List<Vector3> bombBaseScales = new List<Vector3>();
         private readonly List<GameObject> flamePool = new List<GameObject>();
         private readonly List<GameObject> playerViews = new List<GameObject>();
@@ -87,6 +88,7 @@ namespace Blastlands.Runtime
 
             blocks.Clear();
             bombPool.Clear();
+            looseBombPool.Clear();
             bombBaseScales.Clear();
             flamePool.Clear();
             playerViews.Clear();
@@ -114,6 +116,7 @@ namespace Blastlands.Runtime
 
             SyncBlocks();
             SyncPowerUps();
+            SyncLooseBombs();
             SyncBombs();
             SyncFlames();
             SyncPlayers();
@@ -395,6 +398,28 @@ namespace Blastlands.Runtime
             powerUpViews.Add(created);
             powerUpKinds.Add(kind);
             return created;
+        }
+
+        // Deliberately the same prefab as a live bomb, sat flat on the floor and left
+        // still. A pickup that looked like something else would have players learning
+        // two shapes for one object; what separates them is that this one is not ticking.
+        private void SyncLooseBombs()
+        {
+            for (int i = 0; i < state.LooseBombs.Count; i++)
+            {
+                bool created = looseBombPool.Count <= i;
+                GameObject view = TakeAt(
+                    looseBombPool, i, art != null ? art.Bomb : null, PrimitiveType.Sphere, MatchPalette.Bomb, "Loose bomb");
+
+                if (created)
+                {
+                    TileFitter.FitInBox(view, bombFootprint * 0.72f);
+                }
+
+                TileFitter.PlaceOnTile(view, ToWorld(state.LooseBombs[i], 0f));
+            }
+
+            HideFrom(looseBombPool, state.LooseBombs.Count);
         }
 
         private void SyncBombs()
