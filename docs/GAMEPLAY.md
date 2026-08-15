@@ -1,5 +1,10 @@
 # Gameplay design
 
+> This document describes the game as it is built today: a grid, axis-aligned movement
+> and cross-shaped blasts. [RFC 001](./RFC-001-arena-brawler.md) proposes moving to free
+> movement, radial blasts and scarce bombs. Read it before making design changes here —
+> several sections below are what that RFC replaces.
+
 ## The match
 
 2–8 players on a rectangular grid. Last player alive wins the round; first to N rounds wins
