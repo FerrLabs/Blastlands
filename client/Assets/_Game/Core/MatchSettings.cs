@@ -27,8 +27,10 @@ namespace Blastlands.Core
             int dashCooldownTicks,
             int playerRadius,
             int cornerAssist,
-            int looseBombFuseTicks)
+            int looseBombFuseTicks,
+            PushSettings push)
         {
+            Push = push;
             LooseBombFuseTicks = looseBombFuseTicks;
             PlayerRadius = playerRadius;
             CornerAssist = cornerAssist;
@@ -122,6 +124,8 @@ namespace Blastlands.Core
         // movement feels broken.
         public int CornerAssist { get; }
 
+        public PushSettings Push { get; }
+
         public static MatchSettings Default
         {
             // Carry capacity starts at one. It is also how many bombs can be live at
@@ -171,7 +175,12 @@ namespace Blastlands.Core
             //
             // Eight was fine as a cross. As a disc it is one bomb covering the entire
             // map, which is not an upgrade, it is the end of the round.
-            get { return new MatchSettings(30, 75, 15, 26, 6, 4, 1, 1, 2, 6, 4, 35, 4, 90, 600, 90, 45, 78, 8, 90, 90, 9, 12); }
+            get
+            {
+                return new MatchSettings(
+                    30, 75, 15, 26, 6, 4, 1, 1, 2, 6, 4, 35, 4, 90, 600, 90, 45, 78, 8, 90, 90, 9, 12,
+                    PushSettings.Default);
+            }
         }
 
         // Restating twenty-two positional ints to change one is where a transposition
@@ -186,7 +195,7 @@ namespace Blastlands.Core
                 target, BombRespawnTicks,
                 WallRegrowTicks, WallTelegraphTicks, WallRetryTicks,
                 DashSpeed, DashTicks, DashCooldownTicks,
-                PlayerRadius, CornerAssist, LooseBombFuseTicks);
+                PlayerRadius, CornerAssist, LooseBombFuseTicks, Push);
         }
 
         public int SpeedFor(int speedSteps)

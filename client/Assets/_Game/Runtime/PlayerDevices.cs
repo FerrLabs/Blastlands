@@ -17,11 +17,13 @@ namespace Blastlands.Runtime
     {
         private readonly bool[] dropLatches;
         private readonly bool[] dashLatches;
+        private readonly bool[] pushLatches;
 
         public PlayerDevices(int playerCount)
         {
             dropLatches = new bool[Mathf.Max(1, playerCount)];
             dashLatches = new bool[dropLatches.Length];
+            pushLatches = new bool[dropLatches.Length];
         }
 
         public int PlayerCount
@@ -44,6 +46,11 @@ namespace Blastlands.Runtime
                 {
                     dashLatches[player] = true;
                 }
+
+                if (PushPressedThisFrame(player))
+                {
+                    pushLatches[player] = true;
+                }
             }
         }
 
@@ -56,12 +63,14 @@ namespace Blastlands.Runtime
 
             bool drop = dropLatches[player];
             bool dash = dashLatches[player];
+            bool push = pushLatches[player];
             dropLatches[player] = false;
             dashLatches[player] = false;
+            pushLatches[player] = false;
 
             int moveX, moveY;
             MoveFor(player, out moveX, out moveY);
-            return new PlayerInput(moveX, moveY, drop, dash);
+            return new PlayerInput(moveX, moveY, drop, dash, push);
         }
 
         public bool RerollPressed()
@@ -125,6 +134,25 @@ namespace Blastlands.Runtime
 
             Keyboard keyboard = Keyboard.current;
             return keyboard != null && keyboard.spaceKey.wasPressedThisFrame;
+        }
+
+        // Left click, as asked for, and the west face button on a pad. A shove is
+        // always available, so it sits on the button a hand rests on.
+        private bool PushPressedThisFrame(int player)
+        {
+            Gamepad pad = PadFor(player);
+            if (pad != null && pad.buttonWest.wasPressedThisFrame)
+            {
+                return true;
+            }
+
+            if (player != 0)
+            {
+                return false;
+            }
+
+            Mouse mouse = Mouse.current;
+            return mouse != null && mouse.leftButton.wasPressedThisFrame;
         }
 
         // Shoulder button on a pad, shift on the keyboard: it has to be reachable

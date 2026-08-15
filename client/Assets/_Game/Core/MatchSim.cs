@@ -25,6 +25,7 @@ namespace Blastlands.Core
                 return;
             }
 
+            Shoving.Resolve(state, inputs);
             MovePlayers(state, inputs);
             CollectPowerUps(state);
             CollectLooseBombs(state);
@@ -55,12 +56,36 @@ namespace Blastlands.Core
                 }
 
                 PlayerInput input = i < inputs.Count ? inputs[i] : PlayerInput.None;
-                StartDash(state, player, input);
 
+                if (player.PushCooldownRemaining > 0)
+                {
+                    player.PushCooldownRemaining--;
+                }
+
+                // A shove overrides what the target wanted, and a stun takes the controls
+                // away entirely. Neither is checked before the cooldowns, or a stunned
+                // player would come out of it with everything still on cooldown.
                 if (player.DashCooldownRemaining > 0)
                 {
                     player.DashCooldownRemaining--;
                 }
+
+                // Being shoved beats being stunned: someone helpless on the floor is
+                // exactly who you want to be able to move, and a stun that made them
+                // immovable would turn the punish into protection.
+                if (player.Shoved)
+                {
+                    Shoving.Carry(state, player);
+                    continue;
+                }
+
+                if (player.Stunned)
+                {
+                    player.StunTicksRemaining--;
+                    continue;
+                }
+
+                StartDash(state, player, input);
 
                 if (player.Dashing)
                 {
@@ -142,7 +167,7 @@ namespace Blastlands.Core
             for (int i = 0; i < state.Players.Count; i++)
             {
                 PlayerState player = state.Players[i];
-                bool wants = i < inputs.Count && inputs[i].DropBomb;
+                bool wants = i < inputs.Count && inputs[i].DropBomb && !player.Stunned && !player.Shoved;
                 if (!wants || !player.CanDropBomb || state.HasBombAt(player.Tile))
                 {
                     continue;

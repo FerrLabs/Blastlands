@@ -23,11 +23,17 @@ namespace Blastlands.Core
         }
 
         public PlayerInput(int moveX, int moveY, bool dropBomb, bool dash)
+            : this(moveX, moveY, dropBomb, dash, false)
+        {
+        }
+
+        public PlayerInput(int moveX, int moveY, bool dropBomb, bool dash, bool push)
         {
             MoveX = Clamp(moveX);
             MoveY = Clamp(moveY);
             DropBomb = dropBomb;
             Dash = dash;
+            Push = push;
         }
 
         public int MoveX { get; }
@@ -37,6 +43,8 @@ namespace Blastlands.Core
         public bool DropBomb { get; }
 
         public bool Dash { get; }
+
+        public bool Push { get; }
 
         public bool IsMoving
         {
@@ -68,6 +76,13 @@ namespace Blastlands.Core
         public static PlayerInput Dashing(Direction move)
         {
             return new PlayerInput(move, false, true);
+        }
+
+        public static PlayerInput Pushing(Direction facing)
+        {
+            GridPos delta = Directions.Delta(facing);
+            return new PlayerInput(
+                delta.X * StickReader.Range, delta.Y * StickReader.Range, false, false, true);
         }
 
         private static int Clamp(int value)

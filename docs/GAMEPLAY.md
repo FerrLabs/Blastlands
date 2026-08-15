@@ -147,6 +147,27 @@ body no longer lives in one — a bot sitting on a tile boundary changes which t
 every tick, and its decision flips with it. Several point fixes recovered part of it; the
 rest needs the planner to think in positions.
 
+## Shoving
+
+Always available, on left click, and on the west face button of a pad. It finds the nearest
+living player within reach **in front of the shover** and launches them.
+
+**A shove never kills.** Bombs are the only source of damage, so the way to kill someone with
+a shove is to put them where a bomb already is — the kill still belongs to the bomb. That
+makes the interactions the point rather than a side effect: into a blast, into a wall that is
+about to close (#67), off the ground they were holding.
+
+Hitting a wall mid-flight stops the shove and stuns the target. A shove into open ground is a
+reposition; a shove into a wall is the punish. A stunned player cannot move or place bombs,
+but **can still be shoved** — someone helpless is exactly who you want to be able to move, and
+a stun that made them immovable would turn the punish into protection.
+
+Every shove on a tick is decided against the same starting positions, so two players shoving
+each other both land rather than the loop order picking a winner.
+
+Reach has to exceed a tile. Two players on adjacent tile centres are 256 sub-units apart, and
+a shorter reach means a shove that only works when you are already inside somebody.
+
 ## Dash
 
 A burst of speed on a recharge — about two and a half tiles in a third of a second, once

@@ -54,6 +54,31 @@ namespace Blastlands.Core
             get { return Alive && DashTicksRemaining <= 0 && DashCooldownRemaining <= 0; }
         }
 
+        // Being shoved is not being hurt. A shove moves you and, if you hit something,
+        // takes your controls away for a moment — bombs remain the only thing that kills.
+        public Direction ShoveDirection { get; set; }
+
+        public int ShoveTicksRemaining { get; set; }
+
+        public int StunTicksRemaining { get; set; }
+
+        public int PushCooldownRemaining { get; set; }
+
+        public bool Shoved
+        {
+            get { return ShoveTicksRemaining > 0; }
+        }
+
+        public bool Stunned
+        {
+            get { return StunTicksRemaining > 0; }
+        }
+
+        public bool CanPush
+        {
+            get { return Alive && !Stunned && PushCooldownRemaining <= 0; }
+        }
+
         public GridPos Tile
         {
             get { return Position.Tile; }
