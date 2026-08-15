@@ -100,15 +100,14 @@ namespace Blastlands.Core.Tests
         [Test]
         public void MostBotsLeftAloneSurviveThemselves()
         {
-            // A Hard bot survives 23 of these 40 unsupervised matches. It was 30 before
-            // free movement, and this bar was lowered to match rather than because the
-            // bots got better — the drop is a known, measured regression tracked as its
-            // own piece of work, not something to be hidden by a green test.
+            // A Hard bot survives 32 of these 40 unsupervised matches, past the 30 it
+            // managed on the grid. Free movement alone had cost it — down to 23, because
+            // the planner reasons in tiles while the body no longer lives in one — and
+            // radial blasts handed it back with interest.
             //
-            // The cause is that the planner reasons in tiles while the body no longer
-            // lives in one: a bot sitting on a tile boundary changes which tile it is in
-            // every tick, and its decision changes with it. Point fixes recovered some
-            // of it; the planner needs to think in positions to recover the rest.
+            // The reason is worth keeping: with the blast occluded, getting behind a
+            // wall is safe, full stop. Cover is a far stronger thing for a planner to
+            // reason about than distance along a corridor, which was all a cross gave it.
             //
             // An earlier version of this test ran one seed that happened to be among the
             // survivors, and reported the bots as safe for as long as it existed.
@@ -121,7 +120,7 @@ namespace Blastlands.Core.Tests
                 }
             }
 
-            Assert.That(survived, Is.GreaterThanOrEqualTo(20), "bot self-preservation has regressed");
+            Assert.That(survived, Is.GreaterThanOrEqualTo(28), "bot self-preservation has regressed");
         }
 
         [Test]

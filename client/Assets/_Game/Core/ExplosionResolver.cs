@@ -85,60 +85,93 @@ namespace Blastlands.Core
                 return new ExplosionResult(flames, destroyed, detonated);
             }
 
+            // A radius rather than a cross. The cross was legible on a checkerboard,
+            // which is the only reason it existed; once a player can stand between two
+            // tiles it stops answering the question "am I in it".
             private void Detonate(Bomb bomb)
             {
+                int range = bomb.FireRange;
                 AddFlame(bomb.Position);
 
-                foreach (GridPos direction in Cardinals)
+                for (int dy = -range; dy <= range; dy++)
                 {
-                    Spread(bomb, direction);
+                    for (int dx = -range; dx <= range; dx++)
+                    {
+                        if ((dx * dx) + (dy * dy) > range * range)
+                        {
+                            continue;
+                        }
+
+                        Reach(bomb, bomb.Position.Offset(dx, dy));
+                    }
+                }
+
+                if (bomb.Kind == BombKind.Cluster)
+                {
+                    foreach (GridPos direction in Cardinals)
+                    {
+                        GridPos tip = FurthestBurning(bomb.Position, direction, range);
+                        if (tip != bomb.Position)
+                        {
+                            Scatter(tip);
+                        }
+                    }
                 }
             }
 
-            private void Spread(Bomb bomb, GridPos direction)
+            private void Reach(Bomb bomb, GridPos tile)
             {
-                GridPos tip = bomb.Position;
-
-                for (int step = 1; step <= bomb.FireRange; step++)
+                if (!arena.Contains(tile))
                 {
-                    GridPos tile = bomb.Position.Offset(direction.X * step, direction.Y * step);
-                    if (!arena.Contains(tile))
+                    return;
+                }
+
+                TileKind kind = arena[tile];
+                if (kind == TileKind.HardBlock)
+                {
+                    return;
+                }
+
+                // Pierce sees past the crates but not through the structure, which is
+                // what it meant on a grid too.
+                if (!LineOfSight.Between(arena, bomb.Position, tile, bomb.Kind != BombKind.Pierce))
+                {
+                    return;
+                }
+
+                AddFlame(tile);
+
+                if (kind == TileKind.SoftBlock)
+                {
+                    Destroy(tile);
+                    return;
+                }
+
+                int chained;
+                if (bombsByTile.TryGetValue(tile, out chained))
+                {
+                    Enqueue(chained);
+                }
+            }
+
+            // A radius has no tip, so the cluster's flare hangs off the outermost tile
+            // the blast actually reached along each cardinal.
+            private GridPos FurthestBurning(GridPos origin, GridPos direction, int range)
+            {
+                GridPos furthest = origin;
+
+                for (int step = 1; step <= range; step++)
+                {
+                    GridPos tile = origin.Offset(direction.X * step, direction.Y * step);
+                    if (!flameTiles.Contains(tile))
                     {
                         break;
                     }
 
-                    TileKind kind = arena[tile];
-                    if (kind == TileKind.HardBlock)
-                    {
-                        break;
-                    }
-
-                    AddFlame(tile);
-                    tip = tile;
-
-                    if (kind == TileKind.SoftBlock)
-                    {
-                        Destroy(tile);
-
-                        if (bomb.Kind != BombKind.Pierce)
-                        {
-                            break;
-                        }
-
-                        continue;
-                    }
-
-                    int chained;
-                    if (bombsByTile.TryGetValue(tile, out chained))
-                    {
-                        Enqueue(chained);
-                    }
+                    furthest = tile;
                 }
 
-                if (bomb.Kind == BombKind.Cluster && tip != bomb.Position)
-                {
-                    Scatter(tip);
-                }
+                return furthest;
             }
 
             // Cluster arms flare one tile around where they stopped. The flare is

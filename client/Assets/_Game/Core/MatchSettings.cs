@@ -159,7 +159,19 @@ namespace Blastlands.Core
             // three seconds.
             // A body 0.7 of a tile across, and a corner assist of about a third of the
             // walking speed.
-            get { return new MatchSettings(30, 75, 15, 26, 6, 4, 1, 1, 2, 6, 8, 35, 4, 90, 600, 90, 45, 78, 8, 90, 90, 9, 12); }
+            // MaxFireRange dropped from 8 to 4 when blasts became discs. A cross grows
+            // linearly and a disc grows with the square, so the same number means a very
+            // different thing. Measured against a 15x13 arena:
+            //
+            //   range   disc   share of the arena   (old cross)
+            //     2      13           7%                 9
+            //     3      29          15%                13
+            //     4      49          25%                17   <- cap
+            //     8     197         101%                33
+            //
+            // Eight was fine as a cross. As a disc it is one bomb covering the entire
+            // map, which is not an upgrade, it is the end of the round.
+            get { return new MatchSettings(30, 75, 15, 26, 6, 4, 1, 1, 2, 6, 4, 35, 4, 90, 600, 90, 45, 78, 8, 90, 90, 9, 12); }
         }
 
         // Restating twenty-two positional ints to change one is where a transposition

@@ -45,11 +45,32 @@ exactly that boundary: 35 seeds of 40 at 90 ticks, 11 at 60. A test pins the inv
 
 A bomb lying in fire goes off, so a stocked corner is worth a shot from a distance.
 
+**The blast is a disc, and it is blocked by walls.** The cross was never a design choice: it
+was legible on a checkerboard, which is the only reason it existed. Once a player can stand
+between two tiles it stops answering "am I in it".
+
+The occlusion is the load-bearing half. A plain distance check is far cheaper to write and
+far worse to play — without walls stopping the blast, taking cover is impossible and the
+central skill of the game goes with it. Line of sight is integer Bresenham, so the answer is
+the same everywhere.
+
+A disc grows with the square of its range while a cross grows linearly, so `MaxFireRange`
+came down from 8 to 4 with this. Against a 15×13 arena:
+
+| range | disc | share of arena | old cross |
+|---|---|---|---|
+| 2 | 13 | 7% | 9 |
+| 4 | 49 | 25% | 17 |
+| 8 | 197 | 101% | 33 |
+
+Eight was fine as a cross. As a disc it is one bomb covering the whole map.
+
 - A player drops a bomb on their current tile if they are carrying one.
 - Fuse is a fixed tick count (~2.5 s).
-- On detonation, flame extends from the bomb tile in the four cardinal directions, up to the
-  player's fire range.
-- Flame stops at a hard block. Flame destroys the first soft block it hits and stops there.
+- On detonation, every tile within fire range burns, unless a wall stands between it and
+  the bomb.
+- Flame never burns a hard block. It destroys a soft block it reaches, and that block
+  shelters whatever is behind it.
 - Flame reaching another bomb detonates it immediately — chains resolve in the same tick,
   which is why the resolver is breadth-first rather than recursive.
 - Flame kills any player it touches, including the owner.
