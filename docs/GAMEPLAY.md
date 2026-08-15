@@ -125,6 +125,26 @@ Kick, punch, remote detonators and pass-through are explicitly out of V1. They e
 the movement and collision model significantly and are worth their own issues once the base
 game is solid.
 
+## Camera
+
+Three modes, because a following camera cannot serve four people on one screen.
+
+- **Global** frames every living player and zooms to fit, bounded at both ends. Dead players
+  drop out of the framing, or the survivors spend the round zoomed out around a corpse.
+- **Follow** tracks one player, with lookahead in the direction they face and more of it
+  while dashing — a camera that lags a dash makes the dash feel worse than not having one.
+  This is what every client uses online.
+- **Split** gives each local player their own following view. Two players split across, so
+  each view stays wider than it is tall; three or four take quadrants, and a third player
+  leaves an empty corner rather than handing someone a differently shaped view to read.
+
+None of it shows much beyond the arena edge, past which the view is mostly scenery and the
+player loses track of where the board ends.
+
+**Following only pays off on a bigger arena, which the current one is not.** At 16:9 on 15×13
+the view is wider than the board before it is close enough to feel like following, so the
+clamp pins it near the centre. The mode works; the arena defeats it.
+
 ## Movement
 
 Positions are continuous. A player is a body about 0.7 of a tile across that slides along

@@ -467,8 +467,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ede66e033201e0c459e26e946a3409ab, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Blastlands.Runtime::Blastlands.Runtime.MatchCamera
+  mode: 0
   tiltDegrees: 55
   margin: 1.4
+  followSize: 4
+  followSmoothing: 0.18
+  lookahead: 1.6
+  dashLookahead: 3.2
+  globalMinSize: 4
 --- !u!20 &1120937000
 Camera:
   m_ObjectHideFlags: 0

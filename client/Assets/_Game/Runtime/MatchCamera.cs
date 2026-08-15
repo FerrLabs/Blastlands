@@ -1,76 +1,287 @@
+using System.Collections.Generic;
 using Blastlands.Core;
 using UnityEngine;
 
 namespace Blastlands.Runtime
 {
-    // No camera control by design: the whole arena is always on screen, because a
-    // player has to be able to see every tile that is about to be on fire.
+    // Directs however many cameras the chosen mode needs.
+    //
+    // The grid version never moved: the whole arena was always on screen, because a
+    // player had to see every tile that was about to be on fire. A bigger arena and free
+    // movement give that up on purpose — you no longer read the whole board, which trades
+    // the tactical overview for a brawler's closeness. That is a change of nature rather
+    // than a setting, which is why the global mode stays available instead of going away.
     [RequireComponent(typeof(Camera))]
     public sealed class MatchCamera : MonoBehaviour
     {
+        [SerializeField] private CameraMode mode = CameraMode.Global;
         [SerializeField] private float tiltDegrees = 55f;
+
         // Wide enough to show a band of the surrounding scenery. Framing the arena
         // exactly slices the decoration at the edges, which looks like a bug.
         [SerializeField] private float margin = 2.8f;
 
-        private Camera view;
-        private Arena framed;
+        // Small enough that the view is narrower than the arena, or the clamp below has
+        // no slack to work with and the camera sits pinned to the centre — following
+        // nothing. On a 15x13 arena at 16:9, anything above about 5 is already wider
+        // than the whole board.
+        [SerializeField] private float followSize = 4f;
+        [SerializeField] private float followSmoothing = 0.18f;
+
+        // How far ahead of the player the view sits, and how much further while dashing.
+        // A camera that lags a dash makes the dash feel worse than not having one.
+        [SerializeField] private float lookahead = 1.6f;
+        [SerializeField] private float dashLookahead = 3.2f;
+
+        // Floor for the global mode's zoom. Without a limit on how far it pulls back,
+        // four players in four corners are four specks — the problem a moving camera was
+        // supposed to solve.
+        [SerializeField] private float globalMinSize = 4f;
+
+        private readonly List<Camera> views = new List<Camera>();
+        private readonly List<Vector3> velocities = new List<Vector3>();
+
+        private MatchState state;
+        private Camera own;
         private float lastAspect;
 
-        public void Bind(Arena arena)
+        public CameraMode Mode
         {
-            framed = arena;
-            lastAspect = 0f;
-            Frame();
+            get { return mode; }
         }
 
-        private void Update()
+        public void Bind(MatchState matchState)
         {
-            // The aspect ratio is unknown until the game view exists, and changes on resize.
-            if (framed != null && !Mathf.Approximately(Aspect(), lastAspect))
+            state = matchState;
+            lastAspect = 0f;
+            Rebuild();
+        }
+
+        public void Use(CameraMode next)
+        {
+            mode = next;
+            if (state != null)
             {
-                Frame();
+                Rebuild();
             }
         }
 
-        private void Frame()
+        private void LateUpdate()
         {
-            if (framed == null)
+            if (state == null)
             {
                 return;
             }
 
-            Camera camera = View();
-            camera.orthographic = true;
-            lastAspect = Aspect();
-
-            float tilt = tiltDegrees * Mathf.Deg2Rad;
-
-            // Tilting compresses the arena's depth on screen by sin(tilt). The width is
-            // unaffected, so the vertical half-extent is the larger of the two needs.
-            float halfWidth = (framed.Width * 0.5f) + margin;
-            float halfDepth = ((framed.Height * 0.5f) + margin) * Mathf.Sin(tilt);
-
-            camera.orthographicSize = Mathf.Max(halfDepth, halfWidth / lastAspect);
-
-            var centre = new Vector3((framed.Width - 1) * 0.5f, 0f, -(framed.Height - 1) * 0.5f);
-            transform.rotation = Quaternion.Euler(tiltDegrees, 0f, 0f);
-            transform.position = centre - (transform.forward * 40f);
-        }
-
-        private Camera View()
-        {
-            if (view == null)
+            if (!Mathf.Approximately(Aspect(), lastAspect))
             {
-                view = GetComponent<Camera>();
+                Rebuild();
             }
 
-            return view;
+            for (int i = 0; i < views.Count; i++)
+            {
+                Aim(i);
+            }
+        }
+
+        private void Rebuild()
+        {
+            lastAspect = Aspect();
+
+            int wanted = mode == CameraMode.Split ? Mathf.Max(1, state.Players.Count) : 1;
+
+            for (int i = views.Count - 1; i >= wanted; i--)
+            {
+                if (views[i] != null && views[i] != Own())
+                {
+                    Destroy(views[i].gameObject);
+                }
+
+                views.RemoveAt(i);
+                velocities.RemoveAt(i);
+            }
+
+            while (views.Count < wanted)
+            {
+                views.Add(views.Count == 0 ? Own() : Clone(views.Count));
+                velocities.Add(Vector3.zero);
+            }
+
+            for (int i = 0; i < views.Count; i++)
+            {
+                views[i].orthographic = true;
+                views[i].rect = ViewportFor(i, wanted);
+                views[i].transform.rotation = Quaternion.Euler(tiltDegrees, 0f, 0f);
+            }
+        }
+
+        private Camera Clone(int index)
+        {
+            var host = new GameObject("Match Camera " + index, typeof(Camera));
+            host.transform.SetParent(transform.parent, false);
+
+            Camera clone = host.GetComponent<Camera>();
+            clone.CopyFrom(Own());
+            clone.depth = Own().depth + index;
+            return clone;
+        }
+
+        // Two players split across rather than down, which keeps each view wider than it
+        // is tall. Three or four take quadrants; a third player leaves an empty corner
+        // rather than handing someone a differently shaped view to read.
+        private static Rect ViewportFor(int index, int count)
+        {
+            if (count <= 1)
+            {
+                return new Rect(0f, 0f, 1f, 1f);
+            }
+
+            if (count == 2)
+            {
+                return index == 0 ? new Rect(0f, 0.5f, 1f, 0.5f) : new Rect(0f, 0f, 1f, 0.5f);
+            }
+
+            float x = (index % 2) * 0.5f;
+            float y = index < 2 ? 0.5f : 0f;
+            return new Rect(x, y, 0.5f, 0.5f);
+        }
+
+        private void Aim(int index)
+        {
+            Camera view = views[index];
+            if (view == null)
+            {
+                return;
+            }
+
+            float size;
+            Vector3 focus = mode == CameraMode.Global
+                ? GlobalFocus(view, out size)
+                : FollowFocus(index, out size);
+
+            view.orthographicSize = size;
+
+            Vector3 target = Clamp(focus, view, size);
+            Vector3 looking = view.transform.position + (view.transform.forward * 40f);
+
+            Vector3 velocity = velocities[index];
+            looking = Vector3.SmoothDamp(looking, target, ref velocity, followSmoothing);
+            velocities[index] = velocity;
+
+            view.transform.position = looking - (view.transform.forward * 40f);
+        }
+
+        private Vector3 FollowFocus(int index, out float size)
+        {
+            size = followSize;
+
+            PlayerState player = PlayerFor(index);
+            if (player == null)
+            {
+                return ArenaCentre();
+            }
+
+            Vector3 at = MatchView.ToWorld(player.Position, 0f);
+            GridPos ahead = Directions.Delta(player.Facing);
+            float reach = player.Dashing ? dashLookahead : lookahead;
+
+            return at + new Vector3(ahead.X * reach, 0f, -ahead.Y * reach);
+        }
+
+        // Frames whoever is still alive. Dead players drop out of the framing, or the
+        // survivors spend the rest of the round zoomed out around a corpse.
+        private Vector3 GlobalFocus(Camera view, out float size)
+        {
+            var min = new Vector2(float.MaxValue, float.MaxValue);
+            var max = new Vector2(float.MinValue, float.MinValue);
+            int alive = 0;
+
+            for (int i = 0; i < state.Players.Count; i++)
+            {
+                PlayerState player = state.Players[i];
+                if (!player.Alive)
+                {
+                    continue;
+                }
+
+                Vector3 at = MatchView.ToWorld(player.Position, 0f);
+                min = Vector2.Min(min, new Vector2(at.x, at.z));
+                max = Vector2.Max(max, new Vector2(at.x, at.z));
+                alive++;
+            }
+
+            if (alive == 0)
+            {
+                size = WholeArenaSize(view);
+                return ArenaCentre();
+            }
+
+            float tilt = tiltDegrees * Mathf.Deg2Rad;
+            float halfWidth = ((max.x - min.x) * 0.5f) + margin;
+            float halfDepth = (((max.y - min.y) * 0.5f) + margin) * Mathf.Sin(tilt);
+
+            size = Mathf.Clamp(
+                Mathf.Max(halfDepth, halfWidth / Aspect(view)),
+                globalMinSize,
+                WholeArenaSize(view));
+
+            return new Vector3((min.x + max.x) * 0.5f, 0f, (min.y + max.y) * 0.5f);
+        }
+
+        // Never shows much more than a margin outside the arena: past that the view is
+        // mostly scenery and the player loses their sense of where the edges are.
+        private Vector3 Clamp(Vector3 focus, Camera view, float size)
+        {
+            float halfDepth = size / Mathf.Sin(tiltDegrees * Mathf.Deg2Rad);
+            float halfWidth = size * Aspect(view);
+
+            float slackX = Mathf.Max(0f, ((state.Arena.Width - 1) * 0.5f) + margin - halfWidth);
+            float slackZ = Mathf.Max(0f, ((state.Arena.Height - 1) * 0.5f) + margin - halfDepth);
+
+            Vector3 centre = ArenaCentre();
+            return new Vector3(
+                Mathf.Clamp(focus.x, centre.x - slackX, centre.x + slackX),
+                0f,
+                Mathf.Clamp(focus.z, centre.z - slackZ, centre.z + slackZ));
+        }
+
+        private float WholeArenaSize(Camera view)
+        {
+            float tilt = tiltDegrees * Mathf.Deg2Rad;
+            float halfWidth = (state.Arena.Width * 0.5f) + margin;
+            float halfDepth = ((state.Arena.Height * 0.5f) + margin) * Mathf.Sin(tilt);
+            return Mathf.Max(halfDepth, halfWidth / Aspect(view));
+        }
+
+        private PlayerState PlayerFor(int index)
+        {
+            int which = mode == CameraMode.Split ? index : 0;
+            return which < state.Players.Count ? state.Players[which] : null;
+        }
+
+        private Vector3 ArenaCentre()
+        {
+            return new Vector3((state.Arena.Width - 1) * 0.5f, 0f, -(state.Arena.Height - 1) * 0.5f);
+        }
+
+        private Camera Own()
+        {
+            if (own == null)
+            {
+                own = GetComponent<Camera>();
+            }
+
+            return own;
         }
 
         private float Aspect()
         {
-            float aspect = View().aspect;
+            return Aspect(Own());
+        }
+
+        private static float Aspect(Camera view)
+        {
+            float aspect = view.aspect;
             return aspect > 0.01f ? aspect : 16f / 9f;
         }
     }

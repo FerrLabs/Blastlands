@@ -99,7 +99,7 @@ namespace Blastlands.Runtime
 
             if (matchCamera != null)
             {
-                matchCamera.Bind(state.Arena);
+                matchCamera.Bind(state);
             }
         }
 
