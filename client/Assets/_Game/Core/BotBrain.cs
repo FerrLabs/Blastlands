@@ -61,10 +61,15 @@ namespace Blastlands.Core
             GridPos tile = player.Tile;
             int ticksPerTile = TicksPerTile(state, player);
 
-            // Nothing else matters while standing somewhere about to burn.
+            // Nothing else matters while standing somewhere about to burn. A dash is
+            // worth spending here and nowhere else: it is committed for its whole
+            // length, so it only pays when the direction is not going to change.
             if (!blast.IsSafeFor(tile, settings.LookaheadTicks))
             {
-                return PlayerInput.Moving(StepToSafety(state, blast, tile, ticksPerTile));
+                Direction away = StepToSafety(state, blast, tile, ticksPerTile);
+                return settings.ReactionTicks > 0 && player.CanDash && away != Direction.None
+                    ? PlayerInput.Dashing(away)
+                    : PlayerInput.Moving(away);
             }
 
             if (player.CanDropBomb

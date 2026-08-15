@@ -54,22 +54,55 @@ namespace Blastlands.Core
                     continue;
                 }
 
-                Direction move = i < inputs.Count ? inputs[i].Move : Direction.None;
-                if (move != Direction.None)
+                PlayerInput input = i < inputs.Count ? inputs[i] : PlayerInput.None;
+                StartDash(state, player, input);
+
+                if (player.DashCooldownRemaining > 0)
                 {
-                    Move(state, player, move);
+                    player.DashCooldownRemaining--;
+                }
+
+                if (player.Dashing)
+                {
+                    player.DashTicksRemaining--;
+                    Move(state, player, player.DashDirection, state.Settings.DashSpeed);
+                    continue;
+                }
+
+                if (input.Move != Direction.None)
+                {
+                    Move(state, player, input.Move, state.Settings.SpeedFor(player.SpeedSteps));
                 }
             }
+        }
+
+        private static void StartDash(MatchState state, PlayerState player, PlayerInput input)
+        {
+            if (!input.Dash || !player.CanDash)
+            {
+                return;
+            }
+
+            // Nowhere to go is not a dash. Standing still and tapping it would otherwise
+            // spend the cooldown on nothing, which reads as the button being broken.
+            Direction into = input.Move != Direction.None ? input.Move : player.Facing;
+            if (into == Direction.None)
+            {
+                return;
+            }
+
+            player.DashDirection = into;
+            player.DashTicksRemaining = state.Settings.DashTicks;
+            player.DashCooldownRemaining = state.Settings.DashCooldownTicks + state.Settings.DashTicks;
         }
 
         // Movement is axis-aligned. Moving along one axis also pulls the player onto
         // the centre of their corridor on the other axis: without that they snag on
         // every pillar and the game feels broken.
-        private static void Move(MatchState state, PlayerState player, Direction direction)
+        private static void Move(MatchState state, PlayerState player, Direction direction, int speed)
         {
             player.Facing = direction;
 
-            int speed = state.Settings.SpeedFor(player.SpeedSteps);
             GridPos delta = Directions.Delta(direction);
             GridPos tile = player.Tile;
             SubPos position = player.Position;

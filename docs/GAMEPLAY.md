@@ -104,6 +104,30 @@ Kick, punch, remote detonators and pass-through are explicitly out of V1. They e
 the movement and collision model significantly and are worth their own issues once the base
 game is solid.
 
+## Dash
+
+A burst of speed on a recharge — about two and a half tiles in a third of a second, once
+every three seconds. Shoulder button on a pad, shift on the keyboard, so it is reachable
+without letting go of a direction.
+
+**It is committed.** Once started it runs its length in the direction it began in, whatever
+the player does next. That commitment is the risk that pays for the speed: it is entirely
+possible to dash into a blast.
+
+**It is speed and nothing else.** No invulnerability window, and it collides with everything
+a walking player collides with, including placed bombs. Passing through bombs would make
+laying one risk-free — seal yourself in, then dash out of your own trap — and an i-frame
+through fire would change what a bomb means. Bombs are what kills; a dash does not argue
+with that.
+
+Dashing with no direction at all does nothing rather than spending the cooldown, or the
+button reads as broken.
+
+**Bots dash only if they have a reaction delay.** Measured over 40 seeds: giving it to
+everyone took Hard from 30 survivors to 27 while lifting Normal from 16 to 20 and Easy from
+19 to 22. The commitment costs an agent that would otherwise re-plan every tick, and pays for
+one that cannot. Hard has `ReactionTicks` of zero, so it keeps walking.
+
 ## Walls grow back
 
 A destroyed soft block returns after `WallRegrowTicks`, with a marker on the floor for the

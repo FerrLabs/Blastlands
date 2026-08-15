@@ -26,7 +26,10 @@ namespace Blastlands.Core.Tests
             Settings.BombRespawnTicks,
             Settings.WallRegrowTicks,
             Settings.WallTelegraphTicks,
-            Settings.WallRetryTicks);
+            Settings.WallRetryTicks,
+            Settings.DashSpeed,
+            Settings.DashTicks,
+            Settings.DashCooldownTicks);
 
         private static MatchState OpenMatch(params GridPos[] spawns)
         {

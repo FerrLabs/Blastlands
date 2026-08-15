@@ -35,6 +35,25 @@ namespace Blastlands.Core
 
         public Direction Facing { get; set; }
 
+        // A dash is committed: once it starts it runs its length in the direction it
+        // started in, whatever the player does next. That commitment is the risk that
+        // pays for the speed — it is possible to dash into a blast.
+        public Direction DashDirection { get; set; }
+
+        public int DashTicksRemaining { get; set; }
+
+        public int DashCooldownRemaining { get; set; }
+
+        public bool Dashing
+        {
+            get { return DashTicksRemaining > 0; }
+        }
+
+        public bool CanDash
+        {
+            get { return Alive && DashTicksRemaining <= 0 && DashCooldownRemaining <= 0; }
+        }
+
         public GridPos Tile
         {
             get { return Position.Tile; }

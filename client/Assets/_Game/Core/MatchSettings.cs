@@ -21,8 +21,14 @@ namespace Blastlands.Core
             int bombRespawnTicks,
             int wallRegrowTicks,
             int wallTelegraphTicks,
-            int wallRetryTicks)
+            int wallRetryTicks,
+            int dashSpeed,
+            int dashTicks,
+            int dashCooldownTicks)
         {
+            DashSpeed = dashSpeed;
+            DashTicks = dashTicks;
+            DashCooldownTicks = dashCooldownTicks;
             WallRegrowTicks = wallRegrowTicks;
             WallTelegraphTicks = wallTelegraphTicks;
             WallRetryTicks = wallRetryTicks;
@@ -88,6 +94,15 @@ namespace Blastlands.Core
         // wall must not close over.
         public int WallRetryTicks { get; }
 
+        // Sub-units per tick while dashing, how long the burst lasts, and the recharge.
+        // A dash is speed and nothing else: it collides with everything a walking player
+        // collides with, and burns in a fire the same way.
+        public int DashSpeed { get; }
+
+        public int DashTicks { get; }
+
+        public int DashCooldownTicks { get; }
+
         public static MatchSettings Default
         {
             // Carry capacity starts at one. It is also how many bombs can be live at
@@ -121,7 +136,9 @@ namespace Blastlands.Core
             // Faster than 20 s is the only setting that really bites, and it buys almost
             // no extra pressure for it: the arena is barely tighter and a third of the
             // survivors are gone.
-            get { return new MatchSettings(30, 75, 15, 26, 6, 4, 1, 1, 2, 6, 8, 35, 4, 90, 600, 90, 45); }
+            // Dash covers about two and a half tiles in a third of a second, once every
+            // three seconds.
+            get { return new MatchSettings(30, 75, 15, 26, 6, 4, 1, 1, 2, 6, 8, 35, 4, 90, 600, 90, 45, 78, 8, 90); }
         }
 
         public int SpeedFor(int speedSteps)

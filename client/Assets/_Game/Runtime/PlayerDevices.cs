@@ -16,10 +16,12 @@ namespace Blastlands.Runtime
     public sealed class PlayerDevices
     {
         private readonly bool[] dropLatches;
+        private readonly bool[] dashLatches;
 
         public PlayerDevices(int playerCount)
         {
             dropLatches = new bool[Mathf.Max(1, playerCount)];
+            dashLatches = new bool[dropLatches.Length];
         }
 
         public int PlayerCount
@@ -37,6 +39,11 @@ namespace Blastlands.Runtime
                 {
                     dropLatches[player] = true;
                 }
+
+                if (DashPressedThisFrame(player))
+                {
+                    dashLatches[player] = true;
+                }
             }
         }
 
@@ -48,9 +55,11 @@ namespace Blastlands.Runtime
             }
 
             bool drop = dropLatches[player];
+            bool dash = dashLatches[player];
             dropLatches[player] = false;
+            dashLatches[player] = false;
 
-            return new PlayerInput(MoveFor(player), drop);
+            return new PlayerInput(MoveFor(player), drop, dash);
         }
 
         public bool RerollPressed()
@@ -114,6 +123,27 @@ namespace Blastlands.Runtime
 
             Keyboard keyboard = Keyboard.current;
             return keyboard != null && keyboard.spaceKey.wasPressedThisFrame;
+        }
+
+        // Shoulder button on a pad, shift on the keyboard: it has to be reachable
+        // without letting go of a direction, because a dash with no direction is not
+        // a dash.
+        private bool DashPressedThisFrame(int player)
+        {
+            Gamepad pad = PadFor(player);
+            if (pad != null && (pad.rightShoulder.wasPressedThisFrame || pad.leftShoulder.wasPressedThisFrame))
+            {
+                return true;
+            }
+
+            if (player != 0)
+            {
+                return false;
+            }
+
+            Keyboard keyboard = Keyboard.current;
+            return keyboard != null
+                && (keyboard.leftShiftKey.wasPressedThisFrame || keyboard.rightShiftKey.wasPressedThisFrame);
         }
 
         private static Direction MoveFor(int player)
