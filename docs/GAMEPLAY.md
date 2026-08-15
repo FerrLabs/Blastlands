@@ -104,6 +104,36 @@ Kick, punch, remote detonators and pass-through are explicitly out of V1. They e
 the movement and collision model significantly and are worth their own issues once the base
 game is solid.
 
+## Walls grow back
+
+A destroyed soft block returns after `WallRegrowTicks`, with a marker on the floor for the
+last `WallTelegraphTicks`. The tile stays walkable for the whole countdown — a tile that is
+already impassable while the marker shows tells the player nothing they can act on.
+
+This is what stops the board going static. Once the soft blocks are gone two careful players
+circle each other forever, which is the problem sudden death was working around; routes that
+keep closing and reopening solve it continuously instead of with a guillotine at the end.
+
+**A closing wall never kills.** Bombs are the only thing that does, so it shoves the player
+onto a free neighbouring tile, and waits if there is nowhere to shove them. It also waits for
+a live bomb or a fire rather than sealing over them. It does take back any pickup lying there:
+postponing on one would let an unwanted bomb hold a corridor open all round.
+
+Timing is measured, not guessed — solo Hard bot survival over 40 seeds against how much of the
+arena stays walkable in a four-bot match:
+
+| regrow | survive | open floor |
+|---|---|---|
+| 12 s | 21 | 46% |
+| **20 s** | **30** | **48%** |
+| 30 s | 29 | 53% |
+| 40 s | 28 | 57% |
+
+Faster than 20 s is the only setting that really bites, and it buys almost no extra pressure
+for it. Bots treat a telegraphed tile as impassable, which is exactly the warning a player
+gets: a gap that shuts on the way through is the same death as a blast, and the blast map
+knows nothing about walls.
+
 ## Sudden death
 
 When the round timer expires, hard blocks start dropping in an inward spiral, one per tick

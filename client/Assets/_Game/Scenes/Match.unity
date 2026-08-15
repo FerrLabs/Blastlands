@@ -275,6 +275,7 @@ MonoBehaviour:
   playerHeight: 1.15
   bombFootprint: 0.72
   powerUpSize: 0.78
+  telegraphColor: {r: 0.95, g: 0.35, b: 0.12, a: 1}
   sfx: {fileID: 613233828}
   flameScale: 0.18
   burstScale: 0.22
@@ -434,6 +435,7 @@ MonoBehaviour:
   panelSize: {x: 340, y: 156}
   margin: 26
   plateTint: {r: 0.24, g: 0.23, b: 0.21, a: 0.95}
+  diodeSize: 26
 --- !u!1 &1120936998
 GameObject:
   m_ObjectHideFlags: 0

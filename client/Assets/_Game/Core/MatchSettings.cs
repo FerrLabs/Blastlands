@@ -18,8 +18,14 @@ namespace Blastlands.Core
             int maxFireRange,
             int powerUpDropPercent,
             int looseBombTarget,
-            int bombRespawnTicks)
+            int bombRespawnTicks,
+            int wallRegrowTicks,
+            int wallTelegraphTicks,
+            int wallRetryTicks)
         {
+            WallRegrowTicks = wallRegrowTicks;
+            WallTelegraphTicks = wallTelegraphTicks;
+            WallRetryTicks = wallRetryTicks;
             TicksPerSecond = ticksPerSecond;
             FuseTicks = fuseTicks;
             FlameTicks = flameTicks;
@@ -71,6 +77,17 @@ namespace Blastlands.Core
 
         public int BombRespawnTicks { get; }
 
+        // How long a destroyed block stays gone, and how much of that time the floor
+        // shows what is coming. The telegraph is not decoration: without it a closing
+        // wall is an arbitrary shove, and with it the tile is somewhere not to linger.
+        public int WallRegrowTicks { get; }
+
+        public int WallTelegraphTicks { get; }
+
+        // How long to wait before trying again when the tile is occupied by something a
+        // wall must not close over.
+        public int WallRetryTicks { get; }
+
         public static MatchSettings Default
         {
             // Carry capacity starts at one. It is also how many bombs can be live at
@@ -92,7 +109,19 @@ namespace Blastlands.Core
             //
             // It is a cliff at the fuse, not a gradient. Raising the supply buys more
             // action for a collapse in survival, so the last safe setting wins.
-            get { return new MatchSettings(30, 75, 15, 26, 6, 4, 1, 1, 2, 6, 8, 35, 4, 90); }
+            // Walls come back after 20 s, telegraphed for the last 3. Measured, solo
+            // Hard bot over 40 seeds, against how much of the arena stays walkable in a
+            // four-bot match:
+            //
+            //    12 s   21 survive   46% open
+            //    20 s   30 survive   48% open   <- here
+            //    30 s   29 survive   53% open
+            //    40 s   28 survive   57% open
+            //
+            // Faster than 20 s is the only setting that really bites, and it buys almost
+            // no extra pressure for it: the arena is barely tighter and a third of the
+            // survivors are gone.
+            get { return new MatchSettings(30, 75, 15, 26, 6, 4, 1, 1, 2, 6, 8, 35, 4, 90, 600, 90, 45); }
         }
 
         public int SpeedFor(int speedSteps)

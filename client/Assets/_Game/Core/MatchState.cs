@@ -71,6 +71,7 @@ namespace Blastlands.Core
         private readonly List<PowerUp> powerUps = new List<PowerUp>();
         private readonly Dictionary<GridPos, PowerUpKind> hiddenPowerUps = new Dictionary<GridPos, PowerUpKind>();
         private readonly List<GridPos> looseBombs = new List<GridPos>();
+        private readonly List<WallRegrowth> regrowingWalls = new List<WallRegrowth>();
 
         public MatchState(Arena arena, MatchSettings settings, uint seed)
         {
@@ -223,6 +224,30 @@ namespace Blastlands.Core
         public void RemoveLooseBombAt(int index)
         {
             looseBombs.RemoveAt(index);
+        }
+
+        public IReadOnlyList<WallRegrowth> RegrowingWalls
+        {
+            get { return regrowingWalls; }
+        }
+
+        public void ScheduleRegrowth(GridPos tile, int ticks)
+        {
+            for (int i = 0; i < regrowingWalls.Count; i++)
+            {
+                if (regrowingWalls[i].Tile == tile)
+                {
+                    regrowingWalls[i].TicksRemaining = ticks;
+                    return;
+                }
+            }
+
+            regrowingWalls.Add(new WallRegrowth(tile, ticks));
+        }
+
+        public void RemoveRegrowthAt(int index)
+        {
+            regrowingWalls.RemoveAt(index);
         }
 
         public bool HasBombAt(GridPos tile)

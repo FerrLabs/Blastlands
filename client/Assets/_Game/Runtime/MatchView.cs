@@ -13,6 +13,7 @@ namespace Blastlands.Runtime
         [SerializeField] private float playerHeight = 1.15f;
         [SerializeField] private float bombFootprint = 0.72f;
         [SerializeField] private float powerUpSize = 0.78f;
+        [SerializeField] private Color telegraphColor = new Color(0.95f, 0.35f, 0.12f, 1f);
         [SerializeField] private MatchAudio sfx;
 
         // Particle prefabs carry no useful renderer bounds, so they cannot be measured
@@ -46,6 +47,8 @@ namespace Blastlands.Runtime
         private readonly Dictionary<GridPos, GameObject> blocks = new Dictionary<GridPos, GameObject>();
         private readonly List<GameObject> bombPool = new List<GameObject>();
         private readonly List<GameObject> looseBombPool = new List<GameObject>();
+        private readonly List<GameObject> telegraphPool = new List<GameObject>();
+        private static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
         private readonly List<Vector3> bombBaseScales = new List<Vector3>();
         private readonly List<GameObject> flamePool = new List<GameObject>();
         private readonly List<GameObject> playerViews = new List<GameObject>();
@@ -89,6 +92,7 @@ namespace Blastlands.Runtime
             blocks.Clear();
             bombPool.Clear();
             looseBombPool.Clear();
+            telegraphPool.Clear();
             bombBaseScales.Clear();
             flamePool.Clear();
             playerViews.Clear();
@@ -115,6 +119,7 @@ namespace Blastlands.Runtime
             }
 
             SyncBlocks();
+            SyncTelegraphs();
             SyncPowerUps();
             SyncLooseBombs();
             SyncBombs();
@@ -400,9 +405,58 @@ namespace Blastlands.Runtime
             return created;
         }
 
+        // Shown for the last stretch of a wall's countdown and not before. Binary rather
+        // than a creeping fill: the player only needs to learn one thing, that tape
+        // means this tile is about to stop being one.
+        private void SyncTelegraphs()
+        {
+            GameObject prefab = art == null ? null : art.WallTelegraph;
+            if (prefab == null)
+            {
+                return;
+            }
+
+            int shown = 0;
+            for (int i = 0; i < state.RegrowingWalls.Count; i++)
+            {
+                WallRegrowth wall = state.RegrowingWalls[i];
+                if (wall.TicksRemaining > state.Settings.WallTelegraphTicks)
+                {
+                    continue;
+                }
+
+                bool created = telegraphPool.Count <= shown;
+                GameObject view = TakeAt(telegraphPool, shown, prefab, PrimitiveType.Quad, MatchPalette.Flame, "Closing");
+
+                if (created)
+                {
+                    TileFitter.FitInBox(view, 0.92f);
+                    Tint(view, telegraphColor);
+                }
+
+                TileFitter.PlaceAsGround(view, ToWorld(wall.Tile, groundDetailLift * 2f));
+                shown++;
+            }
+
+            HideFrom(telegraphPool, shown);
+        }
+
         // Deliberately the same prefab as a live bomb, sat flat on the floor and left
         // still. A pickup that looked like something else would have players learning
         // two shapes for one object; what separates them is that this one is not ticking.
+        // A property block rather than a material instance: the decal is Synty's, and
+        // the warning colour is ours to put on top of it without editing the asset.
+        private static void Tint(GameObject target, Color color)
+        {
+            var block = new MaterialPropertyBlock();
+            block.SetColor(BaseColor, color);
+
+            foreach (Renderer renderer in target.GetComponentsInChildren<Renderer>(true))
+            {
+                renderer.SetPropertyBlock(block);
+            }
+        }
+
         private void SyncLooseBombs()
         {
             for (int i = 0; i < state.LooseBombs.Count; i++)

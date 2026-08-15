@@ -25,6 +25,10 @@ namespace Blastlands.Runtime
         // marks a death tells you what happened while you were looking elsewhere.
         [SerializeField] private GameObject[] deathMarkers;
 
+        // Laid on a tile a wall is about to close over. Flat, like everything else that
+        // sits on walkable ground: the tile is still crossable while it is showing.
+        [SerializeField] private GameObject wallTelegraph;
+
         // One per PowerUpKind, in enum order. They hover and spin in the view: a pickup
         // that sits still like a block gets read as a block.
         [SerializeField] private GameObject[] powerUps;
@@ -86,6 +90,11 @@ namespace Blastlands.Runtime
         public GameObject DeathMarker(int variant)
         {
             return Pick(deathMarkers, variant);
+        }
+
+        public GameObject WallTelegraph
+        {
+            get { return wallTelegraph; }
         }
 
         public GameObject PowerUp(PowerUpKind kind)

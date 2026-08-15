@@ -23,7 +23,10 @@ namespace Blastlands.Core.Tests
             Settings.MaxFireRange,
             Settings.PowerUpDropPercent,
             0,
-            Settings.BombRespawnTicks);
+            Settings.BombRespawnTicks,
+            Settings.WallRegrowTicks,
+            Settings.WallTelegraphTicks,
+            Settings.WallRetryTicks);
 
         private static MatchState OpenMatch(params GridPos[] spawns)
         {

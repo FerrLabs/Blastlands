@@ -250,7 +250,25 @@ namespace Blastlands.Core
         {
             return state.Arena.Contains(tile)
                 && state.Arena[tile] == TileKind.Floor
-                && !state.HasBombAt(tile);
+                && !state.HasBombAt(tile)
+                && !IsClosing(state, tile);
+        }
+
+        // A gap that shuts on the way through is the same death as a blast, and the
+        // blast map knows nothing about walls. The bot avoids tiles once they are
+        // telegraphed, which is exactly the warning a player gets to act on.
+        private static bool IsClosing(MatchState state, GridPos tile)
+        {
+            for (int i = 0; i < state.RegrowingWalls.Count; i++)
+            {
+                WallRegrowth wall = state.RegrowingWalls[i];
+                if (wall.Tile == tile && wall.TicksRemaining <= state.Settings.WallTelegraphTicks)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private struct Step

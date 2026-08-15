@@ -37,6 +37,10 @@ namespace Blastlands.Core
             ResolveOutcome(state);
             BombSpawner.Tick(state);
 
+            // After the kill check, so a wall never shoves someone out of a blast that
+            // was about to take them — the arena does not get to save anyone either.
+            WallRegrower.Tick(state);
+
             state.Tick++;
         }
 
@@ -301,6 +305,7 @@ namespace Blastlands.Core
             {
                 GridPos cleared = result.DestroyedSoftBlocks[i];
                 state.Arena[cleared] = TileKind.Floor;
+                state.ScheduleRegrowth(cleared, state.Settings.WallRegrowTicks);
 
                 PowerUpKind revealed;
                 state.TryRevealPowerUp(cleared, out revealed);
