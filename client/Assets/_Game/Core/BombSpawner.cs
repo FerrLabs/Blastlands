@@ -17,17 +17,31 @@ namespace Blastlands.Core
 
         public static void Seed(MatchState state)
         {
-            for (int i = 0; i < state.Settings.LooseBombTarget; i++)
+            int target = TargetFor(state);
+            for (int i = 0; i < target; i++)
             {
                 TrySpawn(state);
             }
+        }
+
+        // Derived from the size of the arena rather than fixed, so growing the board does
+        // not quietly starve it. Four bombs is generous on 15x13 and thin on 25x21.
+        public static int TargetFor(MatchState state)
+        {
+            int perBomb = state.Settings.TilesPerLooseBomb;
+            if (perBomb <= 0)
+            {
+                return 0;
+            }
+
+            return (state.Arena.Width * state.Arena.Height) / perBomb;
         }
 
         public static void Tick(MatchState state)
         {
             if (state.Settings.BombRespawnTicks <= 0
                 || state.Tick % state.Settings.BombRespawnTicks != 0
-                || state.LooseBombs.Count >= state.Settings.LooseBombTarget)
+                || state.LooseBombs.Count >= TargetFor(state))
             {
                 return;
             }

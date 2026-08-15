@@ -4,6 +4,15 @@ namespace Blastlands.Core
 {
     public static class ArenaGenerator
     {
+        // How far the spawn pocket is cleared along each axis. It has to exceed the
+        // starting fire range, or a player sealed into their own corner cannot open it:
+        // the only way out is to bomb, and their own blast covers the whole pocket.
+        //
+        // One tile was enough while blasts were crosses. A disc of radius two swallows a
+        // three-tile L whole, and the result was bots standing armed and idle for a whole
+        // match because every bomb they considered was correctly refused as suicide.
+        private const int SpawnClearance = 3;
+
         private static readonly GridPos[] Neighbours =
         {
             new GridPos(1, 0),
@@ -64,9 +73,14 @@ namespace Blastlands.Core
 
                 foreach (GridPos direction in Neighbours)
                 {
-                    GridPos tile = spawn.Offset(direction.X, direction.Y);
-                    if (arena.Contains(tile) && arena[tile] != TileKind.HardBlock)
+                    for (int step = 1; step <= SpawnClearance; step++)
                     {
+                        GridPos tile = spawn.Offset(direction.X * step, direction.Y * step);
+                        if (!arena.Contains(tile) || arena[tile] == TileKind.HardBlock)
+                        {
+                            break;
+                        }
+
                         reserved.Add(tile);
                     }
                 }

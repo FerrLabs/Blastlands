@@ -9,7 +9,7 @@ namespace Blastlands.Core.Tests
 
         private static MatchState OpenMatch(GridPos spawn)
         {
-            var state = new MatchState(new Arena(11, 11), Settings.WithLooseBombTarget(0), 3u);
+            var state = new MatchState(new Arena(11, 11), Settings.WithTilesPerLooseBomb(0), 3u);
             state.AddPlayer(spawn);
             return state;
         }

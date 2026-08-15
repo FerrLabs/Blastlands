@@ -28,7 +28,12 @@ namespace Blastlands.Core
 
         public static ArenaSettings Default
         {
-            get { return new ArenaSettings(15, 13, 75); }
+            // 25x21, up from the 15x13 a bomberman inherits by convention. A camera that
+            // follows a player is pointless on a board narrower than its own view, and at
+            // 16:9 the old arena was exactly that. Everything tuned before this — bomb
+            // supply, wall regrowth, every bot survival figure — was fitted at the old
+            // size and had to be measured again rather than assumed to carry over.
+            get { return new ArenaSettings(25, 21, 75); }
         }
 
         private static void RequireOddAndLargeEnough(int value, string name)

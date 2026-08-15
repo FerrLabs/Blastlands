@@ -9,7 +9,7 @@ namespace Blastlands.Core.Tests
         // The spawner tops the arena up on its own, which is what the spawning tests
         // below check. Everything about picking up and spending needs a floor that only
         // holds what the test put there.
-        private static readonly MatchSettings NoSpawning = Settings.WithLooseBombTarget(0);
+        private static readonly MatchSettings NoSpawning = Settings.WithTilesPerLooseBomb(0);
 
         private static MatchState OpenMatch(params GridPos[] spawns)
         {
@@ -103,14 +103,14 @@ namespace Blastlands.Core.Tests
             // a small pocket, so there is only so much reachable floor to put them on.
             int seeded = state.LooseBombs.Count;
             Assert.That(seeded, Is.GreaterThan(0), "seeded at creation");
-            Assert.That(seeded, Is.LessThanOrEqualTo(Settings.LooseBombTarget));
+            Assert.That(seeded, Is.LessThanOrEqualTo(BombSpawner.TargetFor(state)));
 
             while (state.LooseBombs.Count > 0)
             {
                 state.RemoveLooseBombAt(0);
             }
 
-            Run(state, Settings.BombRespawnTicks * Settings.LooseBombTarget + 1,
+            Run(state, Settings.BombRespawnTicks * BombSpawner.TargetFor(state) + 1,
                 PlayerInput.None, PlayerInput.None);
 
             Assert.That(state.LooseBombs.Count, Is.GreaterThanOrEqualTo(seeded), "topped back up");
@@ -137,7 +137,7 @@ namespace Blastlands.Core.Tests
 
             Run(state, Settings.BombRespawnTicks * 10, PlayerInput.None, PlayerInput.None);
 
-            Assert.That(state.LooseBombs.Count, Is.LessThanOrEqualTo(Settings.LooseBombTarget));
+            Assert.That(state.LooseBombs.Count, Is.LessThanOrEqualTo(BombSpawner.TargetFor(state)));
         }
 
         [Test]

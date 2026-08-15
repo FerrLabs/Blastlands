@@ -252,8 +252,8 @@ MonoBehaviour:
   view: {fileID: 613233826}
   matchCamera: {fileID: 1120936999}
   hud: {fileID: 613233830}
-  arenaWidth: 15
-  arenaHeight: 13
+  arenaWidth: 25
+  arenaHeight: 21
   softBlockPercent: 70
   playerCount: 4
   seed: 0

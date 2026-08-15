@@ -17,7 +17,7 @@ namespace Blastlands.Core
             int maxCarryCapacity,
             int maxFireRange,
             int powerUpDropPercent,
-            int looseBombTarget,
+            int tilesPerLooseBomb,
             int bombRespawnTicks,
             int wallRegrowTicks,
             int wallTelegraphTicks,
@@ -52,7 +52,7 @@ namespace Blastlands.Core
             MaxCarryCapacity = maxCarryCapacity;
             MaxFireRange = maxFireRange;
             PowerUpDropPercent = powerUpDropPercent;
-            LooseBombTarget = looseBombTarget;
+            TilesPerLooseBomb = tilesPerLooseBomb;
             BombRespawnTicks = bombRespawnTicks;
         }
 
@@ -84,10 +84,14 @@ namespace Blastlands.Core
 
         public int PowerUpDropPercent { get; }
 
-        // How many bombs the arena tries to keep lying around, and how often it looks.
-        // An arena that runs dry ends as a chase with no weapons, which is a worse
-        // failure than one that is slightly too generous.
-        public int LooseBombTarget { get; }
+        // How much floor there should be per loose bomb, rather than a flat count. The
+        // count was fitted against a 15x13 arena and did not survive it growing: the
+        // same four bombs spread over two and a half times the ground halved how much
+        // got destroyed, because everyone was walking instead of playing. Density is the
+        // thing that stays true when the arena changes size.
+        //
+        // Zero or less turns spawning off.
+        public int TilesPerLooseBomb { get; }
 
         public int BombRespawnTicks { get; }
 
@@ -178,7 +182,17 @@ namespace Blastlands.Core
             get
             {
                 return new MatchSettings(
-                    30, 75, 15, 26, 6, 4, 1, 1, 2, 6, 4, 35, 4, 90, 600, 90, 45, 78, 8, 90, 90, 9, 12,
+                    // Eighty tiles per loose bomb, measured on the 25x21 arena. The
+                    // supply controls lethality through chain reactions rather than
+                    // through the bombs themselves: the more that lie around, the more
+                    // often a blast lights one and the chain takes whoever set it off.
+                    //
+                    //   50 tiles/bomb (10 bombs)   19 of 40 survive   56 destroyed
+                    //   80 tiles/bomb ( 6 bombs)   22 of 40 survive   53 destroyed  <-
+                    //  130 tiles/bomb ( 4 bombs)   25 of 40 survive   39 destroyed
+                    //
+                    // Past eighty the arena goes quiet for very little safety in return.
+                    30, 75, 15, 26, 6, 4, 1, 1, 2, 6, 4, 35, 80, 90, 600, 90, 45, 78, 8, 90, 90, 9, 12,
                     PushSettings.Default);
             }
         }
@@ -186,13 +200,13 @@ namespace Blastlands.Core
         // Restating twenty-two positional ints to change one is where a transposition
         // eventually happens, so the copy lives here rather than at the call site. See
         // the wider problem in the tracking issue for this constructor.
-        public MatchSettings WithLooseBombTarget(int target)
+        public MatchSettings WithTilesPerLooseBomb(int tilesPerBomb)
         {
             return new MatchSettings(
                 TicksPerSecond, FuseTicks, FlameTicks, BaseSpeed, SpeedStep, MaxSpeedSteps,
                 StartingHeldBombs, StartingCarryCapacity, StartingFireRange,
                 MaxCarryCapacity, MaxFireRange, PowerUpDropPercent,
-                target, BombRespawnTicks,
+                tilesPerBomb, BombRespawnTicks,
                 WallRegrowTicks, WallTelegraphTicks, WallRetryTicks,
                 DashSpeed, DashTicks, DashCooldownTicks,
                 PlayerRadius, CornerAssist, LooseBombFuseTicks, Push);

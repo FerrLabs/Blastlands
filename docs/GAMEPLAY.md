@@ -13,7 +13,7 @@ friends plays a lot of them in a sitting.
 
 ## The arena
 
-Odd-sized grid (default 15×13). Three tile kinds:
+Odd-sized grid (default 25×21). Three tile kinds:
 
 - **Hard block** — indestructible, laid out on every even/even coordinate. This is the
   classic pillar lattice; it is what makes the arena readable and stops the map from
@@ -21,8 +21,16 @@ Odd-sized grid (default 15×13). Three tile kinds:
 - **Soft block** — destructible, scattered randomly on the remaining floor. Hides power-ups.
 - **Floor** — walkable.
 
-Spawn corners are cleared in an L shape (the spawn tile plus its two orthogonal neighbours)
-so nobody is bomb-locked on tick zero.
+Spawn corners are cleared three tiles along each axis. The clearance has to exceed the
+starting fire range: a player sealed into a smaller pocket cannot open it, because the only
+way out is to bomb and their own blast covers the whole thing. One tile was enough while
+blasts were crosses; a disc of radius two swallows a three-tile L, and the symptom was bots
+standing armed and idle for a whole match, every bomb they considered correctly refused as
+suicide.
+
+**The arena grew from 15×13 with the camera work.** A camera that follows a player is
+pointless on a board narrower than its own view. Nothing tuned before it survived the change
+unexamined — bomb supply, wall timing and every bot figure were re-measured, not assumed.
 
 Generation is seeded and deterministic: the same seed produces the same arena on the server
 and every client.
@@ -37,6 +45,8 @@ The arena tops itself up toward `LooseBombTarget` every `BombRespawnTicks`, on f
 players can actually reach. Reachability is not a detail: a free tile can be sealed inside a
 ring of soft blocks, and bombs dropped there make the count say the arena is stocked while
 nobody can get to a single one.
+
+Supply is expressed as floor per bomb rather than a flat count, so growing the arena does not quietly starve it: four bombs is generous on 15×13 and thin on 25×21. It also controls lethality more than it looks, through chains — the more bombs lying around, the more often a blast lights one and it takes whoever set it off.
 
 **`BombRespawnTicks` must stay above `FuseTicks`.** Below it a player finds their next bomb
 before the last has gone off, which is the only way to have two live at once — and two live

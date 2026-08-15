@@ -4,7 +4,7 @@ namespace Blastlands.Core.Tests
 {
     public class ShovingTests
     {
-        private static readonly MatchSettings Settings = MatchSettings.Default.WithLooseBombTarget(0);
+        private static readonly MatchSettings Settings = MatchSettings.Default.WithTilesPerLooseBomb(0);
 
         private static MatchState OpenMatch(params GridPos[] spawns)
         {
