@@ -79,6 +79,11 @@ namespace Blastlands.Core
             get { return Alive && !Stunned && PushCooldownRemaining <= 0; }
         }
 
+        // Ticks left of being given away by having acted. Cover hides someone who is
+        // hiding; it does not hide someone dashing out of it or shoving whoever walked
+        // past.
+        public int RevealTicksRemaining { get; set; }
+
         public GridPos Tile
         {
             get { return Position.Tile; }

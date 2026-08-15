@@ -185,7 +185,7 @@ namespace Blastlands.Core
                 return false;
             }
 
-            return state.Arena[tile] != TileKind.Floor || state.HasBombAt(tile);
+            return Tiles.BlocksMovement(state.Arena[tile]) || state.HasBombAt(tile);
         }
 
         private static int Floor(int value)

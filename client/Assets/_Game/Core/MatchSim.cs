@@ -62,6 +62,14 @@ namespace Blastlands.Core
                     player.PushCooldownRemaining--;
                 }
 
+                // Ahead of the shove and stun branches, which both leave early: someone
+                // stunned against a wall after shoving would otherwise stay lit up for
+                // the whole stun.
+                if (player.RevealTicksRemaining > 0)
+                {
+                    player.RevealTicksRemaining--;
+                }
+
                 // A shove overrides what the target wanted, and a stun takes the controls
                 // away entirely. Neither is checked before the cooldowns, or a stunned
                 // player would come out of it with everything still on cooldown.
@@ -121,6 +129,7 @@ namespace Blastlands.Core
             player.DashDirection = into;
             player.DashTicksRemaining = state.Settings.DashTicks;
             player.DashCooldownRemaining = state.Settings.DashCooldownTicks + state.Settings.DashTicks;
+            player.RevealTicksRemaining = state.Settings.Vision.RevealTicks;
         }
 
         // Free movement: the position is continuous and the body slides along whatever
@@ -344,8 +353,9 @@ namespace Blastlands.Core
             for (int i = 0; i < result.DestroyedSoftBlocks.Count; i++)
             {
                 GridPos cleared = result.DestroyedSoftBlocks[i];
+                TileKind was = state.Arena[cleared];
                 state.Arena[cleared] = TileKind.Floor;
-                state.ScheduleRegrowth(cleared, state.Settings.WallRegrowTicks);
+                state.ScheduleRegrowth(cleared, was, state.Settings.WallRegrowTicks);
 
                 PowerUpKind revealed;
                 state.TryRevealPowerUp(cleared, out revealed);

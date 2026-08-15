@@ -28,8 +28,10 @@ namespace Blastlands.Core
             int playerRadius,
             int cornerAssist,
             int looseBombFuseTicks,
-            PushSettings push)
+            PushSettings push,
+            VisionSettings vision)
         {
+            Vision = vision;
             Push = push;
             LooseBombFuseTicks = looseBombFuseTicks;
             PlayerRadius = playerRadius;
@@ -130,6 +132,8 @@ namespace Blastlands.Core
 
         public PushSettings Push { get; }
 
+        public VisionSettings Vision { get; }
+
         public static MatchSettings Default
         {
             // Carry capacity starts at one. It is also how many bombs can be live at
@@ -193,7 +197,8 @@ namespace Blastlands.Core
                     //
                     // Past eighty the arena goes quiet for very little safety in return.
                     30, 75, 15, 26, 6, 4, 1, 1, 2, 6, 4, 35, 80, 90, 600, 90, 45, 78, 8, 90, 90, 9, 12,
-                    PushSettings.Default);
+                    PushSettings.Default,
+                    VisionSettings.Default);
             }
         }
 
@@ -209,7 +214,7 @@ namespace Blastlands.Core
                 tilesPerBomb, BombRespawnTicks,
                 WallRegrowTicks, WallTelegraphTicks, WallRetryTicks,
                 DashSpeed, DashTicks, DashCooldownTicks,
-                PlayerRadius, CornerAssist, LooseBombFuseTicks, Push);
+                PlayerRadius, CornerAssist, LooseBombFuseTicks, Push, Vision);
         }
 
         public int SpeedFor(int speedSteps)

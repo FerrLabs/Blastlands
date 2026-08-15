@@ -231,18 +231,20 @@ namespace Blastlands.Core
             get { return regrowingWalls; }
         }
 
-        public void ScheduleRegrowth(GridPos tile, int ticks)
+        public void ScheduleRegrowth(GridPos tile, TileKind kind, int ticks)
         {
             for (int i = 0; i < regrowingWalls.Count; i++)
             {
                 if (regrowingWalls[i].Tile == tile)
                 {
-                    regrowingWalls[i].TicksRemaining = ticks;
+                    // Replaced rather than nudged, so a tile that was a bush and is now
+                    // scheduled as a wall comes back as the wall.
+                    regrowingWalls[i] = new WallRegrowth(tile, kind, ticks);
                     return;
                 }
             }
 
-            regrowingWalls.Add(new WallRegrowth(tile, ticks));
+            regrowingWalls.Add(new WallRegrowth(tile, kind, ticks));
         }
 
         public void RemoveRegrowthAt(int index)

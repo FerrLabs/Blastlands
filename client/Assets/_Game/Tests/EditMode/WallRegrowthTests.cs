@@ -45,7 +45,7 @@ namespace Blastlands.Core.Tests
             // The countdown is the warning. A tile that is already impassable while the
             // marker is showing tells the player nothing they can act on.
             MatchState state = OpenMatch(new GridPos(4, 4));
-            state.ScheduleRegrowth(new GridPos(5, 4), Settings.WallRegrowTicks);
+            state.ScheduleRegrowth(new GridPos(5, 4), TileKind.SoftBlock, Settings.WallRegrowTicks);
 
             Run(state, Settings.WallRegrowTicks - 2, PlayerInput.None);
 
@@ -57,7 +57,7 @@ namespace Blastlands.Core.Tests
         public void TheWallIsBackWhenTheCountdownRunsOut()
         {
             MatchState state = OpenMatch(new GridPos(1, 1));
-            state.ScheduleRegrowth(new GridPos(5, 4), Settings.WallRegrowTicks);
+            state.ScheduleRegrowth(new GridPos(5, 4), TileKind.SoftBlock, Settings.WallRegrowTicks);
 
             Run(state, Settings.WallRegrowTicks + 1, PlayerInput.None);
 
@@ -72,7 +72,7 @@ namespace Blastlands.Core.Tests
             // source of death and would break that rule for a mechanic nobody chose to
             // walk into.
             MatchState state = OpenMatch(new GridPos(4, 4));
-            state.ScheduleRegrowth(new GridPos(4, 4), 2);
+            state.ScheduleRegrowth(new GridPos(4, 4), TileKind.SoftBlock, 2);
 
             Run(state, 3, PlayerInput.None);
 
@@ -85,7 +85,7 @@ namespace Blastlands.Core.Tests
         public void AWallWaitsRatherThanCloseOverALiveBomb()
         {
             MatchState state = OpenMatch(new GridPos(1, 1), new GridPos(7, 7));
-            state.ScheduleRegrowth(new GridPos(5, 4), 2);
+            state.ScheduleRegrowth(new GridPos(5, 4), TileKind.SoftBlock, 2);
             state.AddBomb(new ActiveBomb(new Bomb(new GridPos(5, 4), 99, 1), 400));
 
             Run(state, 3, PlayerInput.None, PlayerInput.None);
@@ -104,7 +104,7 @@ namespace Blastlands.Core.Tests
             state.Arena[new GridPos(5, 4)] = TileKind.HardBlock;
             state.Arena[new GridPos(4, 3)] = TileKind.HardBlock;
             state.Arena[new GridPos(4, 5)] = TileKind.HardBlock;
-            state.ScheduleRegrowth(new GridPos(4, 4), 2);
+            state.ScheduleRegrowth(new GridPos(4, 4), TileKind.SoftBlock, 2);
 
             Run(state, 3, PlayerInput.None);
 
@@ -121,7 +121,7 @@ namespace Blastlands.Core.Tests
             // the round, which is a stalemate by another route.
             MatchState state = OpenMatch(new GridPos(1, 1));
             state.AddLooseBomb(new GridPos(5, 4));
-            state.ScheduleRegrowth(new GridPos(5, 4), 2);
+            state.ScheduleRegrowth(new GridPos(5, 4), TileKind.SoftBlock, 2);
 
             Run(state, 3, PlayerInput.None);
 
@@ -133,7 +133,7 @@ namespace Blastlands.Core.Tests
         public void ARegrownBlockCanBeBlownUpAndComeBackAgain()
         {
             MatchState state = OpenMatch(new GridPos(1, 1), new GridPos(7, 7));
-            state.ScheduleRegrowth(new GridPos(5, 4), 2);
+            state.ScheduleRegrowth(new GridPos(5, 4), TileKind.SoftBlock, 2);
             Run(state, 3, PlayerInput.None, PlayerInput.None);
             Assert.That(state.Arena[new GridPos(5, 4)], Is.EqualTo(TileKind.SoftBlock));
 

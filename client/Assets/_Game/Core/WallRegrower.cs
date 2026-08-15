@@ -25,7 +25,7 @@ namespace Blastlands.Core
                     continue;
                 }
 
-                if (TryClose(state, wall.Tile))
+                if (TryClose(state, wall.Tile, wall.Kind))
                 {
                     state.RemoveRegrowthAt(i);
                 }
@@ -39,7 +39,7 @@ namespace Blastlands.Core
             }
         }
 
-        private static bool TryClose(MatchState state, GridPos tile)
+        private static bool TryClose(MatchState state, GridPos tile, TileKind kind)
         {
             if (state.Arena[tile] != TileKind.Floor
                 || state.HasBombAt(tile)
@@ -48,27 +48,33 @@ namespace Blastlands.Core
                 return false;
             }
 
-            if (!ClearPlayers(state, tile))
+            // A bush growing back around someone is not a problem: standing in one is
+            // what it is for. Only something solid has to move them out of the way, and
+            // only something solid takes back what is lying there.
+            if (Tiles.BlocksMovement(kind))
             {
-                return false;
+                if (!ClearPlayers(state, tile))
+                {
+                    return false;
+                }
+
+                // Postponing on a pickup instead would let a bomb nobody wants hold a
+                // corridor open all round, and being shoved off your loot is a fair
+                // price for dawdling.
+                int pickup = state.LooseBombIndexAt(tile);
+                if (pickup >= 0)
+                {
+                    state.RemoveLooseBombAt(pickup);
+                }
+
+                int powerUp = state.PowerUpIndexAt(tile);
+                if (powerUp >= 0)
+                {
+                    state.RemovePowerUpAt(powerUp);
+                }
             }
 
-            // Anything left lying here is taken back with the wall. Postponing on a
-            // pickup instead would let a bomb nobody wants hold a corridor open all
-            // round, and being shoved off your loot is a fair price for dawdling.
-            int pickup = state.LooseBombIndexAt(tile);
-            if (pickup >= 0)
-            {
-                state.RemoveLooseBombAt(pickup);
-            }
-
-            int powerUp = state.PowerUpIndexAt(tile);
-            if (powerUp >= 0)
-            {
-                state.RemovePowerUpAt(powerUp);
-            }
-
-            state.Arena[tile] = TileKind.SoftBlock;
+            state.Arena[tile] = kind;
             return true;
         }
 

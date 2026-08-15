@@ -44,7 +44,13 @@ namespace Blastlands.Runtime
         // little variation reads as terrain without moving anything off its tile.
         [SerializeField] private float hardBlockSizeJitter = 0.16f;
 
-        private readonly Dictionary<GridPos, GameObject> blocks = new Dictionary<GridPos, GameObject>();
+        // Both kinds of cover are sized against the player rather than against the tile.
+        // They hide what is behind them in the simulation now, and a knee-high wall that
+        // blocks the view of a whole corridor reads as a bug.
+        [SerializeField] private float wallHeight = 1.1f;
+        [SerializeField] private float bushHeight = 1f;
+
+        private readonly Dictionary<GridPos, BlockView> blocks = new Dictionary<GridPos, BlockView>();
         private readonly List<GameObject> bombPool = new List<GameObject>();
         private readonly List<GameObject> looseBombPool = new List<GameObject>();
         private readonly List<GameObject> telegraphPool = new List<GameObject>();
@@ -62,6 +68,19 @@ namespace Blastlands.Runtime
 
         private MatchState state;
         private Transform root;
+
+        private readonly struct BlockView
+        {
+            public BlockView(GameObject instance, TileKind kind)
+            {
+                Instance = instance;
+                Kind = kind;
+            }
+
+            public GameObject Instance { get; }
+
+            public TileKind Kind { get; }
+        }
 
         public static Vector3 ToWorld(GridPos tile, float height)
         {
@@ -107,7 +126,7 @@ namespace Blastlands.Runtime
             BuildGround();
             BuildGroundDetail();
             BuildScenery();
-            BuildBlocks();
+            SyncBlocks();
             BuildPlayers();
         }
 
@@ -249,48 +268,44 @@ namespace Blastlands.Runtime
             }
         }
 
-        private void BuildBlocks()
-        {
-            for (int y = 0; y < state.Arena.Height; y++)
-            {
-                for (int x = 0; x < state.Arena.Width; x++)
-                {
-                    var tile = new GridPos(x, y);
-                    TileKind kind = state.Arena[tile];
-                    if (kind != TileKind.Floor)
-                    {
-                        blocks[tile] = CreateBlock(tile, kind);
-                    }
-                }
-            }
-        }
-
         private GameObject CreateBlock(GridPos tile, TileKind kind)
         {
             bool hard = kind == TileKind.HardBlock;
+            bool bush = kind == TileKind.Bush;
             int variant = Variant(tile, hard ? 4 : 5);
 
-            GameObject prefab = art == null ? null : (hard ? art.HardBlock(variant) : art.SoftBlock(variant));
-            Color fallback = hard ? MatchPalette.HardBlock : MatchPalette.SoftBlock;
+            GameObject prefab = null;
+            if (art != null)
+            {
+                prefab = hard ? art.HardBlock(variant) : bush ? art.Bush(variant) : art.SoftBlock(variant);
+            }
+
+            Color fallback = hard ? MatchPalette.HardBlock : bush ? MatchPalette.Bush : MatchPalette.SoftBlock;
 
             GameObject block = Spawn(prefab, PrimitiveType.Cube, fallback, kind.ToString());
 
+            float height = bush ? bushHeight : wallHeight;
+
             if (prefab == null)
             {
-                block.transform.localScale = new Vector3(blockFootprint, 1f, blockFootprint);
-                block.transform.position = ToWorld(tile, 0.5f);
+                block.transform.localScale = new Vector3(blockFootprint, hard ? 1f : height, blockFootprint);
+                block.transform.position = ToWorld(tile, (hard ? 1f : height) * 0.5f);
                 return block;
             }
 
-            // Rocks are organic, so any angle suits them; crates and barrels only look
+            // Rocks are organic, so any angle suits them; walls and hedges only look
             // right on a quarter turn.
             block.transform.rotation = Quaternion.Euler(0f, hard ? variant % 360 : QuarterTurn(variant), 0f);
 
-            float size = hard
-                ? 1f + ((((variant / 11) % 100) / 100f) - 0.5f) * 2f * hardBlockSizeJitter
-                : blockFootprint;
+            if (hard)
+            {
+                TileFitter.FitInBox(block, 1f + ((((variant / 11) % 100) / 100f) - 0.5f) * 2f * hardBlockSizeJitter);
+            }
+            else
+            {
+                TileFitter.FitToTile(block, blockFootprint, height);
+            }
 
-            TileFitter.FitInBox(block, size);
             TileFitter.PlaceOnTile(block, ToWorld(tile, 0f));
 
             return block;
@@ -301,32 +316,37 @@ namespace Blastlands.Runtime
             return (variant % 4) * 90f;
         }
 
+        // Two-way, and keyed on the kind rather than on "is it still an obstacle". The
+        // old version only ever destroyed views, which was invisible while walls stayed
+        // destroyed: once they started growing back, the arena filled with tiles you
+        // walked into and could not see. Comparing kinds also covers the case a tile
+        // changes what it is, which regrowth does every time a bush burns.
         private void SyncBlocks()
         {
-            List<GridPos> cleared = null;
-
-            foreach (KeyValuePair<GridPos, GameObject> entry in blocks)
+            for (int y = 0; y < state.Arena.Height; y++)
             {
-                if (state.Arena[entry.Key] == TileKind.Floor)
+                for (int x = 0; x < state.Arena.Width; x++)
                 {
-                    if (cleared == null)
+                    var tile = new GridPos(x, y);
+                    TileKind kind = state.Arena[tile];
+                    bool shown = blocks.TryGetValue(tile, out BlockView view);
+
+                    if (shown && view.Kind == kind)
                     {
-                        cleared = new List<GridPos>();
+                        continue;
                     }
 
-                    cleared.Add(entry.Key);
+                    if (shown)
+                    {
+                        Destroy(view.Instance);
+                        blocks.Remove(tile);
+                    }
+
+                    if (kind != TileKind.Floor)
+                    {
+                        blocks[tile] = new BlockView(CreateBlock(tile, kind), kind);
+                    }
                 }
-            }
-
-            if (cleared == null)
-            {
-                return;
-            }
-
-            for (int i = 0; i < cleared.Count; i++)
-            {
-                Destroy(blocks[cleared[i]]);
-                blocks.Remove(cleared[i]);
             }
         }
 

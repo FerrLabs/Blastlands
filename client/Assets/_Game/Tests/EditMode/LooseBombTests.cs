@@ -194,7 +194,7 @@ namespace Blastlands.Core.Tests
                 {
                     GridPos next = current.Offset(step.X, step.Y);
                     if (state.Arena.Contains(next)
-                        && state.Arena[next] == TileKind.Floor
+                        && Tiles.CanBeStoodOn(state.Arena[next])
                         && reachable.Add(next))
                     {
                         queue.Enqueue(next);
@@ -210,7 +210,7 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
-        public void BombsOnlyEverLieOnFloor()
+        public void BombsOnlyLieWhereSomebodyCanStand()
         {
             MatchState state = MatchFactory.Create(ArenaSettings.Default, Settings, 4, 313u);
 
@@ -219,7 +219,9 @@ namespace Blastlands.Core.Tests
 
             foreach (GridPos tile in state.LooseBombs)
             {
-                Assert.That(state.Arena[tile], Is.EqualTo(TileKind.Floor), $"{tile} is not floor");
+                // Bushes count: a bomb lying in a hedge is a bomb somebody has to walk
+                // into cover to fetch, which is the point of having hedges.
+                Assert.That(Tiles.CanBeStoodOn(state.Arena[tile]), Is.True, $"{tile} cannot be walked onto");
             }
         }
     }

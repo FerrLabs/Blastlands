@@ -37,7 +37,7 @@ namespace Blastlands.Core
                 for (int x = 0; x < arena.Width; x++)
                 {
                     var tile = new GridPos(x, y);
-                    if (arena[tile] != TileKind.SoftBlock)
+                    if (!Tiles.CanBeDestroyed(arena[tile]))
                     {
                         continue;
                     }

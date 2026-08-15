@@ -1,14 +1,16 @@
 namespace Blastlands.Core
 {
     // Difficulty is a handicap on the bot, never privileged information. A hard bot
-    // sees exactly what an easy one does; it just reacts sooner and looks further.
+    // sees exactly what an easy one does, tile for tile; it reacts sooner, looks
+    // further, and holds on to what it saw for longer.
     public readonly struct BotSettings
     {
-        public BotSettings(int reactionTicks, int lookaheadTicks, int safetyMarginTicks)
+        public BotSettings(int reactionTicks, int lookaheadTicks, int safetyMarginTicks, int memoryTicks)
         {
             ReactionTicks = reactionTicks < 0 ? 0 : reactionTicks;
             LookaheadTicks = lookaheadTicks;
             SafetyMarginTicks = safetyMarginTicks;
+            MemoryTicks = memoryTicks;
         }
 
         // Ticks between decisions. The bot keeps walking the way it was during them,
@@ -22,19 +24,24 @@ namespace Blastlands.Core
         // Slack required when fleeing, so a bot does not arrive exactly as the fire does.
         public int SafetyMarginTicks { get; }
 
+        // How long an opponent stays where the bot last saw them. This is the difficulty
+        // knob that vision created: an easy bot loses track of you the moment you break
+        // line of sight, a hard one keeps hunting the place you were.
+        public int MemoryTicks { get; }
+
         public static BotSettings Easy
         {
-            get { return new BotSettings(9, 22, 2); }
+            get { return new BotSettings(9, 22, 2, 30); }
         }
 
         public static BotSettings Normal
         {
-            get { return new BotSettings(4, 45, 4); }
+            get { return new BotSettings(4, 45, 4, 90); }
         }
 
         public static BotSettings Hard
         {
-            get { return new BotSettings(0, 90, 6); }
+            get { return new BotSettings(0, 90, 6, 180); }
         }
     }
 }

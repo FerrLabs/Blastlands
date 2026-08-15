@@ -32,6 +32,24 @@ namespace Blastlands.Runtime
             instance.transform.localScale *= height / bounds.size.y;
         }
 
+        // Fits the footprint to the tile, then stretches the height on its own. Bushes
+        // need this: every piece of foliage in the packs is knee-high ground cover, and
+        // one has to hide whoever walks into it. Scaling it up uniformly until it did
+        // would spill it across the neighbouring tiles.
+        public static void FitToTile(GameObject instance, float side, float height)
+        {
+            Scale(instance, side, false);
+
+            if (instance == null || !TryMeasure(instance, out Bounds bounds) || bounds.size.y <= 0.0001f)
+            {
+                return;
+            }
+
+            Vector3 scale = instance.transform.localScale;
+            scale.y *= height / bounds.size.y;
+            instance.transform.localScale = scale;
+        }
+
         // Places the prefab so it is centred on the tile horizontally and resting on
         // the ground, whatever its pivot happens to be.
         public static void PlaceOnTile(GameObject instance, Vector3 tileCentre)

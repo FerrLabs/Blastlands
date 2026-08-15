@@ -17,6 +17,7 @@ namespace Blastlands.Core
 
         private readonly int playerId;
         private readonly BotSettings settings;
+        private readonly List<Sighting> sightings = new List<Sighting>();
 
         private int cooldown;
         private Direction heading;
@@ -35,6 +36,12 @@ namespace Blastlands.Core
             {
                 return PlayerInput.None;
             }
+
+            // Looking is not deciding, so it happens on every tick rather than on the
+            // reaction cadence. The delay is a handicap on how fast the bot acts, and
+            // making it a handicap on its eyes as well would mean an easy bot walks past
+            // opponents it was staring at.
+            Observe(state, player);
 
             // Between decisions the bot keeps walking the way it was, which reads as
             // hesitation rather than as a freeze. The bomb is never repeated: it would
@@ -232,7 +239,7 @@ namespace Blastlands.Core
                 state,
                 from,
                 (tile, depth) => blast.SurvivesArrival(tile, depth * ticksPerTile, settings.SafetyMarginTicks)
-                                 && (TouchesSoftBlock(state, tile) || HoldsEnemy(state, player.Id, tile)),
+                                 && (TouchesSoftBlock(state, tile) || BelievesEnemyAt(tile)),
                 (tile, depth) => blast.SurvivesArrival(tile, depth * ticksPerTile, settings.SafetyMarginTicks));
         }
 
@@ -272,7 +279,7 @@ namespace Blastlands.Core
             {
                 GridPos delta = Directions.Delta(Order[i]);
                 GridPos next = tile.Offset(delta.X, delta.Y);
-                if (state.Arena.Contains(next) && state.Arena[next] == TileKind.SoftBlock)
+                if (state.Arena.Contains(next) && Tiles.CanBeDestroyed(state.Arena[next]))
                 {
                     return true;
                 }
@@ -281,12 +288,92 @@ namespace Blastlands.Core
             return false;
         }
 
-        private static bool HoldsEnemy(MatchState state, int selfId, GridPos tile)
+        // What the bot last saw of one opponent. A position it is entitled to believe
+        // rather than one it knows, which is the whole difference vision makes: the bot
+        // hunts where you were, and is wrong about it as often as a player would be.
+        private struct Sighting
         {
+            public int PlayerId;
+            public GridPos Tile;
+            public int Tick;
+        }
+
+        // Three things happen here, and they are separate on purpose. Anyone in sight is
+        // recorded where they stand. Anyone whose remembered tile is now visibly empty is
+        // dropped, because a bot that keeps bombing a corner it can see nobody is in
+        // looks broken rather than fooled. Everything else simply ages out.
+        private void Observe(MatchState state, PlayerState self)
+        {
+            for (int i = sightings.Count - 1; i >= 0; i--)
+            {
+                Sighting stale = sightings[i];
+                if (state.Tick - stale.Tick > settings.MemoryTicks
+                    || Vision.CanSeeItIsEmpty(state, self.Tile, stale.Tile))
+                {
+                    sightings.RemoveAt(i);
+                }
+            }
+
             for (int i = 0; i < state.Players.Count; i++)
             {
                 PlayerState other = state.Players[i];
-                if (other.Id != selfId && other.Alive && other.Tile == tile)
+                if (other.Id == self.Id)
+                {
+                    continue;
+                }
+
+                if (!other.Alive)
+                {
+                    Forget(other.Id);
+                    continue;
+                }
+
+                if (Vision.CanSee(state, self, other))
+                {
+                    Remember(other.Id, other.Tile, state.Tick);
+                }
+            }
+        }
+
+        private void Remember(int id, GridPos tile, int tick)
+        {
+            for (int i = 0; i < sightings.Count; i++)
+            {
+                if (sightings[i].PlayerId == id)
+                {
+                    sightings[i] = new Sighting { PlayerId = id, Tile = tile, Tick = tick };
+                    return;
+                }
+            }
+
+            sightings.Add(new Sighting { PlayerId = id, Tile = tile, Tick = tick });
+        }
+
+        private void Forget(int id)
+        {
+            for (int i = sightings.Count - 1; i >= 0; i--)
+            {
+                if (sightings[i].PlayerId == id)
+                {
+                    sightings.RemoveAt(i);
+                }
+            }
+        }
+
+        // The bot's world model, exposed because it is the thing worth asserting about.
+        // A decision cannot stand in for it: the planner walks Right when it has nothing
+        // to do and towards any destructible tile it can reach, so the same step comes
+        // out of "sees nobody" and "sees somebody and had a better idea".
+        public bool BelievesOpponentAt(GridPos tile)
+        {
+            return BelievesEnemyAt(tile);
+        }
+
+        private bool BelievesEnemyAt(GridPos tile)
+        {
+            for (int i = 0; i < sightings.Count; i++)
+            {
+                if (sightings[i].Tile == tile)
                 {
                     return true;
                 }
@@ -295,7 +382,7 @@ namespace Blastlands.Core
             return false;
         }
 
-        private static bool EnemyInBlastLine(MatchState state, PlayerState player, GridPos from)
+        private bool EnemyInBlastLine(MatchState state, PlayerState player, GridPos from)
         {
             for (int d = 0; d < Order.Length; d++)
             {
@@ -309,12 +396,12 @@ namespace Blastlands.Core
                         break;
                     }
 
-                    if (HoldsEnemy(state, player.Id, tile))
+                    if (BelievesEnemyAt(tile))
                     {
                         return true;
                     }
 
-                    if (state.Arena[tile] == TileKind.SoftBlock)
+                    if (Tiles.CanBeDestroyed(state.Arena[tile]))
                     {
                         break;
                     }
@@ -327,7 +414,7 @@ namespace Blastlands.Core
         private static bool Walkable(MatchState state, GridPos tile)
         {
             return state.Arena.Contains(tile)
-                && state.Arena[tile] == TileKind.Floor
+                && Tiles.CanBeStoodOn(state.Arena[tile])
                 && !state.HasBombAt(tile)
                 && !IsClosing(state, tile);
         }

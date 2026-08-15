@@ -14,6 +14,12 @@ namespace Blastlands.Runtime
         [SerializeField] private GameObject[] floorTiles;
         [SerializeField] private GameObject[] hardBlocks;
         [SerializeField] private GameObject[] softBlocks;
+
+        // Cover you stand in. It has to read as something you would push through rather
+        // than something you would take shelter behind, or players will treat it like a
+        // wall and never use it.
+        [SerializeField] private GameObject[] bushes;
+
         [SerializeField] private GameObject[] scenery;
 
         // Flat patches laid across the floor without regard for tile boundaries. They
@@ -70,6 +76,11 @@ namespace Blastlands.Runtime
         public GameObject SoftBlock(int variant)
         {
             return Pick(softBlocks, variant);
+        }
+
+        public GameObject Bush(int variant)
+        {
+            return Pick(bushes, variant);
         }
 
         public GameObject Scenery(int variant)

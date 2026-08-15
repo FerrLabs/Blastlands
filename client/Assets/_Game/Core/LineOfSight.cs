@@ -87,7 +87,7 @@ namespace Blastlands.Core
             }
 
             TileKind kind = arena[tile];
-            return kind == TileKind.HardBlock || (softBlocksCover && kind == TileKind.SoftBlock);
+            return kind == TileKind.HardBlock || (softBlocksCover && Tiles.CanBeDestroyed(kind));
         }
     }
 }

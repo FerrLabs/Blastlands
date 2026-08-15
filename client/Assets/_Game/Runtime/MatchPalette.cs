@@ -7,6 +7,7 @@ namespace Blastlands.Runtime
         public static readonly Color Floor = new Color(0.16f, 0.18f, 0.15f);
         public static readonly Color HardBlock = new Color(0.28f, 0.30f, 0.34f);
         public static readonly Color SoftBlock = new Color(0.55f, 0.36f, 0.20f);
+        public static readonly Color Bush = new Color(0.22f, 0.42f, 0.20f);
         public static readonly Color Bomb = new Color(0.09f, 0.09f, 0.11f);
         public static readonly Color Flame = new Color(0.95f, 0.45f, 0.12f);
 

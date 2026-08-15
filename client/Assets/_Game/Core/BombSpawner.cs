@@ -97,7 +97,7 @@ namespace Blastlands.Core
                     GridPos next = current.Offset(Cardinals[i].X, Cardinals[i].Y);
 
                     if (state.Arena.Contains(next)
-                        && state.Arena[next] == TileKind.Floor
+                        && Tiles.CanBeStoodOn(state.Arena[next])
                         && seen.Add(next))
                     {
                         queue.Enqueue(next);
@@ -110,7 +110,7 @@ namespace Blastlands.Core
         // never on fire or on a live bomb, which would destroy it before it is seen.
         private static bool CanHoldBomb(MatchState state, GridPos tile)
         {
-            if (state.Arena[tile] != TileKind.Floor
+            if (!Tiles.CanBeStoodOn(state.Arena[tile])
                 || state.HasBombAt(tile)
                 || state.HasFlameAt(tile)
                 || state.LooseBombIndexAt(tile) >= 0

@@ -5,6 +5,11 @@ namespace Blastlands.Core
     public readonly struct ArenaSettings
     {
         public ArenaSettings(int width, int height, int softBlockPercent)
+            : this(width, height, softBlockPercent, 35)
+        {
+        }
+
+        public ArenaSettings(int width, int height, int softBlockPercent, int bushPercent)
         {
             RequireOddAndLargeEnough(width, nameof(width));
             RequireOddAndLargeEnough(height, nameof(height));
@@ -18,6 +23,7 @@ namespace Blastlands.Core
             Width = width;
             Height = height;
             SoftBlockPercent = softBlockPercent;
+            BushPercent = bushPercent < 0 ? 0 : (bushPercent > 100 ? 100 : bushPercent);
         }
 
         public int Width { get; }
@@ -25,6 +31,11 @@ namespace Blastlands.Core
         public int Height { get; }
 
         public int SoftBlockPercent { get; }
+
+        // Share of the breakable tiles that come up as bushes rather than walls. Cover
+        // you stand in against cover you stand behind: too few and hiding is not an
+        // option anybody plans around, too many and nothing blocks a line any more.
+        public int BushPercent { get; }
 
         public static ArenaSettings Default
         {

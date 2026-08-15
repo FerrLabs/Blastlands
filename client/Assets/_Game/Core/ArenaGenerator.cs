@@ -26,7 +26,8 @@ namespace Blastlands.Core
             var arena = new Arena(settings.Width, settings.Height);
             FillStructure(arena);
             HashSet<GridPos> reserved = ReserveSpawns(arena);
-            ScatterSoftBlocks(arena, reserved, settings.SoftBlockPercent, new DeterministicRandom(seed));
+            ScatterSoftBlocks(
+                arena, reserved, settings.SoftBlockPercent, settings.BushPercent, new DeterministicRandom(seed));
             return arena;
         }
 
@@ -90,7 +91,7 @@ namespace Blastlands.Core
         }
 
         private static void ScatterSoftBlocks(
-            Arena arena, HashSet<GridPos> reserved, int softBlockPercent, DeterministicRandom random)
+            Arena arena, HashSet<GridPos> reserved, int softBlockPercent, int bushPercent, DeterministicRandom random)
         {
             for (int y = 0; y < arena.Height; y++)
             {
@@ -104,7 +105,7 @@ namespace Blastlands.Core
 
                     if (random.NextInt(100) < softBlockPercent)
                     {
-                        arena[tile] = TileKind.SoftBlock;
+                        arena[tile] = random.NextInt(100) < bushPercent ? TileKind.Bush : TileKind.SoftBlock;
                     }
                 }
             }

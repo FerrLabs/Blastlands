@@ -204,13 +204,13 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
-        public void PickupsOnlyEverHideUnderSoftBlocks()
+        public void PickupsOnlyEverHideUnderSomethingBreakable()
         {
             Arena arena = ArenaGenerator.Generate(ArenaSettings.Default, 500u);
 
             foreach (KeyValuePair<GridPos, PowerUpKind> entry in PowerUpPlacer.Place(arena, 60, 500u))
             {
-                Assert.That(arena[entry.Key], Is.EqualTo(TileKind.SoftBlock), $"{entry.Key} is not a block");
+                Assert.That(Tiles.CanBeDestroyed(arena[entry.Key]), Is.True, $"{entry.Key} is not breakable");
             }
         }
     }

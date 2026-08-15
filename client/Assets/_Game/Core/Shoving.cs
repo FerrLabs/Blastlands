@@ -37,6 +37,12 @@ namespace Blastlands.Core
                 pusher.PushCooldownRemaining = state.Settings.Push.CooldownTicks;
                 target.ShoveDirection = pusher.Facing;
                 target.ShoveTicksRemaining = state.Settings.Push.Ticks;
+
+                // Both of them, not just the shover. Someone sliding across the ground
+                // is the most visible thing on the board, and a shove that posted its
+                // victim into a bush would otherwise erase them mid-flight.
+                pusher.RevealTicksRemaining = state.Settings.Vision.RevealTicks;
+                target.RevealTicksRemaining = state.Settings.Vision.RevealTicks;
             }
         }
 
@@ -57,7 +63,10 @@ namespace Blastlands.Core
             for (int i = 0; i < state.Players.Count; i++)
             {
                 PlayerState other = state.Players[i];
-                if (other.Id == pusher.Id || !other.Alive)
+
+                // Sight, not just reach. Grabbing someone out of a bush you cannot see
+                // into would make the tile pointless against anyone who guesses.
+                if (other.Id == pusher.Id || !Vision.CanSee(state, pusher, other))
                 {
                     continue;
                 }

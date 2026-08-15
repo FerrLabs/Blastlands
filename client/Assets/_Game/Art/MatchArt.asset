@@ -19,9 +19,10 @@ MonoBehaviour:
   - {fileID: 176848, guid: e5a4d6a2928750f47a79016275192e15, type: 3}
   - {fileID: 182652, guid: 8dad32daff338c04fb89fb6f53f809e4, type: 3}
   softBlocks:
-  - {fileID: 144422, guid: cb7b88e57a97d00478eb5ae4895d2899, type: 3}
-  - {fileID: 108690, guid: 8a733cd9d9fca224cbf4260ab4c0e693, type: 3}
-  - {fileID: 142800, guid: 667f8d64d1420be4c89570f844aad2e5, type: 3}
+  - {fileID: 105036, guid: 36d2d1ff05c1c724eaddd4505837ee98, type: 3}
+  bushes:
+  - {fileID: 123138, guid: 58ab9f492c9995042a40f27638b2a20f, type: 3}
+  - {fileID: 116886, guid: 2541c41fb6e1846428d842ddb021ad8a, type: 3}
   scenery:
   - {fileID: 128714, guid: 8c75e42c8e8152141abb8d1f7766e1b8, type: 3}
   - {fileID: 133566, guid: fef2c50cc4c93db41ab899331bc362b2, type: 3}

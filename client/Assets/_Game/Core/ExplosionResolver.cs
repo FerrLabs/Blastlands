@@ -141,7 +141,7 @@ namespace Blastlands.Core
 
                 AddFlame(tile);
 
-                if (kind == TileKind.SoftBlock)
+                if (Tiles.CanBeDestroyed(kind))
                 {
                     Destroy(tile);
                     return;
@@ -194,7 +194,7 @@ namespace Blastlands.Core
 
                     AddFlame(tile);
 
-                    if (kind == TileKind.SoftBlock)
+                    if (Tiles.CanBeDestroyed(kind))
                     {
                         Destroy(tile);
                         continue;
