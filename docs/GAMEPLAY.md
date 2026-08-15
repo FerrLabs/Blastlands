@@ -104,6 +104,28 @@ Kick, punch, remote detonators and pass-through are explicitly out of V1. They e
 the movement and collision model significantly and are worth their own issues once the base
 game is solid.
 
+## Movement
+
+Positions are continuous. A player is a body about 0.7 of a tile across that slides along
+whatever it is pressed against, rather than a token that hops between tile centres.
+
+**Input is a vector, not one of four directions.** This is not a nicety: the old movement
+locked to an axis and pulled the player onto their corridor centre on every step, which is
+what stopped them catching on pillars. Free positions remove that, and without diagonals
+there is nothing to slide with — the result catches on *more* corners than the grid did, not
+fewer. `CornerAssist` covers the rest, pushing the body onto an open lane when it walks into
+the edge of one.
+
+Diagonals are scaled by the vector's length, so going two ways at once is not faster than
+going one. The integer square root in `MatchSim` is deliberate: a float there is the one
+place determinism would leak.
+
+**Bots are worse under this and it is not yet fixed.** A Hard bot left alone survives 23 of
+40 unsupervised matches, down from 30 on the grid. The planner reasons in tiles while the
+body no longer lives in one — a bot sitting on a tile boundary changes which tile it is in
+every tick, and its decision flips with it. Several point fixes recovered part of it; the
+rest needs the planner to think in positions.
+
 ## Dash
 
 A burst of speed on a recharge — about two and a half tiles in a third of a second, once

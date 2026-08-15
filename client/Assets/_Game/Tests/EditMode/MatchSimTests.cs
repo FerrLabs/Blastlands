@@ -52,27 +52,37 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
-        public void AHardBlockStopsAPlayerAtTheCentreOfTheirTile()
+        public void AHardBlockStopsAPlayerWithTheirBodyAgainstIt()
         {
+            // Not at the centre of the last free tile any more: positions are continuous,
+            // so a player walks right up to the wall and stops where their body meets it.
             MatchState state = OpenMatch(9, 9, new GridPos(1, 1));
             state.Arena[new GridPos(3, 1)] = TileKind.HardBlock;
 
             Run(state, 40, PlayerInput.Moving(Direction.Right));
 
-            Assert.That(state.Players[0].Tile.X, Is.EqualTo(2));
-            Assert.That(state.Players[0].Position.X, Is.EqualTo(SubPos.CentreOf(2)));
+            int wallFace = 3 * SubPos.UnitsPerTile;
+            Assert.That(
+                state.Players[0].Position.X,
+                Is.EqualTo(wallFace - Settings.PlayerRadius - 1),
+                "pressed against the block, not parked on a tile centre");
         }
 
         [Test]
-        public void MovingHorizontallyPullsThePlayerOntoTheirCorridorCentre()
+        public void WalkingIntoTheEdgeOfAGapSlidesIntoIt()
         {
+            // The old movement pulled the player onto their corridor centre on every
+            // step, which hid this. Free positions need the corner assist instead, or
+            // walking into a corridor mouth slightly off centre reads as sticky wall.
             MatchState state = OpenMatch(9, 9, new GridPos(1, 1));
+            state.Arena[new GridPos(2, 2)] = TileKind.HardBlock;
+
             PlayerState player = state.Players[0];
-            player.Position = player.Position.WithY(SubPos.CentreOf(1) + 60);
+            player.Position = player.Position.WithY(SubPos.CentreOf(1) + 70);
 
-            Run(state, 3, PlayerInput.Moving(Direction.Right));
+            Run(state, 30, PlayerInput.Moving(Direction.Right));
 
-            Assert.That(player.Position.Y, Is.EqualTo(SubPos.CentreOf(1)), "never overshoots the centre");
+            Assert.That(player.Tile.X, Is.GreaterThan(1), "it got through rather than catching");
         }
 
         [Test]
@@ -140,7 +150,10 @@ namespace Blastlands.Core.Tests
             Run(state, 20, PlayerInput.Moving(Direction.Left));
 
             Assert.That(state.Players[0].Tile.X, Is.EqualTo(2));
-            Assert.That(state.Players[0].Position.X, Is.EqualTo(SubPos.CentreOf(2)));
+            Assert.That(
+                state.Players[0].Position.X,
+                Is.EqualTo((2 * SubPos.UnitsPerTile) + Settings.PlayerRadius),
+                "stopped with their body against the bomb they left");
         }
 
         [Test]

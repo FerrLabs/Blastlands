@@ -42,7 +42,7 @@ namespace Blastlands.Core
             if (cooldown > 0)
             {
                 cooldown--;
-                return PlayerInput.Moving(heading);
+                return Steer(player, heading, false);
             }
 
             cooldown = settings.ReactionTicks;
@@ -53,6 +53,62 @@ namespace Blastlands.Core
             // along the route the escape check already proved was open.
             heading = decision.DropBomb ? plannedEscape : decision.Move;
             return decision;
+        }
+
+        // The route is a sequence of tiles, so the bot aims at the middle of the next
+        // one rather than leaning on a compass point. Free positions removed the
+        // re-centring that used to do this for free, and without it a bot drifts off the
+        // lane and grinds along corners: it kept moving, but it stopped clearing the
+        // arena — 34 blocks a match down to 10.
+        private static PlayerInput Steer(PlayerState player, Direction direction, bool dash)
+        {
+            if (direction == Direction.None)
+            {
+                return PlayerInput.None;
+            }
+
+            // A dash commits to the dominant axis of whatever vector it is given, so a
+            // steering vector aimed at a tile centre can send it off at right angles to
+            // the escape it was meant to take. Dashes go out as a clean cardinal.
+            if (dash)
+            {
+                return PlayerInput.Dashing(direction);
+            }
+
+            GridPos step = Directions.Delta(direction);
+            GridPos target = player.Tile.Offset(step.X, step.Y);
+
+            int toX = SubPos.CentreOf(target.X) - player.Position.X;
+            int toY = SubPos.CentreOf(target.Y) - player.Position.Y;
+
+            int magnitude = Magnitude(toX, toY);
+            if (magnitude <= 0)
+            {
+                return new PlayerInput(step.X * StickReader.Range, step.Y * StickReader.Range, false, dash);
+            }
+
+            return new PlayerInput(
+                toX * StickReader.Range / magnitude,
+                toY * StickReader.Range / magnitude,
+                false,
+                dash);
+        }
+
+        private static int Magnitude(int x, int y)
+        {
+            long squared = ((long)x * x) + ((long)y * y);
+            if (squared <= 0)
+            {
+                return 0;
+            }
+
+            int root = 0;
+            while ((long)(root + 1) * (root + 1) <= squared)
+            {
+                root++;
+            }
+
+            return root;
         }
 
         private PlayerInput Decide(MatchState state, PlayerState player)
@@ -67,9 +123,8 @@ namespace Blastlands.Core
             if (!blast.IsSafeFor(tile, settings.LookaheadTicks))
             {
                 Direction away = StepToSafety(state, blast, tile, ticksPerTile);
-                return settings.ReactionTicks > 0 && player.CanDash && away != Direction.None
-                    ? PlayerInput.Dashing(away)
-                    : PlayerInput.Moving(away);
+                bool dash = settings.ReactionTicks > 0 && player.CanDash && away != Direction.None;
+                return Steer(player, away, dash);
             }
 
             if (player.CanDropBomb
@@ -84,7 +139,17 @@ namespace Blastlands.Core
                 }
             }
 
-            return PlayerInput.Moving(StepTowardTarget(state, blast, player, tile, ticksPerTile));
+            Direction toward = StepTowardTarget(state, blast, player, tile, ticksPerTile);
+
+            // Standing still is never the safe option, whatever the blast map currently
+            // says. A bot with nothing to walk towards that plants itself is a bot
+            // waiting for the next chain reaction to find it.
+            if (toward == Direction.None)
+            {
+                toward = StepToSafety(state, blast, tile, ticksPerTile);
+            }
+
+            return Steer(player, toward, false);
         }
 
         private PlayerState FindPlayer(MatchState state)
@@ -105,6 +170,7 @@ namespace Blastlands.Core
             int speed = state.Settings.SpeedFor(player.SpeedSteps);
             return speed <= 0 ? SubPos.UnitsPerTile : ((SubPos.UnitsPerTile + speed - 1) / speed);
         }
+
 
         // Fleeing to a tile that merely burns later is what gets a bot cornered: it
         // outruns one blast into the next one, and each hop has fewer ways out than the
@@ -130,6 +196,13 @@ namespace Blastlands.Core
                 (tile, depth) => blast.SurvivesArrival(tile, depth * ticksPerTile, 0));
         }
 
+        // Routes taken while safe keep the same safety margin the destination does.
+        // Tolerating a tile that burns on the way is right when fleeing — anything is
+        // better than staying — but walking through one on an errand is how a bot ends
+        // up stepping into a fuse, panicking back out, and doing it again until the
+        // bomb goes off. Free positions made that visible: a body sitting on a tile
+        // boundary flips which tile it is in every tick, and the decision flips with it.
+        //
         // Restocking comes first for a bot with nothing to place: it cannot threaten
         // anyone and cannot open a wall, so nothing else it does leads anywhere.
         //
@@ -147,7 +220,7 @@ namespace Blastlands.Core
                     from,
                     (tile, depth) => blast.SurvivesArrival(tile, depth * ticksPerTile, settings.SafetyMarginTicks)
                                      && state.LooseBombIndexAt(tile) >= 0,
-                    (tile, depth) => blast.SurvivesArrival(tile, depth * ticksPerTile, 0));
+                    (tile, depth) => blast.SurvivesArrival(tile, depth * ticksPerTile, settings.SafetyMarginTicks));
 
                 if (toBomb != Direction.None)
                 {
@@ -160,7 +233,7 @@ namespace Blastlands.Core
                 from,
                 (tile, depth) => blast.SurvivesArrival(tile, depth * ticksPerTile, settings.SafetyMarginTicks)
                                  && (TouchesSoftBlock(state, tile) || HoldsEnemy(state, player.Id, tile)),
-                (tile, depth) => blast.SurvivesArrival(tile, depth * ticksPerTile, 0));
+                (tile, depth) => blast.SurvivesArrival(tile, depth * ticksPerTile, settings.SafetyMarginTicks));
         }
 
         // The check that stops a bot killing itself: place the bomb it is considering,

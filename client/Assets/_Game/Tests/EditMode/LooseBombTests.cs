@@ -9,27 +9,7 @@ namespace Blastlands.Core.Tests
         // The spawner tops the arena up on its own, which is what the spawning tests
         // below check. Everything about picking up and spending needs a floor that only
         // holds what the test put there.
-        private static readonly MatchSettings NoSpawning = new MatchSettings(
-            Settings.TicksPerSecond,
-            Settings.FuseTicks,
-            Settings.FlameTicks,
-            Settings.BaseSpeed,
-            Settings.SpeedStep,
-            Settings.MaxSpeedSteps,
-            Settings.StartingHeldBombs,
-            Settings.StartingCarryCapacity,
-            Settings.StartingFireRange,
-            Settings.MaxCarryCapacity,
-            Settings.MaxFireRange,
-            Settings.PowerUpDropPercent,
-            0,
-            Settings.BombRespawnTicks,
-            Settings.WallRegrowTicks,
-            Settings.WallTelegraphTicks,
-            Settings.WallRetryTicks,
-            Settings.DashSpeed,
-            Settings.DashTicks,
-            Settings.DashCooldownTicks);
+        private static readonly MatchSettings NoSpawning = Settings.WithLooseBombTarget(0);
 
         private static MatchState OpenMatch(params GridPos[] spawns)
         {
@@ -108,7 +88,8 @@ namespace Blastlands.Core.Tests
             Assert.That(state.LooseBombs, Is.Empty, "it left the floor");
             Assert.That(state.HasFlameAt(new GridPos(5, 4)), Is.True);
 
-            Run(state, 4, PlayerInput.None, PlayerInput.None);
+            // It gets a short fuse rather than none, so there is a beat before it goes.
+            Run(state, Settings.LooseBombFuseTicks + 2, PlayerInput.None, PlayerInput.None);
 
             Assert.That(state.HasFlameAt(new GridPos(7, 4)), Is.True, "and it took the tiles beyond it");
         }

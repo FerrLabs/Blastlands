@@ -65,13 +65,15 @@ namespace Blastlands.Core
                 if (player.Dashing)
                 {
                     player.DashTicksRemaining--;
-                    Move(state, player, player.DashDirection, state.Settings.DashSpeed);
+
+                    GridPos along = Directions.Delta(player.DashDirection);
+                    Travel(state, player, along.X * StickReader.Range, along.Y * StickReader.Range, state.Settings.DashSpeed);
                     continue;
                 }
 
-                if (input.Move != Direction.None)
+                if (input.IsMoving)
                 {
-                    Move(state, player, input.Move, state.Settings.SpeedFor(player.SpeedSteps));
+                    Travel(state, player, input.MoveX, input.MoveY, state.Settings.SpeedFor(player.SpeedSteps));
                 }
             }
         }
@@ -96,67 +98,43 @@ namespace Blastlands.Core
             player.DashCooldownRemaining = state.Settings.DashCooldownTicks + state.Settings.DashTicks;
         }
 
-        // Movement is axis-aligned. Moving along one axis also pulls the player onto
-        // the centre of their corridor on the other axis: without that they snag on
-        // every pillar and the game feels broken.
-        private static void Move(MatchState state, PlayerState player, Direction direction, int speed)
+        // Free movement: the position is continuous and the body slides along whatever
+        // it is pressed against. Diagonals are scaled by the vector's length, so going
+        // two ways at once is not faster than going one.
+        private static void Travel(MatchState state, PlayerState player, int moveX, int moveY, int speed)
         {
-            player.Facing = direction;
-
-            GridPos delta = Directions.Delta(direction);
-            GridPos tile = player.Tile;
-            SubPos position = player.Position;
-
-            if (Directions.IsHorizontal(direction))
+            int magnitude = Magnitude(moveX, moveY);
+            if (magnitude <= 0)
             {
-                position = position.WithY(StepToward(position.Y, SubPos.CentreOf(tile.Y), speed));
-
-                int target = position.X + (delta.X * speed);
-                if (!CanEnter(state, new GridPos(tile.X + delta.X, tile.Y)))
-                {
-                    int limit = SubPos.CentreOf(tile.X);
-                    target = delta.X > 0 ? Math.Min(target, limit) : Math.Max(target, limit);
-                }
-
-                position = position.WithX(target);
-            }
-            else
-            {
-                position = position.WithX(StepToward(position.X, SubPos.CentreOf(tile.X), speed));
-
-                int target = position.Y + (delta.Y * speed);
-                if (!CanEnter(state, new GridPos(tile.X, tile.Y + delta.Y)))
-                {
-                    int limit = SubPos.CentreOf(tile.Y);
-                    target = delta.Y > 0 ? Math.Min(target, limit) : Math.Max(target, limit);
-                }
-
-                position = position.WithY(target);
+                return;
             }
 
-            player.Position = position;
+            player.Facing = StickReader.ToDirection(moveX, moveY, 1);
+
+            int deltaX = moveX * speed / magnitude;
+            int deltaY = moveY * speed / magnitude;
+
+            PlayerBody.Move(state, player, deltaX, deltaY);
+            PlayerBody.AssistCorner(state, player, deltaX, deltaY, state.Settings.CornerAssist);
         }
 
-        // Only ever asked about a tile the player is entering, never the one they are
-        // standing on, which is what lets a player step off their own bomb.
-        private static bool CanEnter(MatchState state, GridPos tile)
+        // Integer square root, so the same input produces the same step everywhere. A
+        // float here would be the one place determinism leaks.
+        private static int Magnitude(int x, int y)
         {
-            return state.Arena.Contains(tile)
-                && state.Arena[tile] == TileKind.Floor
-                && !state.HasBombAt(tile);
-        }
-
-        private static int StepToward(int value, int target, int step)
-        {
-            if (value == target)
+            long squared = ((long)x * x) + ((long)y * y);
+            if (squared <= 0)
             {
-                return value;
+                return 0;
             }
 
-            int difference = target - value;
-            return difference > 0
-                ? value + Math.Min(step, difference)
-                : value - Math.Min(step, -difference);
+            int root = 0;
+            while ((long)(root + 1) * (root + 1) <= squared)
+            {
+                root++;
+            }
+
+            return root;
         }
 
         private static void DropBombs(MatchState state, IReadOnlyList<PlayerInput> inputs)
@@ -231,9 +209,13 @@ namespace Blastlands.Core
                     continue;
                 }
 
+                // A short fuse rather than none. Going off the instant the fire touches
+                // it is unreadable: nothing can be seen coming and nothing can be done
+                // about it, for a bot or a player. A beat is enough to react to.
                 state.RemoveLooseBombAt(i);
                 state.AddBomb(new ActiveBomb(
-                    new Bomb(tile, NoOwner, state.Settings.StartingFireRange, BombKind.Standard), 1));
+                    new Bomb(tile, NoOwner, state.Settings.StartingFireRange, BombKind.Standard),
+                    state.Settings.LooseBombFuseTicks));
             }
         }
 

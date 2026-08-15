@@ -59,7 +59,9 @@ namespace Blastlands.Runtime
             dropLatches[player] = false;
             dashLatches[player] = false;
 
-            return new PlayerInput(MoveFor(player), drop, dash);
+            int moveX, moveY;
+            MoveFor(player, out moveX, out moveY);
+            return new PlayerInput(moveX, moveY, drop, dash);
         }
 
         public bool RerollPressed()
@@ -146,15 +148,59 @@ namespace Blastlands.Runtime
                 && (keyboard.leftShiftKey.wasPressedThisFrame || keyboard.rightShiftKey.wasPressedThisFrame);
         }
 
-        private static Direction MoveFor(int player)
+        // The stick is passed through rather than reduced to one of four directions.
+        // Movement is free now, and a body that can only be pushed along an axis catches
+        // on every corner it meets.
+        private static void MoveFor(int player, out int moveX, out int moveY)
         {
-            Direction fromPad = PadDirection(PadFor(player));
-            if (fromPad != Direction.None)
+            Gamepad pad = PadFor(player);
+            if (pad != null && PadVector(pad, out moveX, out moveY))
             {
-                return fromPad;
+                return;
             }
 
-            return player == 0 ? KeyboardDirection() : Direction.None;
+            if (player == 0)
+            {
+                FromDirection(KeyboardDirection(), out moveX, out moveY);
+                return;
+            }
+
+            moveX = 0;
+            moveY = 0;
+        }
+
+        private static bool PadVector(Gamepad pad, out int moveX, out int moveY)
+        {
+            // The d-pad is unambiguous, so it still wins over the stick when both are
+            // pushed — it simply arrives as a full-strength vector.
+            Direction fromDpad = ToDirection(pad.dpad.ReadValue());
+            if (fromDpad != Direction.None)
+            {
+                FromDirection(fromDpad, out moveX, out moveY);
+                return true;
+            }
+
+            Vector2 stick = pad.leftStick.ReadValue();
+            int x = Mathf.RoundToInt(stick.x * StickReader.Range);
+            int y = Mathf.RoundToInt(-stick.y * StickReader.Range);
+
+            if (StickReader.ToDirection(x, y) == Direction.None)
+            {
+                moveX = 0;
+                moveY = 0;
+                return false;
+            }
+
+            moveX = x;
+            moveY = y;
+            return true;
+        }
+
+        private static void FromDirection(Direction direction, out int moveX, out int moveY)
+        {
+            GridPos delta = Directions.Delta(direction);
+            moveX = delta.X * StickReader.Range;
+            moveY = delta.Y * StickReader.Range;
         }
 
         private static Direction PadDirection(Gamepad pad)

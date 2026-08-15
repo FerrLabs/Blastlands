@@ -24,8 +24,14 @@ namespace Blastlands.Core
             int wallRetryTicks,
             int dashSpeed,
             int dashTicks,
-            int dashCooldownTicks)
+            int dashCooldownTicks,
+            int playerRadius,
+            int cornerAssist,
+            int looseBombFuseTicks)
         {
+            LooseBombFuseTicks = looseBombFuseTicks;
+            PlayerRadius = playerRadius;
+            CornerAssist = cornerAssist;
             DashSpeed = dashSpeed;
             DashTicks = dashTicks;
             DashCooldownTicks = dashCooldownTicks;
@@ -83,6 +89,10 @@ namespace Blastlands.Core
 
         public int BombRespawnTicks { get; }
 
+        // What a bomb lying in fire gets instead of the full fuse. Short enough to read
+        // as a chain reaction, long enough to be worth reacting to.
+        public int LooseBombFuseTicks { get; }
+
         // How long a destroyed block stays gone, and how much of that time the floor
         // shows what is coming. The telegraph is not decoration: without it a closing
         // wall is an arbitrary shove, and with it the tile is somewhere not to linger.
@@ -102,6 +112,15 @@ namespace Blastlands.Core
         public int DashTicks { get; }
 
         public int DashCooldownTicks { get; }
+
+        // Half the width of a player's body, in sub-tile units. Smaller than half a tile
+        // so two bodies can pass each other in a corridor.
+        public int PlayerRadius { get; }
+
+        // How hard the body is pushed onto an open lane when it walks into the edge of
+        // one. Zero makes corridor mouths sticky, which is the most common way free
+        // movement feels broken.
+        public int CornerAssist { get; }
 
         public static MatchSettings Default
         {
@@ -138,7 +157,24 @@ namespace Blastlands.Core
             // survivors are gone.
             // Dash covers about two and a half tiles in a third of a second, once every
             // three seconds.
-            get { return new MatchSettings(30, 75, 15, 26, 6, 4, 1, 1, 2, 6, 8, 35, 4, 90, 600, 90, 45, 78, 8, 90); }
+            // A body 0.7 of a tile across, and a corner assist of about a third of the
+            // walking speed.
+            get { return new MatchSettings(30, 75, 15, 26, 6, 4, 1, 1, 2, 6, 8, 35, 4, 90, 600, 90, 45, 78, 8, 90, 90, 9, 12); }
+        }
+
+        // Restating twenty-two positional ints to change one is where a transposition
+        // eventually happens, so the copy lives here rather than at the call site. See
+        // the wider problem in the tracking issue for this constructor.
+        public MatchSettings WithLooseBombTarget(int target)
+        {
+            return new MatchSettings(
+                TicksPerSecond, FuseTicks, FlameTicks, BaseSpeed, SpeedStep, MaxSpeedSteps,
+                StartingHeldBombs, StartingCarryCapacity, StartingFireRange,
+                MaxCarryCapacity, MaxFireRange, PowerUpDropPercent,
+                target, BombRespawnTicks,
+                WallRegrowTicks, WallTelegraphTicks, WallRetryTicks,
+                DashSpeed, DashTicks, DashCooldownTicks,
+                PlayerRadius, CornerAssist, LooseBombFuseTicks);
         }
 
         public int SpeedFor(int speedSteps)
