@@ -13,6 +13,12 @@ namespace Blastlands.Runtime
         [SerializeField] private MatchView view;
         [SerializeField] private MatchCamera matchCamera;
         [SerializeField] private MatchHud hud;
+        [SerializeField] private MatchFog fog;
+
+        // Which arena the match is dressed in. Rolled from the seed like everything
+        // else about the layout, so the number that reproduces a bug reproduces what it
+        // looked like too.
+        [SerializeField] private ArenaTheme[] themes;
         [SerializeField] private int arenaWidth = 15;
         [SerializeField] private int arenaHeight = 13;
         [SerializeField] private int softBlockPercent = 70;
@@ -88,6 +94,7 @@ namespace Blastlands.Runtime
 
             if (view != null)
             {
+                view.UseTheme(ThemeFor(activeSeed));
                 view.Bind(state);
                 view.Render();
             }
@@ -99,8 +106,24 @@ namespace Blastlands.Runtime
 
             if (matchCamera != null)
             {
-                matchCamera.Bind(state);
+                matchCamera.Bind(state, humans);
             }
+
+            // After the view, which is what owns the renderers it switches around.
+            if (fog != null)
+            {
+                fog.Bind(state);
+            }
+        }
+
+        private ArenaTheme ThemeFor(uint matchSeed)
+        {
+            if (themes == null || themes.Length == 0)
+            {
+                return null;
+            }
+
+            return themes[(int)(matchSeed % (uint)themes.Length)];
         }
 
         private void Update()

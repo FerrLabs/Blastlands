@@ -45,14 +45,53 @@ namespace Blastlands.Runtime
         private Camera own;
         private float lastAspect;
 
+        private int localSeats = 1;
+
         public CameraMode Mode
         {
             get { return mode; }
         }
 
-        public void Bind(MatchState matchState)
+        public int ViewCount
+        {
+            get { return views.Count; }
+        }
+
+        public Camera ViewAt(int index)
+        {
+            return index >= 0 && index < views.Count ? views[index] : null;
+        }
+
+        // Whose eyes a viewport renders through. Split hands each viewport one seat.
+        // Global has no single viewpoint at all: it is the whole couch watching one
+        // screen, so it renders the union of everyone sitting there. Nobody can hide
+        // from the person next to them anyway.
+        public void ViewersOf(int index, List<int> into)
+        {
+            into.Clear();
+
+            if (mode == CameraMode.Split)
+            {
+                into.Add(index);
+                return;
+            }
+
+            if (mode == CameraMode.Follow)
+            {
+                into.Add(0);
+                return;
+            }
+
+            for (int i = 0; i < localSeats; i++)
+            {
+                into.Add(i);
+            }
+        }
+
+        public void Bind(MatchState matchState, int seats)
         {
             state = matchState;
+            localSeats = seats < 1 ? 1 : seats;
             lastAspect = 0f;
             Rebuild();
         }

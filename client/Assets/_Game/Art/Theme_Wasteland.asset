@@ -1,0 +1,50 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9ba2a02cfae81af4e8ee2d86c9310473, type: 3}
+  m_Name: Theme_Wasteland
+  m_EditorClassIdentifier: Blastlands.Runtime::Blastlands.Runtime.ArenaTheme
+  label: Wasteland
+  floorTiles:
+  - {fileID: 176528, guid: 759349d528a9fc24caa71eabff058be7, type: 3}
+  - {fileID: 106024, guid: 10fb44be36c39a147a8aab66cfe8d88b, type: 3}
+  - {fileID: 120508, guid: b5980e7d90b5fb54bbfed13c8d1de193, type: 3}
+  hardBlocks:
+  - {fileID: 167328, guid: 23c64971a016e8049b22042aa3a2cbaa, type: 3}
+  - {fileID: 176848, guid: e5a4d6a2928750f47a79016275192e15, type: 3}
+  - {fileID: 182652, guid: 8dad32daff338c04fb89fb6f53f809e4, type: 3}
+  softBlocks:
+  - {fileID: 105036, guid: 36d2d1ff05c1c724eaddd4505837ee98, type: 3}
+  - {fileID: 140364, guid: 360c38e9058b172489fc927a1115235e, type: 3}
+  - {fileID: 190548, guid: f725dd8ba67b4b14f9d772038c6cc2d3, type: 3}
+  bushes:
+  - {fileID: 123138, guid: 58ab9f492c9995042a40f27638b2a20f, type: 3}
+  - {fileID: 116886, guid: 2541c41fb6e1846428d842ddb021ad8a, type: 3}
+  scenery:
+  - {fileID: 128714, guid: 8c75e42c8e8152141abb8d1f7766e1b8, type: 3}
+  - {fileID: 133566, guid: fef2c50cc4c93db41ab899331bc362b2, type: 3}
+  - {fileID: 180238, guid: e446e2186213edf4d889d3a361798d7b, type: 3}
+  - {fileID: 142276, guid: 2925dc2515defb4499af40afc131d677, type: 3}
+  - {fileID: 135028, guid: e905cde3ed235a140aed2225fc9b8412, type: 3}
+  - {fileID: 107394, guid: ec3b1602d97a71b4a974cfa08226285d, type: 3}
+  - {fileID: 158342, guid: 29457175c2ce0f34d839eee2f95f03ff, type: 3}
+  - {fileID: 172214, guid: 29b6693ede34b1e488d00089580ef9ab, type: 3}
+  - {fileID: 151030, guid: 65c97d195de1b0541a2b02d8fecf18dd, type: 3}
+  - {fileID: 152450, guid: 82238ffef11f0b4408ccf2c69a301ed6, type: 3}
+  - {fileID: 193788, guid: 6b033f0844691fd45bf99df196fd6acb, type: 3}
+  - {fileID: 192834, guid: 0338c618dc77d84498e2418c6c29ffad, type: 3}
+  groundDetail:
+  - {fileID: 185920, guid: 9026b30b758d4fd4fbf54cd5452a51c9, type: 3}
+  - {fileID: 176584806730288110, guid: a06310b64bac3af44abb7ea158c2f4b8, type: 3}
+  - {fileID: 120508, guid: b5980e7d90b5fb54bbfed13c8d1de193, type: 3}
+  - {fileID: 173408, guid: 679f8552de7b49e49b067c82f87df7c1, type: 3}
+  - {fileID: 106024, guid: 10fb44be36c39a147a8aab66cfe8d88b, type: 3}
+  - {fileID: 198728, guid: 3c5180e1de411804fa9158eb2be5ef69, type: 3}

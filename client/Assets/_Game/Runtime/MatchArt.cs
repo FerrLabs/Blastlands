@@ -3,30 +3,16 @@ using UnityEngine;
 
 namespace Blastlands.Runtime
 {
-    // The art the view instantiates. Every field may be left empty: the view falls
-    // back to primitives so the game still runs with no art in the project.
+    // The art that means something rather than the art that decorates. Everything here
+    // is identical whatever arena theme a match rolls: a fuse, a blast, a pickup and a
+    // wall about to close have to read the same way every round, or the player is
+    // relearning the rules each time the scenery changes.
     //
-    // Blocks and floor are arrays rather than single prefabs. A grid built from one
-    // repeated mesh reads as wallpaper, and the eye stops parsing it.
+    // The terrain lives in ArenaTheme. Every field may be left empty: the view falls
+    // back to primitives so the game still runs with no art in the project.
     [CreateAssetMenu(fileName = "MatchArt", menuName = "Blastlands/Match Art")]
     public sealed class MatchArt : ScriptableObject
     {
-        [SerializeField] private GameObject[] floorTiles;
-        [SerializeField] private GameObject[] hardBlocks;
-        [SerializeField] private GameObject[] softBlocks;
-
-        // Cover you stand in. It has to read as something you would push through rather
-        // than something you would take shelter behind, or players will treat it like a
-        // wall and never use it.
-        [SerializeField] private GameObject[] bushes;
-
-        [SerializeField] private GameObject[] scenery;
-
-        // Flat patches laid across the floor without regard for tile boundaries. They
-        // must never read as obstacles: anything with height on a walkable tile makes
-        // the player misjudge where they can go.
-        [SerializeField] private GameObject[] groundDetail;
-
         // Left where a player died. Blood scattered at random is noise; blood that
         // marks a death tells you what happened while you were looking elsewhere.
         [SerializeField] private GameObject[] deathMarkers;
@@ -56,46 +42,6 @@ namespace Blastlands.Runtime
         public GameObject ExplosionBurst
         {
             get { return explosionBurst; }
-        }
-
-        public bool HasScenery
-        {
-            get { return scenery != null && scenery.Length > 0; }
-        }
-
-        public GameObject FloorTile(int variant)
-        {
-            return Pick(floorTiles, variant);
-        }
-
-        public GameObject HardBlock(int variant)
-        {
-            return Pick(hardBlocks, variant);
-        }
-
-        public GameObject SoftBlock(int variant)
-        {
-            return Pick(softBlocks, variant);
-        }
-
-        public GameObject Bush(int variant)
-        {
-            return Pick(bushes, variant);
-        }
-
-        public GameObject Scenery(int variant)
-        {
-            return Pick(scenery, variant);
-        }
-
-        public bool HasGroundDetail
-        {
-            get { return groundDetail != null && groundDetail.Length > 0; }
-        }
-
-        public GameObject GroundDetail(int variant)
-        {
-            return Pick(groundDetail, variant);
         }
 
         public GameObject DeathMarker(int variant)

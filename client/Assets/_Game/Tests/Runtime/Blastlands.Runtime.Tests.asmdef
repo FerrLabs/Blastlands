@@ -1,0 +1,25 @@
+{
+    "name": "Blastlands.Runtime.Tests",
+    "rootNamespace": "Blastlands.Runtime.Tests",
+    "references": [
+        "Blastlands.Core",
+        "Blastlands.Runtime",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

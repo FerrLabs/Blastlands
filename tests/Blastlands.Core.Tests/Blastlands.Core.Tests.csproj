@@ -12,6 +12,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Both globs are recursive, and neither may reach a file that references
+         UnityEngine. This project is what proves the simulation builds without the
+         engine, and CI compiles it on a runner that has no Unity on it at all.
+
+         Tests that do need the engine live in client/Assets/_Game/Tests/Runtime,
+         outside Tests/EditMode on purpose. Put one under EditMode and it is picked up
+         here silently, and the build fails with a missing-namespace error that says
+         nothing about the rule it broke. -->
     <Compile Include="$(MSBuildThisFileDirectory)..\..\client\Assets\_Game\Core\**\*.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)..\..\client\Assets\_Game\Tests\EditMode\**\*.cs" />
   </ItemGroup>

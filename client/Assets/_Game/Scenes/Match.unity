@@ -230,6 +230,7 @@ GameObject:
   - component: {fileID: 613233829}
   - component: {fileID: 613233828}
   - component: {fileID: 613233830}
+  - component: {fileID: 613233831}
   m_Layer: 0
   m_Name: Match
   m_TagString: Untagged
@@ -252,6 +253,12 @@ MonoBehaviour:
   view: {fileID: 613233826}
   matchCamera: {fileID: 1120936999}
   hud: {fileID: 613233830}
+  fog: {fileID: 613233831}
+  themes:
+  - {fileID: 11400000, guid: 4787bde93129f154e9ce0c149fd3014e, type: 2}
+  - {fileID: 11400000, guid: 3692e84adac833e44a46d08a340ac0a4, type: 2}
+  - {fileID: 11400000, guid: 98475a0bee7410e4b9d671a16e475bb7, type: 2}
+  - {fileID: 11400000, guid: 7cb0814d5b4fe614ea4fa07ce907a7f4, type: 2}
   arenaWidth: 25
   arenaHeight: 21
   softBlockPercent: 70
@@ -271,6 +278,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Blastlands.Runtime::Blastlands.Runtime.MatchView
   art: {fileID: 11400000, guid: 09e34950f7f41e2408f09c7b75c21e2a, type: 2}
+  theme: {fileID: 11400000, guid: 4787bde93129f154e9ce0c149fd3014e, type: 2}
   blockFootprint: 0.92
   playerHeight: 1.15
   bombFootprint: 0.72
@@ -290,6 +298,9 @@ MonoBehaviour:
   groundDetailMaxSize: 2.4
   groundDetailLift: 0.02
   hardBlockSizeJitter: 0.16
+  wallHeight: 1.1
+  bushHeight: 1
+  wallThickness: 0.5
 --- !u!4 &613233827
 Transform:
   m_ObjectHideFlags: 0
@@ -436,6 +447,21 @@ MonoBehaviour:
   margin: 26
   plateTint: {r: 0.24, g: 0.23, b: 0.21, a: 0.95}
   diodeSize: 26
+--- !u!114 &613233831
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 613233824}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ddb361364d612cc4092265653de7ca75, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Blastlands.Runtime::Blastlands.Runtime.MatchFog
+  view: {fileID: 613233826}
+  cameras: {fileID: 1120936999}
+  linger: 0.3
 --- !u!1 &1120936998
 GameObject:
   m_ObjectHideFlags: 0

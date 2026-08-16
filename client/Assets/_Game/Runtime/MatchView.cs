@@ -9,6 +9,10 @@ namespace Blastlands.Runtime
     public sealed class MatchView : MonoBehaviour
     {
         [SerializeField] private MatchArt art;
+
+        // Swapped per match by the driver. The theme decides what the arena is made of;
+        // MatchArt decides what the rules look like.
+        [SerializeField] private ArenaTheme theme;
         [SerializeField] private float blockFootprint = 0.92f;
         [SerializeField] private float playerHeight = 1.15f;
         [SerializeField] private float bombFootprint = 0.72f;
@@ -49,6 +53,12 @@ namespace Blastlands.Runtime
         // blocks the view of a whole corridor reads as a bug.
         [SerializeField] private float wallHeight = 1.1f;
         [SerializeField] private float bushHeight = 1f;
+
+        // How thin a wall is allowed to get across its short side. The packs' fence and
+        // panel meshes are a tenth of their length, and a run of them going away from
+        // the camera collapses into a row of pencil lines: correct geometry, unreadable
+        // board. The tile blocks completely, so the art may as well look like it does.
+        [SerializeField] private float wallThickness = 0.78f;
 
         private readonly Dictionary<GridPos, BlockView> blocks = new Dictionary<GridPos, BlockView>();
         private readonly List<GameObject> bombPool = new List<GameObject>();
@@ -93,6 +103,13 @@ namespace Blastlands.Runtime
                 (position.X / (float)SubPos.UnitsPerTile) - 0.5f,
                 height,
                 -((position.Y / (float)SubPos.UnitsPerTile) - 0.5f));
+        }
+
+        // Set before Bind. Changing it later would leave an arena half built out of
+        // two themes, which is worse than either of them.
+        public void UseTheme(ArenaTheme next)
+        {
+            theme = next;
         }
 
         public void Bind(MatchState matchState)
@@ -157,12 +174,14 @@ namespace Blastlands.Runtime
         // noise and camouflages the blocks standing on it.
         private void BuildGround()
         {
-            int reach = art != null && art.HasScenery ? sceneryRing : 0;
+            int reach = theme != null && theme.HasScenery ? sceneryRing : 0;
             float width = state.Arena.Width + (reach * 2f);
             float depth = state.Arena.Height + (reach * 2f);
             var centre = new Vector3((state.Arena.Width - 1) * 0.5f, 0f, -(state.Arena.Height - 1) * 0.5f);
 
-            GameObject prefab = art == null ? null : art.FloorTile(0);
+            // Varied by seed rather than pinned to the first entry: two matches in the
+            // same theme should not open on the same ground.
+            GameObject prefab = theme == null ? null : theme.FloorTile((int)(state.Seed % 1000));
             GameObject ground = Spawn(prefab, PrimitiveType.Cube, MatchPalette.Floor, "Ground");
 
             if (prefab == null)
@@ -195,12 +214,12 @@ namespace Blastlands.Runtime
         // the player misjudge where they can walk, and readability outranks decoration.
         private void BuildGroundDetail()
         {
-            if (art == null || !art.HasGroundDetail || groundDetailPercent <= 0)
+            if (theme == null || !theme.HasGroundDetail || groundDetailPercent <= 0)
             {
                 return;
             }
 
-            int reach = art.HasScenery ? sceneryRing : 0;
+            int reach = theme.HasScenery ? sceneryRing : 0;
             const int SubSteps = 2;
 
             for (int y = -reach * SubSteps; y < (state.Arena.Height + reach) * SubSteps; y++)
@@ -213,7 +232,7 @@ namespace Blastlands.Runtime
                         continue;
                     }
 
-                    GameObject patch = Spawn(art.GroundDetail(hash / 100), PrimitiveType.Quad, MatchPalette.Floor, "GroundDetail");
+                    GameObject patch = Spawn(theme.GroundDetail(hash / 100), PrimitiveType.Quad, MatchPalette.Floor, "GroundDetail");
 
                     float offsetX = ((hash / 13) % 100) / 100f;
                     float offsetZ = ((hash / 29) % 100) / 100f;
@@ -235,7 +254,7 @@ namespace Blastlands.Runtime
         // the fixed camera is that the playfield reads at a glance.
         private void BuildScenery()
         {
-            if (art == null || !art.HasScenery || sceneryRing <= 0)
+            if (theme == null || !theme.HasScenery || sceneryRing <= 0)
             {
                 return;
             }
@@ -257,7 +276,7 @@ namespace Blastlands.Runtime
                         continue;
                     }
 
-                    GameObject prop = Spawn(art.Scenery(hash / 100), PrimitiveType.Cube, MatchPalette.HardBlock, "Scenery");
+                    GameObject prop = Spawn(theme.Scenery(hash / 100), PrimitiveType.Cube, MatchPalette.HardBlock, "Scenery");
                     prop.transform.rotation = Quaternion.Euler(0f, hash % 360, 0f);
 
                     // Wide range on purpose: a building ruin capped at one tile reads as
@@ -275,9 +294,9 @@ namespace Blastlands.Runtime
             int variant = Variant(tile, hard ? 4 : 5);
 
             GameObject prefab = null;
-            if (art != null)
+            if (theme != null)
             {
-                prefab = hard ? art.HardBlock(variant) : bush ? art.Bush(variant) : art.SoftBlock(variant);
+                prefab = hard ? theme.HardBlock(variant) : bush ? theme.Bush(variant) : theme.SoftBlock(variant);
             }
 
             Color fallback = hard ? MatchPalette.HardBlock : bush ? MatchPalette.Bush : MatchPalette.SoftBlock;
@@ -293,9 +312,13 @@ namespace Blastlands.Runtime
                 return block;
             }
 
-            // Rocks are organic, so any angle suits them; walls and hedges only look
-            // right on a quarter turn.
-            block.transform.rotation = Quaternion.Euler(0f, hard ? variant % 360 : QuarterTurn(variant), 0f);
+            // Rocks are organic, so any angle suits them. Bushes are shapeless enough
+            // that a quarter turn is only there to stop them repeating. A wall is a
+            // panel, and which way it faces is the difference between a wall and a stick.
+            block.transform.rotation = Quaternion.Euler(
+                0f,
+                hard ? variant % 360 : bush ? QuarterTurn(variant) : WallAngle(block, tile, variant),
+                0f);
 
             if (hard)
             {
@@ -304,6 +327,11 @@ namespace Blastlands.Runtime
             else
             {
                 TileFitter.FitToTile(block, blockFootprint, height);
+
+                if (!bush)
+                {
+                    Thicken(block, wallThickness);
+                }
             }
 
             TileFitter.PlaceOnTile(block, ToWorld(tile, 0f));
@@ -314,6 +342,74 @@ namespace Blastlands.Runtime
         private static float QuarterTurn(int variant)
         {
             return (variant % 4) * 90f;
+        }
+
+        // Lines a wall panel up with the run of walls it belongs to. Turned at random,
+        // the panels that happen to face the camera edge-on read as thin posts rather
+        // than as anything you could hide behind, and a row of them reads as a picket
+        // fence with gaps that are not there: the tiles block completely.
+        //
+        // Which way the mesh is long is measured rather than assumed, because the packs
+        // disagree. The concrete piece runs along its X, the brick one along its Z, and
+        // hard-coding either would be right for exactly one theme.
+        private float WallAngle(GameObject block, GridPos tile, int variant)
+        {
+            bool alongX = IsWall(tile.Offset(1, 0)) || IsWall(tile.Offset(-1, 0));
+            bool alongZ = IsWall(tile.Offset(0, 1)) || IsWall(tile.Offset(0, -1));
+
+            // A lone tile, or a junction, has no run to follow. Falling back to the hash
+            // keeps those from all facing the same way.
+            if (alongX == alongZ)
+            {
+                return QuarterTurn(variant);
+            }
+
+            if (!TileFitter.TryMeasure(block, out Bounds bounds))
+            {
+                return QuarterTurn(variant);
+            }
+
+            bool meshRunsAlongX = bounds.size.x >= bounds.size.z;
+            return meshRunsAlongX == alongX ? 0f : 90f;
+        }
+
+        private bool IsWall(GridPos tile)
+        {
+            return state.Arena.Contains(tile) && state.Arena[tile] == TileKind.SoftBlock;
+        }
+
+        // Pads the short horizontal side out to a minimum. Which local axis that is
+        // depends on the quarter turn the panel was just given, so it is derived from
+        // the yaw rather than assumed: getting it backwards stretches the wall along its
+        // length and leaves it exactly as thin as before.
+        private static void Thicken(GameObject block, float minimum)
+        {
+            if (!TileFitter.TryMeasure(block, out Bounds bounds))
+            {
+                return;
+            }
+
+            float thin = Mathf.Min(bounds.size.x, bounds.size.z);
+            if (thin <= 0.0001f || thin >= minimum)
+            {
+                return;
+            }
+
+            float yaw = block.transform.eulerAngles.y;
+            bool quarterTurned = Mathf.Abs(Mathf.DeltaAngle(yaw, 90f)) < 45f
+                || Mathf.Abs(Mathf.DeltaAngle(yaw, 270f)) < 45f;
+
+            Vector3 scale = block.transform.localScale;
+            if ((bounds.size.x <= bounds.size.z) != quarterTurned)
+            {
+                scale.x *= minimum / thin;
+            }
+            else
+            {
+                scale.z *= minimum / thin;
+            }
+
+            block.transform.localScale = scale;
         }
 
         // Two-way, and keyed on the kind rather than on "is it still an obstacle". The
@@ -714,6 +810,16 @@ namespace Blastlands.Runtime
                 view.transform.position = ToWorld(player.Position, 0f);
                 view.transform.rotation = Quaternion.Euler(0f, FacingAngle(player.Facing), 0f);
             }
+        }
+
+        public int PlayerViewCount
+        {
+            get { return playerViews.Count; }
+        }
+
+        public GameObject PlayerViewAt(int index)
+        {
+            return index >= 0 && index < playerViews.Count ? playerViews[index] : null;
         }
 
         private static float FacingAngle(Direction facing)
