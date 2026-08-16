@@ -32,7 +32,7 @@ jobs:
     # Pinned behind main: ea1f412 carries FerrLabs/.github#217, which grants the nested
     # sonarqube job pull-requests: write while the reusable workflow still caps itself at
     # contents: read. Every caller startup-fails. Unpin once .github is fixed.
-    uses: FerrLabs/.github/.github/workflows/reusable-ci-rust.yml@d3ce80b43af8b567b503ab4c3ee44d6e33c246f5 # main
+    uses: FerrLabs/.github/.github/workflows/reusable-ci-rust.yml@67e9379b88113fa45ca5aaa073c7afa46d3f29ca # main
     with:
       working-directory: server
       rust-toolchain: '1.88'
