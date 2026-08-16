@@ -1,4 +1,13 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["github>FerrLabs/.github"]
+  "extends": ["github>FerrLabs/.github"],
+  "packageRules": [
+    {
+      "description": "Held at d3ce80b. Past that the reusable workflow's nested sonarqube job asks for pull-requests: write while the workflow caps itself at contents: read, and every caller startup-fails before a step runs. See the comment in .github/workflows/ci.yml. Remove this rule and the pin together once FerrLabs/.github is fixed.",
+      "matchManagers": ["github-actions"],
+      "matchDepNames": ["FerrLabs/.github"],
+      "matchFileNames": [".github/workflows/ci.yml"],
+      "enabled": false
+    }
+  ]
 }

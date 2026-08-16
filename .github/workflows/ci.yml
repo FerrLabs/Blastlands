@@ -31,8 +31,15 @@ jobs:
     name: Lobby
     # Pinned behind main: ea1f412 carries FerrLabs/.github#217, which grants the nested
     # sonarqube job pull-requests: write while the reusable workflow still caps itself at
-    # contents: read. Every caller startup-fails. Unpin once .github is fixed.
-    uses: FerrLabs/.github/.github/workflows/reusable-ci-rust.yml@67e9379b88113fa45ca5aaa073c7afa46d3f29ca # main
+    # contents: read. A called workflow cannot ask for more than its caller allows, so
+    # every caller startup-fails before a step runs. Unpin once .github is fixed.
+    #
+    # Renovate walked the pin forward to 67e9379 in #38 and put main straight back in
+    # the hole, because a digest bump reads as routine and the reason not to take it
+    # lives in this comment rather than anywhere a bot can see. The rule in
+    # renovate.json is what stops it happening again: drop that rule and this pin
+    # together, never one without the other.
+    uses: FerrLabs/.github/.github/workflows/reusable-ci-rust.yml@d3ce80b43af8b567b503ab4c3ee44d6e33c246f5 # main
     with:
       working-directory: server
       rust-toolchain: '1.88'
