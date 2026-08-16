@@ -152,18 +152,83 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
-        public void ABotBombsAnOpponentInTheOpenAndNotOneInABush()
+        public void ABotBombsAnOpponentItCanTrapAndNotOneItCannotSee()
         {
             // The end-to-end half: the belief has to reach a decision, or the model is
-            // just bookkeeping. Two tiles apart is inside the starting fire range and
-            // outside the bot's own neighbourhood, so the bush cannot pull the decision
-            // through the "there is a destructible block next to me" route instead.
-            MatchState open = Match(new GridPos(6, 7), new GridPos(8, 7));
-            MatchState hidden = Match(new GridPos(6, 7), new GridPos(8, 7));
-            hidden.Arena[new GridPos(8, 7)] = TileKind.Bush;
+            // just bookkeeping.
+            //
+            // Trapped rather than merely in range, because that is the only reason the
+            // bot spends a bomb on a person now. Bombing someone who is simply nearby was
+            // measured not to kill anyone: a fuse is two and a half seconds and every bot
+            // reads a blast map, so they walk out and the bomb is gone.
+            MatchState seen = DeadEnd();
+            MatchState hidden = DeadEnd();
+            hidden.Arena[new GridPos(1, 7)] = TileKind.Bush;
 
-            Assert.That(new BotBrain(0, BotSettings.Hard).Think(open).DropBomb, Is.True);
+            Assert.That(new BotBrain(0, BotSettings.Hard).Think(seen).DropBomb, Is.True);
             Assert.That(new BotBrain(0, BotSettings.Hard).Think(hidden).DropBomb, Is.False);
+        }
+
+        // A two-tile pocket with one way out, the bot standing in the mouth of it. The
+        // bomb it drops is what seals the pocket: a bomb is solid once it is down, so
+        // the only tiles left to the opponent are the two inside, and both burn.
+        //
+        // This is the only geometry that traps anyone. With a fuse of seventy-five ticks
+        // and a radius of two, a target in an open corridor covers seven tiles before it
+        // goes off and walks out of the blast at a stroll.
+        private static MatchState DeadEnd()
+        {
+            var arena = new Arena(15, 15);
+            foreach (GridPos wall in new[]
+            {
+                new GridPos(0, 7), new GridPos(1, 6), new GridPos(1, 8),
+                new GridPos(2, 6), new GridPos(2, 8), new GridPos(3, 6), new GridPos(3, 8)
+            })
+            {
+                arena[wall] = TileKind.HardBlock;
+            }
+
+            var state = new MatchState(arena, Settings, 5u);
+            state.AddPlayer(new GridPos(3, 7));
+            state.AddPlayer(new GridPos(1, 7));
+            return state;
+        }
+
+        [Test]
+        public void ABotShovesSomebodyIntoABlastItCanSeeComing()
+        {
+            // The shove was the one kill in the game the bots never used, and it is the
+            // only thing available to them that lands on the tick it happens rather than
+            // two and a half seconds later.
+            var arena = new Arena(15, 15);
+            var state = new MatchState(arena, Settings, 8u);
+            state.AddPlayer(new GridPos(5, 7));
+            state.AddPlayer(new GridPos(6, 7));
+            state.Players[0].Facing = Direction.Right;
+
+            // Somebody else's bomb, about to go off, covering the ground the target
+            // would be carried across but not the tile the shover is standing on. The
+            // fuse has to be short: a shove is over in a third of a second, so a bomb
+            // that goes off later than that is one the target walks away from.
+            state.AddBomb(new ActiveBomb(new Bomb(new GridPos(9, 7), 99, 3), 3));
+
+            PlayerInput decision = new BotBrain(0, BotSettings.Hard).Think(state);
+
+            Assert.That(decision.Push, Is.True);
+        }
+
+        [Test]
+        public void ABotDoesNotShoveSomebodyOntoSafeGround()
+        {
+            // Without this the shove is a tic rather than a plan: pushing whoever walks
+            // past achieves nothing, costs the cooldown, and gives the bot away.
+            var arena = new Arena(15, 15);
+            var state = new MatchState(arena, Settings, 8u);
+            state.AddPlayer(new GridPos(5, 7));
+            state.AddPlayer(new GridPos(6, 7));
+            state.Players[0].Facing = Direction.Right;
+
+            Assert.That(new BotBrain(0, BotSettings.Hard).Think(state).Push, Is.False);
         }
 
         [Test]

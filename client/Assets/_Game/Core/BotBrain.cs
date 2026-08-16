@@ -134,9 +134,17 @@ namespace Blastlands.Core
                 return Steer(player, away, dash);
             }
 
+            // Shoving comes before bombing because it is the only thing here that kills
+            // on the tick it happens. A bomb is a threat somebody has two and a half
+            // seconds to walk away from, and a bot that has learnt to dodge one will.
+            if (ShoveKills(state, player, blast, out Direction shoveInto))
+            {
+                return PlayerInput.Pushing(shoveInto);
+            }
+
             if (player.CanDropBomb
                 && !state.HasBombAt(tile)
-                && (TouchesSoftBlock(state, tile) || EnemyInBlastLine(state, player, tile)))
+                && (WouldTrapSomebody(state, player, tile, ticksPerTile) || TouchesSoftBlock(state, tile)))
             {
                 Direction escape = EscapeAfterBombing(state, player, tile, ticksPerTile);
                 if (escape != Direction.None)
@@ -235,11 +243,36 @@ namespace Blastlands.Core
                 }
             }
 
+            // Hunting outranks opening another wall, and it aims at a tile that threatens
+            // the target rather than at the tile the target is standing on.
+            //
+            // Walking onto somebody achieves nothing: the bot arrives, has no reason to
+            // bomb that it did not have a tile earlier, and the two of them stand there.
+            // Aiming at firing positions is also what makes the difference measurable at
+            // all — a target was previously one acceptable destination among every
+            // destructible tile on the board, and there are hundreds of those, all of
+            // them closer.
+            GridPos target;
+            if (player.CanDropBomb && NearestBelief(from, out target))
+            {
+                Direction toFiringPosition = FirstStepToward(
+                    state,
+                    from,
+                    (tile, depth) => blast.SurvivesArrival(tile, depth * ticksPerTile, settings.SafetyMarginTicks)
+                                     && Reaches(state.Arena, tile, target, player.FireRange),
+                    (tile, depth) => blast.SurvivesArrival(tile, depth * ticksPerTile, settings.SafetyMarginTicks));
+
+                if (toFiringPosition != Direction.None)
+                {
+                    return toFiringPosition;
+                }
+            }
+
             return FirstStepToward(
                 state,
                 from,
                 (tile, depth) => blast.SurvivesArrival(tile, depth * ticksPerTile, settings.SafetyMarginTicks)
-                                 && (TouchesSoftBlock(state, tile) || BelievesEnemyAt(tile)),
+                                 && TouchesSoftBlock(state, tile),
                 (tile, depth) => blast.SurvivesArrival(tile, depth * ticksPerTile, settings.SafetyMarginTicks));
         }
 
@@ -382,33 +415,217 @@ namespace Blastlands.Core
             return false;
         }
 
-        private bool EnemyInBlastLine(MatchState state, PlayerState player, GridPos from)
+        // Whether a bomb dropped here would leave somebody with nowhere to go.
+        //
+        // Bombing a target merely because they are in range does not kill anyone and was
+        // measured not to: a fuse is two and a half seconds and every bot in the game
+        // reads a blast map, so they simply walk out. Worse, it spends the bomb, and
+        // bombs have to be found on the ground. What kills is the tile that closes the
+        // last way out, so that is the only reason to spend one on a person.
+        //
+        // The bomb's own tile counts as closed. A bomb is solid once it is down, so
+        // dropping one in the mouth of a pocket seals whoever is inside it, and that is
+        // the only geometry that traps anybody: with a fuse of seventy-five ticks and a
+        // radius of two, a target in an open corridor covers seven tiles before it goes
+        // off and simply walks out of the blast.
+        private bool WouldTrapSomebody(MatchState state, PlayerState player, GridPos tile, int ticksPerTile)
         {
-            for (int d = 0; d < Order.Length; d++)
+            if (sightings.Count == 0)
             {
-                GridPos delta = Directions.Delta(Order[d]);
+                return false;
+            }
 
-                for (int step = 1; step <= player.FireRange; step++)
+            BlastMap after = BlastMap.From(state, WithBombAt(state, player, tile));
+
+            for (int i = 0; i < sightings.Count; i++)
+            {
+                GridPos target = sightings[i].Tile;
+
+                if (after.TicksUntilFire(target) == BlastMap.Never)
                 {
-                    GridPos tile = from.Offset(delta.X * step, delta.Y * step);
-                    if (!state.Arena.Contains(tile) || state.Arena[tile] == TileKind.HardBlock)
+                    continue;
+                }
+
+                // Paced by how fast the target moves, not by how fast the bot does. They
+                // are the one doing the running, and a speed pickup either side of the
+                // difference turns a trap into an escape or the other way about.
+                int targetTicksPerTile = TicksPerTileFor(state, sightings[i].PlayerId, ticksPerTile);
+
+                bool escapes = FirstStepToward(
+                    state,
+                    target,
+                    (candidate, depth) => after.TicksUntilFire(candidate) == BlastMap.Never,
+                    (candidate, depth) => candidate != tile
+                                          && after.SurvivesArrival(candidate, depth * targetTicksPerTile, 0))
+                    != Direction.None;
+
+                if (!escapes)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static int TicksPerTileFor(MatchState state, int playerId, int fallback)
+        {
+            for (int i = 0; i < state.Players.Count; i++)
+            {
+                if (state.Players[i].Id == playerId)
+                {
+                    return TicksPerTile(state, state.Players[i]);
+                }
+            }
+
+            return fallback;
+        }
+
+        private static List<ActiveBomb> WithBombAt(MatchState state, PlayerState player, GridPos tile)
+        {
+            var bombs = new List<ActiveBomb>(state.Bombs.Count + 1);
+            for (int i = 0; i < state.Bombs.Count; i++)
+            {
+                bombs.Add(state.Bombs[i]);
+            }
+
+            bombs.Add(new ActiveBomb(
+                new Bomb(tile, player.Id, player.FireRange, player.NextBombKind), state.Settings.FuseTicks));
+
+            return bombs;
+        }
+
+        // Whether shoving somebody right now puts them somewhere that burns.
+        //
+        // A shove carries the target several tiles in the direction the shover faces, so
+        // the question is not where they are but where they end up. Checked against the
+        // blast map that already exists rather than a hypothetical one: the danger has to
+        // be on the board before the shove, which is what makes bomb-then-shove a plan
+        // rather than a coincidence.
+        private bool ShoveKills(MatchState state, PlayerState player, BlastMap blast, out Direction into)
+        {
+            into = Direction.None;
+
+            if (!player.CanPush)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < state.Players.Count; i++)
+            {
+                PlayerState other = state.Players[i];
+                if (other.Id == player.Id || !Vision.CanSee(state, player, other))
+                {
+                    continue;
+                }
+
+                for (int d = 0; d < Order.Length; d++)
+                {
+                    if (!WithinReach(state, player, other, Order[d]))
                     {
-                        break;
+                        continue;
                     }
 
-                    if (BelievesEnemyAt(tile))
+                    if (BurnsOnArrival(state, blast, other, Order[d]))
                     {
+                        into = Order[d];
                         return true;
-                    }
-
-                    if (Tiles.CanBeDestroyed(state.Arena[tile]))
-                    {
-                        break;
                     }
                 }
             }
 
             return false;
+        }
+
+        private static bool WithinReach(MatchState state, PlayerState player, PlayerState other, Direction facing)
+        {
+            GridPos delta = Directions.Delta(facing);
+            int offX = other.Position.X - player.Position.X;
+            int offY = other.Position.Y - player.Position.Y;
+
+            if ((offX * delta.X) + (offY * delta.Y) <= 0)
+            {
+                return false;
+            }
+
+            long reach = state.Settings.Push.Reach;
+            return ((long)offX * offX) + ((long)offY * offY) <= reach * reach;
+        }
+
+        // Walks the tiles the shove would drag them across. Any one of them burning by
+        // the time they are carried into it is a kill.
+        //
+        // Stops where PlayerBody.Blocks stops, bombs included. A bomb is solid once it is
+        // down — the assumption the whole trap rule rests on — so one lying in the path
+        // halts the target short of the fire beyond it, and reading past it predicts a
+        // kill the simulation will not deliver.
+        private static bool BurnsOnArrival(MatchState state, BlastMap blast, PlayerState other, Direction facing)
+        {
+            GridPos delta = Directions.Delta(facing);
+            int distance = (state.Settings.Push.Speed * state.Settings.Push.Ticks) / SubPos.UnitsPerTile;
+
+            for (int step = 1; step <= distance; step++)
+            {
+                GridPos tile = other.Tile.Offset(delta.X * step, delta.Y * step);
+                if (!state.Arena.Contains(tile)
+                    || Tiles.BlocksMovement(state.Arena[tile])
+                    || state.HasBombAt(tile))
+                {
+                    return false;
+                }
+
+                int fire = blast.TicksUntilFire(tile);
+                if (fire != BlastMap.Never && fire <= step * SubPos.UnitsPerTile / state.Settings.Push.Speed)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // Whether a bomb at `from` would cover `target`.
+        //
+        // What this replaces, EnemyInBlastLine, walked the four cardinals. That was right
+        // while a blast was a cross and has been wrong since it became a disc: a target
+        // standing diagonally beside the bot did not count, according to a bot whose bomb
+        // would have covered them. Radius and line of sight, the way ExplosionResolver
+        // reads it, so the two cannot drift apart again.
+        private static bool Reaches(Arena arena, GridPos from, GridPos target, int range)
+        {
+            int dx = target.X - from.X;
+            int dy = target.Y - from.Y;
+
+            if ((dx * dx) + (dy * dy) > range * range)
+            {
+                return false;
+            }
+
+            return LineOfSight.Between(arena, from, target, true);
+        }
+
+        // The opponent the bot is currently hunting: whichever it believes is nearest.
+        // Straight-line rather than walking distance, because this only has to pick one
+        // of them and the route is worked out by the search that follows.
+        private bool NearestBelief(GridPos from, out GridPos target)
+        {
+            target = default;
+            long best = long.MaxValue;
+
+            for (int i = 0; i < sightings.Count; i++)
+            {
+                long dx = sightings[i].Tile.X - from.X;
+                long dy = sightings[i].Tile.Y - from.Y;
+                long distance = (dx * dx) + (dy * dy);
+
+                if (distance < best)
+                {
+                    best = distance;
+                    target = sightings[i].Tile;
+                }
+            }
+
+            return best < long.MaxValue;
         }
 
         private static bool Walkable(MatchState state, GridPos tile)

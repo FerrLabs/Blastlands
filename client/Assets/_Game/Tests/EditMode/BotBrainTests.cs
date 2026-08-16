@@ -168,6 +168,56 @@ namespace Blastlands.Core.Tests
             }
         }
 
+        [Test]
+        public void BotsLeftTogetherActuallyFightEachOther()
+        {
+            // The guard on the whole point of #97. Bots that never kill each other are
+            // not only dull to watch: every balance number in this project is measured
+            // against them, so an instrument that cannot fight cannot show whether a
+            // change to fighting was good.
+            //
+            // Twelve four-bot matches over 3000 ticks kill 14 between them, measured,
+            // so the bar sits at 11. Over twenty of the same matches it is 24 against 13
+            // before shoving and sealing traps existed, and the shove is where most of
+            // that came from: it is the only thing in the game that lands on the tick it
+            // happens rather than two and a half seconds later.
+            //
+            // Counted as deaths rather than as matches won, because a decided match is a
+            // far rarer event — 1 in 20 at this length — and a bar set on it would sit at
+            // zero and catch nothing.
+            int deaths = 0;
+
+            for (uint seed = 1; seed <= 12; seed++)
+            {
+                MatchState state = MatchFactory.Create(ArenaSettings.Default, Settings, 4, seed);
+                var brains = new BotBrain[4];
+                for (int i = 0; i < brains.Length; i++)
+                {
+                    brains[i] = new BotBrain(i, BotSettings.Hard);
+                }
+
+                var inputs = new PlayerInput[4];
+                for (int tick = 0; tick < 3000; tick++)
+                {
+                    for (int i = 0; i < brains.Length; i++)
+                    {
+                        inputs[i] = brains[i].Think(state);
+                    }
+
+                    MatchSim.Tick(state, inputs);
+
+                    if (state.Outcome != RoundOutcome.Running)
+                    {
+                        break;
+                    }
+                }
+
+                deaths += 4 - state.AliveCount;
+            }
+
+            Assert.That(deaths, Is.GreaterThanOrEqualTo(11), "the bots have gone back to ignoring each other");
+        }
+
         private static bool SurvivesAlone(uint seed, BotSettings level, int ticks)
         {
             MatchState state = MatchFactory.Create(ArenaSettings.Default, Settings, 1, seed);
