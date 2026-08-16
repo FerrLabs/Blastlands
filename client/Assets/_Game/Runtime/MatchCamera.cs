@@ -45,6 +45,12 @@ namespace Blastlands.Runtime
         private Camera own;
         private float lastAspect;
 
+        // The island's extent, worked out once when the match is bound. Framing the
+        // bounds instead would spend a fifth of the screen on empty sky, because the
+        // rectangle is now the box the island was cut from rather than the board.
+        private Vector2 groundMin;
+        private Vector2 groundMax;
+
         private int localSeats = 1;
 
         public CameraMode Mode
@@ -93,6 +99,7 @@ namespace Blastlands.Runtime
             state = matchState;
             localSeats = seats < 1 ? 1 : seats;
             lastAspect = 0f;
+            MeasureGround();
             Rebuild();
         }
 
@@ -274,8 +281,8 @@ namespace Blastlands.Runtime
             float halfDepth = size / Mathf.Sin(tiltDegrees * Mathf.Deg2Rad);
             float halfWidth = size * Aspect(view);
 
-            float slackX = Mathf.Max(0f, ((state.Arena.Width - 1) * 0.5f) + margin - halfWidth);
-            float slackZ = Mathf.Max(0f, ((state.Arena.Height - 1) * 0.5f) + margin - halfDepth);
+            float slackX = Mathf.Max(0f, ((groundMax.x - groundMin.x) * 0.5f) + margin - halfWidth);
+            float slackZ = Mathf.Max(0f, ((groundMax.y - groundMin.y) * 0.5f) + margin - halfDepth);
 
             Vector3 centre = ArenaCentre();
             return new Vector3(
@@ -287,8 +294,8 @@ namespace Blastlands.Runtime
         private float WholeArenaSize(Camera view)
         {
             float tilt = tiltDegrees * Mathf.Deg2Rad;
-            float halfWidth = (state.Arena.Width * 0.5f) + margin;
-            float halfDepth = ((state.Arena.Height * 0.5f) + margin) * Mathf.Sin(tilt);
+            float halfWidth = ((groundMax.x - groundMin.x) * 0.5f) + margin;
+            float halfDepth = (((groundMax.y - groundMin.y) * 0.5f) + margin) * Mathf.Sin(tilt);
             return Mathf.Max(halfDepth, halfWidth / Aspect(view));
         }
 
@@ -300,7 +307,34 @@ namespace Blastlands.Runtime
 
         private Vector3 ArenaCentre()
         {
-            return new Vector3((state.Arena.Width - 1) * 0.5f, 0f, -(state.Arena.Height - 1) * 0.5f);
+            return new Vector3((groundMin.x + groundMax.x) * 0.5f, 0f, (groundMin.y + groundMax.y) * 0.5f);
+        }
+
+        private void MeasureGround()
+        {
+            groundMin = new Vector2(float.MaxValue, float.MaxValue);
+            groundMax = new Vector2(float.MinValue, float.MinValue);
+
+            for (int y = 0; y < state.Arena.Height; y++)
+            {
+                for (int x = 0; x < state.Arena.Width; x++)
+                {
+                    if (state.Arena[new GridPos(x, y)] == TileKind.Void)
+                    {
+                        continue;
+                    }
+
+                    Vector3 at = MatchView.ToWorld(new GridPos(x, y), 0f);
+                    groundMin = Vector2.Min(groundMin, new Vector2(at.x, at.z));
+                    groundMax = Vector2.Max(groundMax, new Vector2(at.x, at.z));
+                }
+            }
+
+            if (groundMin.x > groundMax.x)
+            {
+                groundMin = Vector2.zero;
+                groundMax = new Vector2(state.Arena.Width - 1, -(state.Arena.Height - 1));
+            }
         }
 
         private Camera Own()

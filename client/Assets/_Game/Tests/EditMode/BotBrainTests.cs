@@ -100,9 +100,15 @@ namespace Blastlands.Core.Tests
         [Test]
         public void MostBotsLeftAloneSurviveThemselves()
         {
-            // A Hard bot survives 22 of these 40 unsupervised matches on the 25x21 arena,
-            // against 37 on the old 15x13 one. The bar came down to match a measured
-            // regression, not because anything improved.
+            // A Hard bot survives 25 of these 40 unsupervised matches on the island,
+            // against 22 on the filled 25x21 rectangle and 37 on the old 15x13 one.
+            //
+            // The island did not make the bots better. It made the arena smaller, and
+            // BombSpawner counts ground rather than bounds, so a smaller island is a
+            // thinner bomb supply and a thinner supply is fewer chain reactions to walk
+            // into. Getting that arithmetic wrong first was worth 13 of these 40: while
+            // the target was still computed from the bounds, an island half under water
+            // was stocked like a full rectangle and survival fell to 12.
             //
             // It is not that the bots got worse at staying alive — they got busier. On
             // the larger arena they destroy 53 blocks a match against 23 before, and the
@@ -124,7 +130,7 @@ namespace Blastlands.Core.Tests
                 }
             }
 
-            Assert.That(survived, Is.GreaterThanOrEqualTo(18), "bot self-preservation has regressed");
+            Assert.That(survived, Is.GreaterThanOrEqualTo(20), "bot self-preservation has regressed");
         }
 
         [Test]

@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Theme_Wasteland
   m_EditorClassIdentifier: Blastlands.Runtime::Blastlands.Runtime.ArenaTheme
   label: Wasteland
+  groundTint: {r: 0.42, g: 0.27, b: 0.15, a: 1}
   floorTiles:
   - {fileID: 176528, guid: 759349d528a9fc24caa71eabff058be7, type: 3}
   - {fileID: 106024, guid: 10fb44be36c39a147a8aab66cfe8d88b, type: 3}

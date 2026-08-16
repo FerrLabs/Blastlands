@@ -17,6 +17,12 @@ namespace Blastlands.Runtime
     public sealed class ArenaTheme : ScriptableObject
     {
         [SerializeField] private string label = "Untitled";
+
+        // The colour of the island itself. Stated rather than sampled from the ground
+        // prefab: the Synty materials take their colour from a texture atlas and leave
+        // _BaseColor at white, so reading the material back gives a white island every
+        // time and nothing about it looks wrong until you see it rendered.
+        [SerializeField] private Color groundTint = new Color(0.35f, 0.30f, 0.24f);
         [SerializeField] private GameObject[] floorTiles;
         [SerializeField] private GameObject[] hardBlocks;
         [SerializeField] private GameObject[] softBlocks;
@@ -31,6 +37,11 @@ namespace Blastlands.Runtime
         public string Label
         {
             get { return label; }
+        }
+
+        public Color GroundTint
+        {
+            get { return groundTint; }
         }
 
         public bool HasScenery

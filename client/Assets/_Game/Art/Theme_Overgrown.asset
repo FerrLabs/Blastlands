@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Theme_Overgrown
   m_EditorClassIdentifier: Blastlands.Runtime::Blastlands.Runtime.ArenaTheme
   label: Overgrown
+  groundTint: {r: 0.34, g: 0.45, b: 0.24, a: 1}
   floorTiles:
   - {fileID: 153384, guid: 44c107492f53a7f499432ecb3b57d559, type: 3}
   - {fileID: 176528, guid: 759349d528a9fc24caa71eabff058be7, type: 3}

@@ -127,7 +127,12 @@ namespace Blastlands.Core
                 }
 
                 TileKind kind = arena[tile];
-                if (kind == TileKind.HardBlock)
+
+                // A blast carries over a drop, it just leaves nothing burning there.
+                // Void is skipped rather than treated as a wall: stopping the disc at the
+                // coast would shelter anyone standing across a two-tile gap, which is not
+                // cover anybody could see.
+                if (kind == TileKind.HardBlock || kind == TileKind.Void)
                 {
                     return;
                 }

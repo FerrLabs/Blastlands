@@ -60,6 +60,11 @@ namespace Blastlands.Runtime
         // board. The tile blocks completely, so the art may as well look like it does.
         [SerializeField] private float wallThickness = 0.78f;
 
+        // How deep the island is, and how far below it the world sits. The thickness is
+        // what turns a flat cutout into something with an edge you can see over.
+        [SerializeField] private float islandThickness = 0.9f;
+        [SerializeField] private float skyDepth = 14f;
+
         private readonly Dictionary<GridPos, BlockView> blocks = new Dictionary<GridPos, BlockView>();
         private readonly List<GameObject> bombPool = new List<GameObject>();
         private readonly List<GameObject> looseBombPool = new List<GameObject>();
@@ -168,41 +173,37 @@ namespace Blastlands.Runtime
             return TileHash.At(tile.X + (salt * 977), tile.Y - (salt * 389), state.Seed);
         }
 
-        // One slab stretched over the whole area rather than a prefab per tile. The
-        // Synty ground sections are 15x15 units: shrinking one into a single tile
-        // squeezes its entire texture into that tile, which turns the floor into
-        // noise and camouflages the blocks standing on it.
+        // One block per tile of ground, and none over the water.
+        //
+        // The rectangle got a single slab stretched across it, which kept the Synty
+        // ground sections at a sane texture scale: they are 15x15 units, and squeezing
+        // one into a single tile turns the floor into noise that camouflages the blocks
+        // standing on it. An irregular coast cannot be covered by one quad, and nothing
+        // can cut a hole in it either, so the top surface has to be built tile by tile.
+        //
+        // The tiles are plain blocks in the theme's ground colour rather than copies of
+        // its ground prefab, which is the same trick from the other side: the colour
+        // carries the theme, and the theme's actual ground sections go over the top as
+        // detail patches at a size where their texture still reads.
         private void BuildGround()
         {
-            int reach = theme != null && theme.HasScenery ? sceneryRing : 0;
-            float width = state.Arena.Width + (reach * 2f);
-            float depth = state.Arena.Height + (reach * 2f);
-            var centre = new Vector3((state.Arena.Width - 1) * 0.5f, 0f, -(state.Arena.Height - 1) * 0.5f);
+            Color tint = theme == null ? MatchPalette.Floor : theme.GroundTint;
 
-            // Varied by seed rather than pinned to the first entry: two matches in the
-            // same theme should not open on the same ground.
-            GameObject prefab = theme == null ? null : theme.FloorTile((int)(state.Seed % 1000));
-            GameObject ground = Spawn(prefab, PrimitiveType.Cube, MatchPalette.Floor, "Ground");
-
-            if (prefab == null)
+            for (int y = 0; y < state.Arena.Height; y++)
             {
-                ground.transform.localScale = new Vector3(width, 0.2f, depth);
-                ground.transform.position = centre + new Vector3(0f, -0.1f, 0f);
-                return;
+                for (int x = 0; x < state.Arena.Width; x++)
+                {
+                    var tile = new GridPos(x, y);
+                    if (state.Arena[tile] == TileKind.Void)
+                    {
+                        continue;
+                    }
+
+                    GameObject block = Spawn(null, PrimitiveType.Cube, tint, "Ground");
+                    block.transform.localScale = new Vector3(1f, islandThickness, 1f);
+                    block.transform.position = ToWorld(tile, -islandThickness * 0.5f);
+                }
             }
-
-            if (!TileFitter.TryMeasure(ground, out Bounds bounds) || bounds.size.x <= 0.001f || bounds.size.z <= 0.001f)
-            {
-                return;
-            }
-
-            Vector3 scale = ground.transform.localScale;
-            ground.transform.localScale = new Vector3(
-                scale.x * (width / bounds.size.x),
-                scale.y,
-                scale.z * (depth / bounds.size.z));
-
-            TileFitter.PlaceAsGround(ground, centre);
         }
 
         // What makes an arena read as a grid is not the texture, it is that everything
@@ -219,15 +220,22 @@ namespace Blastlands.Runtime
                 return;
             }
 
-            int reach = theme.HasScenery ? sceneryRing : 0;
             const int SubSteps = 2;
 
-            for (int y = -reach * SubSteps; y < (state.Arena.Height + reach) * SubSteps; y++)
+            for (int y = 0; y < state.Arena.Height * SubSteps; y++)
             {
-                for (int x = -reach * SubSteps; x < (state.Arena.Width + reach) * SubSteps; x++)
+                for (int x = 0; x < state.Arena.Width * SubSteps; x++)
                 {
                     int hash = TileHash.At(x + 6151, y - 2749, state.Seed);
                     if (hash % 100 >= groundDetailPercent)
+                    {
+                        continue;
+                    }
+
+                    // Patches are laid on a finer lattice than the tiles, so one can
+                    // straddle the coast. Anchoring on the tile it starts in keeps them
+                    // off the water without clipping any of them.
+                    if (state.Arena[new GridPos(x / SubSteps, y / SubSteps)] == TileKind.Void)
                     {
                         continue;
                     }
@@ -249,9 +257,13 @@ namespace Blastlands.Runtime
             }
         }
 
-        // Decoration lives strictly outside the arena walls. Anything inside would
-        // compete with the blocks for the player's attention, and the whole point of
-        // the fixed camera is that the playfield reads at a glance.
+        // Decoration lives off the island and far below it, which is where the arena's
+        // surroundings went when the arena started floating.
+        //
+        // It cannot sit beside the board any more: an island has no outside at this
+        // height, only sky. Dropping it gives the sense of a world the island is
+        // floating over, and keeps the rule it was written for: nothing decorative
+        // inside the playfield, because it would compete with the blocks for attention.
         private void BuildScenery()
         {
             if (theme == null || !theme.HasScenery || sceneryRing <= 0)
@@ -263,8 +275,12 @@ namespace Blastlands.Runtime
             {
                 for (int x = -sceneryRing; x < state.Arena.Width + sceneryRing; x++)
                 {
-                    bool insideArena = x >= 0 && x < state.Arena.Width && y >= 0 && y < state.Arena.Height;
-                    if (insideArena)
+                    // Strictly outside the bounds, not merely off the island. The water
+                    // between the coast and the bounds has to stay empty sky: filling it
+                    // puts a wall of scenery directly behind the island and the silhouette
+                    // the whole thing depends on disappears into it.
+                    bool insideBounds = x >= 0 && x < state.Arena.Width && y >= 0 && y < state.Arena.Height;
+                    if (insideBounds)
                     {
                         continue;
                     }
@@ -282,7 +298,7 @@ namespace Blastlands.Runtime
                     // Wide range on purpose: a building ruin capped at one tile reads as
                     // a pebble, and the surroundings are meant to have a sense of depth.
                     TileFitter.FitInBox(prop, sceneryMinSize + (((hash / 7) % 100) / 100f * (sceneryMaxSize - sceneryMinSize)));
-                    TileFitter.PlaceOnTile(prop, ToWorld(tile, 0f));
+                    TileFitter.PlaceOnTile(prop, ToWorld(tile, -skyDepth));
                 }
             }
         }
@@ -438,7 +454,12 @@ namespace Blastlands.Runtime
                         blocks.Remove(tile);
                     }
 
-                    if (kind != TileKind.Floor)
+                    // Asked as "is there something to draw here", not as "is this not
+                    // floor". The two were the same question until the island arrived,
+                    // and the difference put a wall on every tile of open sky: void is
+                    // not floor, and CreateBlock treats anything that is neither rock
+                    // nor bush as a wall.
+                    if (kind != TileKind.Floor && kind != TileKind.Void)
                     {
                         blocks[tile] = new BlockView(CreateBlock(tile, kind), kind);
                     }

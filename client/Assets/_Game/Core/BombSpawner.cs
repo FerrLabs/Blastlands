@@ -26,6 +26,12 @@ namespace Blastlands.Core
 
         // Derived from the size of the arena rather than fixed, so growing the board does
         // not quietly starve it. Four bombs is generous on 15x13 and thin on 25x21.
+        //
+        // Counted in ground, not in bounds. The island put roughly half the rectangle
+        // under water while the bounds stayed the same, so this arithmetic went on
+        // stocking an island with a mainland's worth of explosives. Bomb supply is what
+        // drives bots into their own chain reactions, and it showed: solo Hard survival
+        // over forty seeds fell from 22 to 12 the moment the coast appeared.
         public static int TargetFor(MatchState state)
         {
             int perBomb = state.Settings.TilesPerLooseBomb;
@@ -34,7 +40,25 @@ namespace Blastlands.Core
                 return 0;
             }
 
-            return (state.Arena.Width * state.Arena.Height) / perBomb;
+            return GroundTiles(state.Arena) / perBomb;
+        }
+
+        private static int GroundTiles(Arena arena)
+        {
+            int count = 0;
+
+            for (int y = 0; y < arena.Height; y++)
+            {
+                for (int x = 0; x < arena.Width; x++)
+                {
+                    if (arena[new GridPos(x, y)] != TileKind.Void)
+                    {
+                        count++;
+                    }
+                }
+            }
+
+            return count;
         }
 
         public static void Tick(MatchState state)

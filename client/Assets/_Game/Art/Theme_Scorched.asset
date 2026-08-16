@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Theme_Scorched
   m_EditorClassIdentifier: Blastlands.Runtime::Blastlands.Runtime.ArenaTheme
   label: Boneyard
+  groundTint: {r: 0.26, g: 0.19, b: 0.14, a: 1}
   floorTiles:
   - {fileID: 198728, guid: 3c5180e1de411804fa9158eb2be5ef69, type: 3}
   - {fileID: 176528, guid: 759349d528a9fc24caa71eabff058be7, type: 3}

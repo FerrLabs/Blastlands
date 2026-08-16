@@ -5,11 +5,17 @@ namespace Blastlands.Core
     public readonly struct ArenaSettings
     {
         public ArenaSettings(int width, int height, int softBlockPercent)
-            : this(width, height, softBlockPercent, 35)
+            : this(width, height, softBlockPercent, 35, IslandSettings.Default)
         {
         }
 
         public ArenaSettings(int width, int height, int softBlockPercent, int bushPercent)
+            : this(width, height, softBlockPercent, bushPercent, IslandSettings.Default)
+        {
+        }
+
+        public ArenaSettings(
+            int width, int height, int softBlockPercent, int bushPercent, IslandSettings island)
         {
             RequireOddAndLargeEnough(width, nameof(width));
             RequireOddAndLargeEnough(height, nameof(height));
@@ -24,6 +30,7 @@ namespace Blastlands.Core
             Height = height;
             SoftBlockPercent = softBlockPercent;
             BushPercent = bushPercent < 0 ? 0 : (bushPercent > 100 ? 100 : bushPercent);
+            Island = island;
         }
 
         public int Width { get; }
@@ -36,6 +43,10 @@ namespace Blastlands.Core
         // you stand in against cover you stand behind: too few and hiding is not an
         // option anybody plans around, too many and nothing blocks a line any more.
         public int BushPercent { get; }
+
+        // The outline carved out of the rectangle. The dimensions are still the bounds
+        // the island is cut from, not the island itself.
+        public IslandSettings Island { get; }
 
         public static ArenaSettings Default
         {

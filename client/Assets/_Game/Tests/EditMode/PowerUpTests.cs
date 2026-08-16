@@ -179,8 +179,8 @@ namespace Blastlands.Core.Tests
         [Test]
         public void PlacementIsFixedByTheSeed()
         {
-            Arena first = ArenaGenerator.Generate(ArenaSettings.Default, 77u);
-            Arena second = ArenaGenerator.Generate(ArenaSettings.Default, 77u);
+            Arena first = ArenaGenerator.Generate(ArenaSettings.Default, 77u).Arena;
+            Arena second = ArenaGenerator.Generate(ArenaSettings.Default, 77u).Arena;
 
             Dictionary<GridPos, PowerUpKind> a = PowerUpPlacer.Place(first, 35, 77u);
             Dictionary<GridPos, PowerUpKind> b = PowerUpPlacer.Place(second, 35, 77u);
@@ -195,7 +195,7 @@ namespace Blastlands.Core.Tests
         [Test]
         public void DifferentSeedsHideDifferentThings()
         {
-            Arena arena = ArenaGenerator.Generate(ArenaSettings.Default, 77u);
+            Arena arena = ArenaGenerator.Generate(ArenaSettings.Default, 77u).Arena;
 
             Dictionary<GridPos, PowerUpKind> a = PowerUpPlacer.Place(arena, 35, 77u);
             Dictionary<GridPos, PowerUpKind> b = PowerUpPlacer.Place(arena, 35, 78u);
@@ -206,7 +206,7 @@ namespace Blastlands.Core.Tests
         [Test]
         public void PickupsOnlyEverHideUnderSomethingBreakable()
         {
-            Arena arena = ArenaGenerator.Generate(ArenaSettings.Default, 500u);
+            Arena arena = ArenaGenerator.Generate(ArenaSettings.Default, 500u).Arena;
 
             foreach (KeyValuePair<GridPos, PowerUpKind> entry in PowerUpPlacer.Place(arena, 60, 500u))
             {

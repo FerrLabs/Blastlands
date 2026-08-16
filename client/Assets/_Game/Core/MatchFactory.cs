@@ -7,7 +7,10 @@ namespace Blastlands.Core
     {
         public static MatchState Create(ArenaSettings arenaSettings, MatchSettings matchSettings, int playerCount, uint seed)
         {
-            IReadOnlyList<GridPos> spawns = ArenaGenerator.SpawnPositions(arenaSettings.Width, arenaSettings.Height);
+            // Generated first, because the island decides where its own spawns are.
+            GeneratedArena generated = ArenaGenerator.Generate(arenaSettings, seed);
+            Arena arena = generated.Arena;
+            IReadOnlyList<GridPos> spawns = generated.Spawns;
 
             if (playerCount < 1 || playerCount > spawns.Count)
             {
@@ -15,7 +18,6 @@ namespace Blastlands.Core
                     nameof(playerCount), playerCount, "Player count must be between 1 and " + spawns.Count + ".");
             }
 
-            Arena arena = ArenaGenerator.Generate(arenaSettings, seed);
             var state = new MatchState(arena, matchSettings, seed);
 
             foreach (KeyValuePair<GridPos, PowerUpKind> hidden

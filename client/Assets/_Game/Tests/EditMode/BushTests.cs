@@ -127,7 +127,7 @@ namespace Blastlands.Core.Tests
         [Test]
         public void TheGeneratorProducesBothKinds()
         {
-            Arena arena = ArenaGenerator.Generate(ArenaSettings.Default, 2026u);
+            Arena arena = ArenaGenerator.Generate(ArenaSettings.Default, 2026u).Arena;
 
             int bushes = 0;
             int walls = 0;

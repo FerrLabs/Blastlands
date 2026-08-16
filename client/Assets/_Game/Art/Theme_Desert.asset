@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Theme_Desert
   m_EditorClassIdentifier: Blastlands.Runtime::Blastlands.Runtime.ArenaTheme
   label: Desert
+  groundTint: {r: 0.72, g: 0.56, b: 0.33, a: 1}
   floorTiles:
   - {fileID: 113626, guid: 71b5f199ef88ad54f844fd82dc4201e5, type: 3}
   - {fileID: 176528, guid: 759349d528a9fc24caa71eabff058be7, type: 3}
