@@ -13,39 +13,31 @@ MonoBehaviour:
   m_Name: Theme_Wasteland
   m_EditorClassIdentifier: Blastlands.Runtime::Blastlands.Runtime.ArenaTheme
   label: Wasteland
-  groundTint: {r: 0.42, g: 0.27, b: 0.15, a: 1}
+  groundTint: {r: 0.4, g: 0.31, b: 0.21, a: 1}
   floorTiles:
-  - {fileID: 176528, guid: 759349d528a9fc24caa71eabff058be7, type: 3}
-  - {fileID: 106024, guid: 10fb44be36c39a147a8aab66cfe8d88b, type: 3}
-  - {fileID: 120508, guid: b5980e7d90b5fb54bbfed13c8d1de193, type: 3}
+  - {fileID: 3890554199827564479, guid: 5f13adf1020d9d3428e681e3b4de11ff, type: 3}
+  - {fileID: 5388214276094364910, guid: 41a52686721349748946e63dfcf775e0, type: 3}
   hardBlocks:
-  - {fileID: 167328, guid: 23c64971a016e8049b22042aa3a2cbaa, type: 3}
-  - {fileID: 176848, guid: e5a4d6a2928750f47a79016275192e15, type: 3}
-  - {fileID: 182652, guid: 8dad32daff338c04fb89fb6f53f809e4, type: 3}
+  - {fileID: 4322767382158653204, guid: b6ddfbfd1ea362c4bb32e531cb6213cb, type: 3}
+  - {fileID: 8202731649550764293, guid: d67c6edfceeb6fc468ead41526729645, type: 3}
+  - {fileID: 6509933743064751742, guid: 46e026a974292cb479015cc7012d91ab, type: 3}
   softBlocks:
-  - {fileID: 105036, guid: 36d2d1ff05c1c724eaddd4505837ee98, type: 3}
-  - {fileID: 140364, guid: 360c38e9058b172489fc927a1115235e, type: 3}
-  - {fileID: 190548, guid: f725dd8ba67b4b14f9d772038c6cc2d3, type: 3}
+  - {fileID: 1437069863871400, guid: 411a5ee19077b1d46b9960f64c7ffde8, type: 3}
+  - {fileID: 1090662257128980, guid: fea05091ba5f3f84786932dfdddc3b23, type: 3}
+  - {fileID: 1979102483035042, guid: dbcab12f42b76414db49660110c4bca6, type: 3}
   bushes:
-  - {fileID: 123138, guid: 58ab9f492c9995042a40f27638b2a20f, type: 3}
-  - {fileID: 116886, guid: 2541c41fb6e1846428d842ddb021ad8a, type: 3}
+  - {fileID: 2308869840000360606, guid: 37c84c10bc09ad14eb8854f863ea5b82, type: 3}
+  - {fileID: 1847276635326090, guid: aa979cecccf85264fa104b2ccd479ab4, type: 3}
+  - {fileID: 1646082096404570, guid: 53cc0a19e09835f4fb0adef80edc5bc9, type: 3}
   scenery:
-  - {fileID: 128714, guid: 8c75e42c8e8152141abb8d1f7766e1b8, type: 3}
-  - {fileID: 133566, guid: fef2c50cc4c93db41ab899331bc362b2, type: 3}
-  - {fileID: 180238, guid: e446e2186213edf4d889d3a361798d7b, type: 3}
-  - {fileID: 142276, guid: 2925dc2515defb4499af40afc131d677, type: 3}
-  - {fileID: 135028, guid: e905cde3ed235a140aed2225fc9b8412, type: 3}
-  - {fileID: 107394, guid: ec3b1602d97a71b4a974cfa08226285d, type: 3}
-  - {fileID: 158342, guid: 29457175c2ce0f34d839eee2f95f03ff, type: 3}
-  - {fileID: 172214, guid: 29b6693ede34b1e488d00089580ef9ab, type: 3}
-  - {fileID: 151030, guid: 65c97d195de1b0541a2b02d8fecf18dd, type: 3}
-  - {fileID: 152450, guid: 82238ffef11f0b4408ccf2c69a301ed6, type: 3}
-  - {fileID: 193788, guid: 6b033f0844691fd45bf99df196fd6acb, type: 3}
-  - {fileID: 192834, guid: 0338c618dc77d84498e2418c6c29ffad, type: 3}
+  - {fileID: 1796885337435754, guid: 97eeef42e1d4d814db88bb348f6c5315, type: 3}
+  - {fileID: 1118852644942752, guid: 2c6eea56361198e4e99317e1f87c7a3d, type: 3}
+  - {fileID: 1369509060990928, guid: 541d55964971acb4badd8724436b8489, type: 3}
+  - {fileID: 7251943758774493481, guid: 5de91b71dc1698644b51f75f1521f6ea, type: 3}
+  - {fileID: 6551663106355943591, guid: 4938a8fb6b665c24d8d6f44a454494b1, type: 3}
+  - {fileID: 1350235754117392, guid: fffa2241c5a8ffc4f9ddf7cb7e671a9f, type: 3}
   groundDetail:
-  - {fileID: 185920, guid: 9026b30b758d4fd4fbf54cd5452a51c9, type: 3}
-  - {fileID: 176584806730288110, guid: a06310b64bac3af44abb7ea158c2f4b8, type: 3}
-  - {fileID: 120508, guid: b5980e7d90b5fb54bbfed13c8d1de193, type: 3}
-  - {fileID: 173408, guid: 679f8552de7b49e49b067c82f87df7c1, type: 3}
-  - {fileID: 106024, guid: 10fb44be36c39a147a8aab66cfe8d88b, type: 3}
-  - {fileID: 198728, guid: 3c5180e1de411804fa9158eb2be5ef69, type: 3}
+  - {fileID: 1046096480050820, guid: cd31fb23b55d8124d9977c3b44e7422d, type: 3}
+  - {fileID: 1440280349902300, guid: 6704b7a81d68fd141a062518fcf5eba9, type: 3}
+  - {fileID: 1278049743334758, guid: b750b0626b7202b4e9d3916ddaeacf0b, type: 3}
+  - {fileID: 1904356791742696, guid: e85a5f270aefc744d86962e605a57bb3, type: 3}

@@ -12,41 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2971dbd50a5777343833316de0c21769, type: 3}
   m_Name: MatchArt
   m_EditorClassIdentifier: Blastlands.Runtime::Blastlands.Runtime.MatchArt
-  floorTiles:
-  - {fileID: 176528, guid: 759349d528a9fc24caa71eabff058be7, type: 3}
-  hardBlocks:
-  - {fileID: 167328, guid: 23c64971a016e8049b22042aa3a2cbaa, type: 3}
-  - {fileID: 176848, guid: e5a4d6a2928750f47a79016275192e15, type: 3}
-  - {fileID: 182652, guid: 8dad32daff338c04fb89fb6f53f809e4, type: 3}
-  softBlocks:
-  - {fileID: 105036, guid: 36d2d1ff05c1c724eaddd4505837ee98, type: 3}
-  bushes:
-  - {fileID: 123138, guid: 58ab9f492c9995042a40f27638b2a20f, type: 3}
-  - {fileID: 116886, guid: 2541c41fb6e1846428d842ddb021ad8a, type: 3}
-  scenery:
-  - {fileID: 128714, guid: 8c75e42c8e8152141abb8d1f7766e1b8, type: 3}
-  - {fileID: 133566, guid: fef2c50cc4c93db41ab899331bc362b2, type: 3}
-  - {fileID: 180238, guid: e446e2186213edf4d889d3a361798d7b, type: 3}
-  - {fileID: 142276, guid: 2925dc2515defb4499af40afc131d677, type: 3}
-  - {fileID: 159234, guid: 5f7cba59bf0e5194d8dbbb56c6d65a7f, type: 3}
-  - {fileID: 188830, guid: 09cf3839fcde2f64fa16fc1709da1299, type: 3}
-  - {fileID: 135028, guid: e905cde3ed235a140aed2225fc9b8412, type: 3}
-  - {fileID: 107394, guid: ec3b1602d97a71b4a974cfa08226285d, type: 3}
-  - {fileID: 158342, guid: 29457175c2ce0f34d839eee2f95f03ff, type: 3}
-  - {fileID: 128580, guid: b83683c40c7a1d143b84171f2c2fc5c5, type: 3}
-  - {fileID: 114566, guid: ddd23fe78ae9d214ca6e6581593eef9d, type: 3}
-  - {fileID: 159558, guid: 7f72d1817c017fa4196dea2b91531d3f, type: 3}
-  - {fileID: 152384, guid: f5466645e7a397f4e908d8d5a210846e, type: 3}
-  - {fileID: 172214, guid: 29b6693ede34b1e488d00089580ef9ab, type: 3}
-  - {fileID: 151030, guid: 65c97d195de1b0541a2b02d8fecf18dd, type: 3}
-  - {fileID: 152450, guid: 82238ffef11f0b4408ccf2c69a301ed6, type: 3}
-  groundDetail:
-  - {fileID: 185920, guid: 9026b30b758d4fd4fbf54cd5452a51c9, type: 3}
-  - {fileID: 176584806730288110, guid: a06310b64bac3af44abb7ea158c2f4b8, type: 3}
-  - {fileID: 120508, guid: b5980e7d90b5fb54bbfed13c8d1de193, type: 3}
-  - {fileID: 173408, guid: 679f8552de7b49e49b067c82f87df7c1, type: 3}
-  - {fileID: 106024, guid: 10fb44be36c39a147a8aab66cfe8d88b, type: 3}
-  - {fileID: 198728, guid: 3c5180e1de411804fa9158eb2be5ef69, type: 3}
   deathMarkers:
   - {fileID: 124012, guid: eea241c4741862242b490597dd263352, type: 3}
   - {fileID: 131856, guid: 2920f563725d6584b98fa67022d5309e, type: 3}
@@ -62,11 +27,12 @@ MonoBehaviour:
   flame: {fileID: 100000, guid: 756d99540142b5e4a8d174e18a6310d9, type: 3}
   explosionBurst: {fileID: 191186, guid: 079954accd64b32419ec069129c81273, type: 3}
   players:
-  - {fileID: 189548, guid: 3a656f6072373894c88bbdf413b01d33, type: 3}
-  - {fileID: 187656, guid: f80f8dcaabb29ce42b92ee3abd4fb18c, type: 3}
-  - {fileID: 160670, guid: ceafca23efdb13b439ae574547aa8240, type: 3}
-  - {fileID: 102266, guid: 460f9e46e9a3c094a874c7b9670dc789, type: 3}
-  - {fileID: 147588, guid: a23df827e2c28b044a18d385b58ce3f7, type: 3}
-  - {fileID: 187494, guid: 466a02f764f02a8468e89c0c6b4a077d, type: 3}
-  - {fileID: 108582, guid: 970bf01606e0c194281edb901a23dd06, type: 3}
-  - {fileID: 107428, guid: ca666658ba812434682fa3a7c12cb826, type: 3}
+  - {fileID: 1467590972069000, guid: d91ede30c57f9e64cb6e7ac51e28ff35, type: 3}
+  - {fileID: 1791362862288902, guid: 040c180181105224d8d03746446e080a, type: 3}
+  - {fileID: 1082915869594634, guid: 1099c32bb8860d34e9d77177fdc8ddf6, type: 3}
+  - {fileID: 1399122269168980, guid: 0a08fd84400ab0c41b7a22b7fd0b90a3, type: 3}
+  - {fileID: 1297223418881080, guid: 20d863b9f1bb8464f96d58e9319f7088, type: 3}
+  - {fileID: 1137350411725084, guid: d9f6a33196dbe594b893efa7ad5f43a6, type: 3}
+  - {fileID: 1612642967817046, guid: 145e4b15636b57d47bb0d069eb16834f, type: 3}
+  - {fileID: 1274019000965958, guid: af169be12f376ce46a3e6b4bee8b8ffe, type: 3}
+  playerAnimator: {fileID: 9100000, guid: afec2cc25e3439e4bb1b43e7c09f6503, type: 2}

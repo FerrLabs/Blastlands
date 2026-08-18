@@ -13,36 +13,30 @@ MonoBehaviour:
   m_Name: Theme_Scorched
   m_EditorClassIdentifier: Blastlands.Runtime::Blastlands.Runtime.ArenaTheme
   label: Boneyard
-  groundTint: {r: 0.26, g: 0.19, b: 0.14, a: 1}
+  groundTint: {r: 0.27, g: 0.21, b: 0.16, a: 1}
   floorTiles:
-  - {fileID: 198728, guid: 3c5180e1de411804fa9158eb2be5ef69, type: 3}
-  - {fileID: 176528, guid: 759349d528a9fc24caa71eabff058be7, type: 3}
+  - {fileID: 5388214276094364910, guid: 41a52686721349748946e63dfcf775e0, type: 3}
+  - {fileID: 52144190322191893, guid: c7291645b957c444b8e4bfc1d41aaf80, type: 3}
   hardBlocks:
-  - {fileID: 167328, guid: 23c64971a016e8049b22042aa3a2cbaa, type: 3}
-  - {fileID: 182652, guid: 8dad32daff338c04fb89fb6f53f809e4, type: 3}
-  - {fileID: 121650, guid: 18e69b470a2eb8e4ab8d4d2897d73c9d, type: 3}
+  - {fileID: 7251943758774493481, guid: 5de91b71dc1698644b51f75f1521f6ea, type: 3}
+  - {fileID: 274166536403621637, guid: a2e8aab815313704cb0cc67a12f9bd9c, type: 3}
+  - {fileID: 934139093418113451, guid: 084badf5d29d3dc49961929d9db7f722, type: 3}
   softBlocks:
-  - {fileID: 189772, guid: 18fcdebbd3faa3f4d8a91ef3494c3e9c, type: 3}
-  - {fileID: 156746, guid: 776b738cd36b0fa4486dfdefcb4f8d76, type: 3}
-  - {fileID: 147716, guid: f0a617b0bee4748459fa4bea0bff7d13, type: 3}
+  - {fileID: 1983442847941076, guid: 5eff2ea50f05d6847864deada34d5f27, type: 3}
+  - {fileID: 1467972422958736, guid: a2930cdc17ef76c45a482d10d2751bf5, type: 3}
+  - {fileID: 1214467024132560, guid: 61a3120e5218a034ea22f2c76ac61651, type: 3}
   bushes:
-  - {fileID: 133936, guid: 73df1d629ef90af42b8d9fc3a29e66d8, type: 3}
-  - {fileID: 108322, guid: 683b4092ad785984ab95ef061e64a56c, type: 3}
-  - {fileID: 150000, guid: e15e4c41674e20947838068c2c9bbc2f, type: 3}
+  - {fileID: 1792900863588751309, guid: a7366d14de7f1d2428a73c854ca3e093, type: 3}
+  - {fileID: 1536043230066214, guid: 5bdebad866447df48805ee507df9bead, type: 3}
+  - {fileID: 6938313185453466299, guid: 3d7b3b0cc989a8b42b09ddb0ad31ef4d, type: 3}
   scenery:
-  - {fileID: 110630, guid: 855d49061ef5b454d9e9906bbda70402, type: 3}
-  - {fileID: 168826, guid: 95cfe9380b9fd7a4f8998d3686208b22, type: 3}
-  - {fileID: 108366, guid: 565d4d43445271d4b864737881eb9a8b, type: 3}
-  - {fileID: 195506, guid: af7a6180b3416684c93589ea55fa72a0, type: 3}
-  - {fileID: 137758, guid: 088e29ac86190e74cb0d08641425a098, type: 3}
-  - {fileID: 148098, guid: 5ba981c785114fa43b099dc3d24d6bff, type: 3}
-  - {fileID: 185894, guid: dd9b88ec56e17e840873e66dd8455d78, type: 3}
-  - {fileID: 154084, guid: b7afa95f349924b41bffe9ab3b500d5c, type: 3}
-  - {fileID: 132230, guid: d1c2e8ace9465fc4c8b2dff63fc719b3, type: 3}
-  - {fileID: 127614, guid: d1ebd6a608679244786b70eade6513b0, type: 3}
-  - {fileID: 152128, guid: dc50d69ae9c7a2240aa2278daa7a14f3, type: 3}
-  - {fileID: 153592, guid: 9f6e933dd381120438b6ea8ed13b14b9, type: 3}
+  - {fileID: 1796885337435754, guid: 97eeef42e1d4d814db88bb348f6c5315, type: 3}
+  - {fileID: 1118852644942752, guid: 2c6eea56361198e4e99317e1f87c7a3d, type: 3}
+  - {fileID: 1369509060990928, guid: 541d55964971acb4badd8724436b8489, type: 3}
+  - {fileID: 1350235754117392, guid: fffa2241c5a8ffc4f9ddf7cb7e671a9f, type: 3}
+  - {fileID: 8202731649550764293, guid: d67c6edfceeb6fc468ead41526729645, type: 3}
+  - {fileID: 6873938577213127126, guid: a9a82dc7a09f37741916c33cc3483e7c, type: 3}
   groundDetail:
-  - {fileID: 185920, guid: 9026b30b758d4fd4fbf54cd5452a51c9, type: 3}
-  - {fileID: 176584806730288110, guid: a06310b64bac3af44abb7ea158c2f4b8, type: 3}
-  - {fileID: 106024, guid: 10fb44be36c39a147a8aab66cfe8d88b, type: 3}
+  - {fileID: 1854564238752580, guid: be921efec84bab046a38beb1065891fe, type: 3}
+  - {fileID: 1229268116339154, guid: 75b666e4ef03b0c4c81ac47ee922c406, type: 3}
+  - {fileID: 1776397137903854, guid: d899f517447fbee45aec80b0bb020f60, type: 3}

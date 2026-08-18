@@ -13,40 +13,30 @@ MonoBehaviour:
   m_Name: Theme_Desert
   m_EditorClassIdentifier: Blastlands.Runtime::Blastlands.Runtime.ArenaTheme
   label: Desert
-  groundTint: {r: 0.72, g: 0.56, b: 0.33, a: 1}
+  groundTint: {r: 0.7, g: 0.55, b: 0.34, a: 1}
   floorTiles:
-  - {fileID: 113626, guid: 71b5f199ef88ad54f844fd82dc4201e5, type: 3}
-  - {fileID: 176528, guid: 759349d528a9fc24caa71eabff058be7, type: 3}
-  - {fileID: 198728, guid: 3c5180e1de411804fa9158eb2be5ef69, type: 3}
+  - {fileID: 8890560095366816334, guid: b29f790137fbc384492d6fa83ec92f54, type: 3}
+  - {fileID: 52144190322191893, guid: c7291645b957c444b8e4bfc1d41aaf80, type: 3}
   hardBlocks:
-  - {fileID: 167328, guid: 23c64971a016e8049b22042aa3a2cbaa, type: 3}
-  - {fileID: 176848, guid: e5a4d6a2928750f47a79016275192e15, type: 3}
-  - {fileID: 182652, guid: 8dad32daff338c04fb89fb6f53f809e4, type: 3}
-  - {fileID: 121650, guid: 18e69b470a2eb8e4ab8d4d2897d73c9d, type: 3}
+  - {fileID: 7211606713778384998, guid: cc46b771562eb3e4793292607fc3f72b, type: 3}
+  - {fileID: 274166536403621637, guid: a2e8aab815313704cb0cc67a12f9bd9c, type: 3}
+  - {fileID: 7001493443700725908, guid: dba3a83229940fb4aa5dc5b215b125bd, type: 3}
   softBlocks:
-  - {fileID: 115238, guid: ac8e38d61def3e0408f21d23b01a8a51, type: 3}
-  - {fileID: 188210, guid: a94087c8cdc63974d94afef1d4fd15ad, type: 3}
-  - {fileID: 146780, guid: 58b12ff97d6a848479b380cbef741e10, type: 3}
+  - {fileID: 1393725319409702, guid: 7cddecf69ef38c44f8baf578d2fe4a84, type: 3}
+  - {fileID: 1854156221946524, guid: c6e2118821f0b1042af2c1ee257826fd, type: 3}
+  - {fileID: 1882058776763666, guid: 9b2427eedaee08f4e912e8c38b0ed785, type: 3}
   bushes:
-  - {fileID: 133936, guid: 73df1d629ef90af42b8d9fc3a29e66d8, type: 3}
-  - {fileID: 128580, guid: b83683c40c7a1d143b84171f2c2fc5c5, type: 3}
-  - {fileID: 114566, guid: ddd23fe78ae9d214ca6e6581593eef9d, type: 3}
-  - {fileID: 150000, guid: e15e4c41674e20947838068c2c9bbc2f, type: 3}
+  - {fileID: 6938313185453466299, guid: 3d7b3b0cc989a8b42b09ddb0ad31ef4d, type: 3}
+  - {fileID: 1792900863588751309, guid: a7366d14de7f1d2428a73c854ca3e093, type: 3}
+  - {fileID: 1410177089634338, guid: 22d1bb3c605f0a047a3df61400d33cd6, type: 3}
   scenery:
-  - {fileID: 171772, guid: 3d70567ad4782f047802fe6c60d5a95f, type: 3}
-  - {fileID: 136844, guid: 0f62d7f3449c91a4ebc5f276c71c9418, type: 3}
-  - {fileID: 177646, guid: 53a2d61ec51640347ac71bd09c5ed671, type: 3}
-  - {fileID: 118826, guid: 6ac8d1fd5805e304c9a61f3099fce3ba, type: 3}
-  - {fileID: 138288, guid: d159be490db85e240abcb56be8535d5b, type: 3}
-  - {fileID: 184956, guid: 9be32d16c4363c94ab141d4d76592202, type: 3}
-  - {fileID: 116362, guid: 0d3d95b04dbb741448a2b2d82784de85, type: 3}
-  - {fileID: 121650, guid: 18e69b470a2eb8e4ab8d4d2897d73c9d, type: 3}
-  - {fileID: 132234, guid: 8c597dee877816142b7671fbd574e36b, type: 3}
-  - {fileID: 142506, guid: ca10f23ff71492544b881270afb32a00, type: 3}
-  - {fileID: 126738, guid: 47bd7dcc2b604e94ebcc6619e66204cc, type: 3}
-  - {fileID: 129154, guid: 77349c2c156c7734595fc75017529aaa, type: 3}
+  - {fileID: 1796885337435754, guid: 97eeef42e1d4d814db88bb348f6c5315, type: 3}
+  - {fileID: 1369509060990928, guid: 541d55964971acb4badd8724436b8489, type: 3}
+  - {fileID: 1168210563750090145, guid: daad3195a405192409324b56eec44e2b, type: 3}
+  - {fileID: 934139093418113451, guid: 084badf5d29d3dc49961929d9db7f722, type: 3}
+  - {fileID: 1914291397940932, guid: 7b36f93e498d3064194f0099054e95a3, type: 3}
+  - {fileID: 8294394904559025366, guid: 259516b1bf743f84aba64a77847b9d06, type: 3}
   groundDetail:
-  - {fileID: 113626, guid: 71b5f199ef88ad54f844fd82dc4201e5, type: 3}
-  - {fileID: 185920, guid: 9026b30b758d4fd4fbf54cd5452a51c9, type: 3}
-  - {fileID: 176584806730288110, guid: a06310b64bac3af44abb7ea158c2f4b8, type: 3}
-  - {fileID: 106024, guid: 10fb44be36c39a147a8aab66cfe8d88b, type: 3}
+  - {fileID: 1364998198178968, guid: 0cc7bed4cdc19d84797ed6a71f42dfbd, type: 3}
+  - {fileID: 1403355549078296, guid: e1d9f1517be2dcd408bfb599e4ef5aa3, type: 3}
+  - {fileID: 1904356791742696, guid: e85a5f270aefc744d86962e605a57bb3, type: 3}

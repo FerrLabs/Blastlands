@@ -774,10 +774,27 @@ namespace Blastlands.Runtime
                 else
                 {
                     TileFitter.FitToHeight(view, playerHeight);
+                    Animate(view);
                 }
 
                 playerViews.Add(view);
                 wasAlive.Add(state.Players[i].Alive);
+            }
+        }
+
+        // Only where the prefab brought no controller of its own. Overwriting one that
+        // is already there would throw away whatever the pack author wired up.
+        private void Animate(GameObject view)
+        {
+            if (art == null || art.PlayerAnimator == null)
+            {
+                return;
+            }
+
+            var animator = view.GetComponentInChildren<Animator>(true);
+            if (animator != null && animator.runtimeAnimatorController == null)
+            {
+                animator.runtimeAnimatorController = art.PlayerAnimator;
             }
         }
 

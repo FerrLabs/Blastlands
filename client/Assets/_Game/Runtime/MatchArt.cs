@@ -29,6 +29,13 @@ namespace Blastlands.Runtime
         [SerializeField] private GameObject explosionBurst;
         [SerializeField] private GameObject[] players;
 
+        // Drives the character prefabs. The POLYGON prefabs ship an avatar but no
+        // controller, where the SIMPLE ones carried one, so without this every player
+        // stands in the T-pose the rig was authored in. Held here rather than assigned
+        // onto the vendored prefabs, which stay untouched so the next pack update does
+        // not quietly revert it.
+        [SerializeField] private RuntimeAnimatorController playerAnimator;
+
         public GameObject Bomb
         {
             get { return bomb; }
@@ -62,6 +69,11 @@ namespace Blastlands.Runtime
         public GameObject PlayerFor(int index)
         {
             return Pick(players, index);
+        }
+
+        public RuntimeAnimatorController PlayerAnimator
+        {
+            get { return playerAnimator; }
         }
 
         private static GameObject Pick(GameObject[] set, int variant)
