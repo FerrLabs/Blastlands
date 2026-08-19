@@ -68,6 +68,21 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
+        public void ItTakesAnyoneWhoseBodyIsInIt()
+        {
+            // Movement is free, so the tile under a player's centre is not the whole of
+            // where they are. Centred on tile 1 but leaning far enough that the body
+            // covers tile 0, this player is two thirds inside the ring that closes.
+            MatchState state = Open(new GridPos(1, 7), new GridPos(7, 7));
+            state.Players[0].Position = new SubPos(306, SubPos.CentreOf(7));
+            Assert.That(state.Players[0].Tile, Is.EqualTo(new GridPos(1, 7)), "the setup no longer leans");
+
+            Run(state, 11);
+
+            Assert.That(state.Players[0].Alive, Is.False, "survived with its body in the rock");
+        }
+
+        [Test]
         public void AClosingRingTakesTheBombLyingOnIt()
         {
             // A bomb sealed inside rock still counts down and still explodes, which puts

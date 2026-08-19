@@ -158,6 +158,17 @@ namespace Blastlands.Core
             return horizontal ? new GridPos(lane, across) : new GridPos(across, lane);
         }
 
+        // Whether any part of a body this size, centred here, is on the tile. The centre
+        // tile stopped being the whole answer when movement came off the grid: a body
+        // 0.7 of a tile across can be most of the way onto its neighbour.
+        public static bool Covers(SubPos at, int radius, GridPos tile)
+        {
+            return tile.X >= Floor(at.X - radius)
+                && tile.X <= Floor(at.X + radius)
+                && tile.Y >= Floor(at.Y - radius)
+                && tile.Y <= Floor(at.Y + radius);
+        }
+
         private static HashSet<GridPos> Overlapping(MatchState state, SubPos at, int radius)
         {
             var inside = new HashSet<GridPos>();

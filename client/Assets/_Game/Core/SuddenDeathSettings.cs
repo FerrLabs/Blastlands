@@ -25,21 +25,25 @@ namespace Blastlands.Core
 
         public static SuddenDeathSettings Default
         {
-            // Ninety seconds, then a ring every four. The island runs about nine rings
-            // deep, so the board is gone within forty seconds of the first ring and no
-            // match outlives two minutes.
+            // Ninety seconds, then a ring every five. The island runs about nine rings
+            // deep, so the board is gone within a minute of the first ring and no match
+            // outlives two minutes.
             //
             // The cadence is set on draws rather than on length. A draw here is both
-            // survivors losing their tile to the same ring, so closing faster produces
-            // more of them. Measured over twelve four-bot matches:
+            // survivors losing their ground to the same ring, so the question is whether
+            // closing slower separates them. Measured over twenty-four four-bot matches,
+            // all of which end at every setting:
             //
-            //    3 s   2 draws   median  96 s   slowest 108 s
-            //    4 s   1 draw    median  98 s   slowest 110 s   <- here
-            //    6 s   1 draw    median 102 s   slowest 114 s
+            //    4 s   3 draws   median 94 s   slowest 110 s
+            //    5 s   2 draws   median 95 s   slowest 109 s   <- here
+            //    6 s   4 draws   median 96 s   slowest 114 s
             //
-            // Four seconds buys back half the draws for two seconds of round. Six buys
-            // nothing further and costs four more.
-            get { return new SuddenDeathSettings(2700, 120); }
+            // Five is the best of the three on both counts, but the honest reading is
+            // that cadence barely matters: draws sit near a tenth whatever it is set to,
+            // and two against four over twenty-four matches is not a cliff. An earlier
+            // pass over twelve seeds put six seconds at zero draws and four at one, the
+            // opposite order, which is how much noise there is at that sample size.
+            get { return new SuddenDeathSettings(2700, 150); }
         }
 
         public static SuddenDeathSettings Off

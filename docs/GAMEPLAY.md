@@ -254,14 +254,14 @@ knows nothing about walls.
 
 ## Sudden death
 
-Ninety seconds in, the island starts closing from the coast. Every four seconds the outermost
-ring of remaining ground turns to hard block and kills whoever is standing on it, so the board
-is gone within forty seconds of the first ring and no round outlives two minutes.
+Ninety seconds in, the island starts closing from the coast. Every five seconds the outermost
+ring of remaining ground turns to hard block and kills anyone it touches, so the board is gone
+within a minute of the first ring and no round outlives two minutes.
 
 This is the anti-stalemate rule and it is not optional. Two survivors reading the same blast
 map do not resolve on their own: measured over six four-bot matches with it switched off, one
-was decided inside 200 s and the rest were still circling. With it on, twelve of twelve end,
-median 98 s.
+was decided inside 200 s and the rest were still circling. With it on, twenty-four of
+twenty-four end, median 95 s, slowest 109 s.
 
 Rings, rather than the inward spiral this section used to describe. A spiral is defined on a
 rectangle, and the arena is an eroded island where a tile near the middle of the grid can sit
@@ -271,6 +271,12 @@ anything at this size, the island being close to three hundred tiles.
 
 Unlike a regrowing wall, a closing ring kills rather than shoves. A wall that shoves has to
 find somewhere to shove to and postpones when it cannot, which is the stalemate over again.
+
+It takes anyone whose **body** is in it, not whoever is centred on it. Movement came off the
+grid, and a body 0.7 of a tile across can be two thirds inside the ring while still centred on
+the tile next door. On the centre alone that player lives and then walks around with their body
+inside the rock, which the movement code allows on purpose: it ignores the tiles you already
+overlap, so that a wall growing back under you cannot lock you in place.
 
 ## Bots
 

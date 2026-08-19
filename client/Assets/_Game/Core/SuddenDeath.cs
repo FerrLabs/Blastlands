@@ -53,12 +53,18 @@ namespace Blastlands.Core
         // Everything the tile was carrying goes with it. A bomb left live under a wall
         // would go off inside solid rock, and a pickup sealed in is a power-up the round
         // silently loses.
+        //
+        // Players are taken on the body rather than on the tile under their centre.
+        // Movement is free, so a body 0.7 of a tile across can be two thirds inside the
+        // ring that closes and still be centred next door; on the centre alone that
+        // player survives and then walks around with their body in the rock, which
+        // PlayerBody explicitly allows by ignoring the tiles it already overlaps.
         private static void Clear(MatchState state, GridPos tile)
         {
             for (int i = 0; i < state.Players.Count; i++)
             {
                 PlayerState player = state.Players[i];
-                if (player.Alive && player.Tile == tile)
+                if (player.Alive && PlayerBody.Covers(player.Position, state.Settings.PlayerRadius, tile))
                 {
                     player.Alive = false;
                 }
