@@ -254,9 +254,23 @@ knows nothing about walls.
 
 ## Sudden death
 
-When the round timer expires, hard blocks start dropping in an inward spiral, one per tick
-interval, crushing whatever is on the tile. This is the anti-stalemate rule and it is not
-optional — two players with max fire range circling each other will otherwise never resolve.
+Ninety seconds in, the island starts closing from the coast. Every four seconds the outermost
+ring of remaining ground turns to hard block and kills whoever is standing on it, so the board
+is gone within forty seconds of the first ring and no round outlives two minutes.
+
+This is the anti-stalemate rule and it is not optional. Two survivors reading the same blast
+map do not resolve on their own: measured over six four-bot matches with it switched off, one
+was decided inside 200 s and the rest were still circling. With it on, twelve of twelve end,
+median 98 s.
+
+Rings, rather than the inward spiral this section used to describe. A spiral is defined on a
+rectangle, and the arena is an eroded island where a tile near the middle of the grid can sit
+on the shore of a bay; distance from the drop is the only ordering that means the same thing
+whatever shape erosion left behind. One block per interval is also far too slow to end
+anything at this size, the island being close to three hundred tiles.
+
+Unlike a regrowing wall, a closing ring kills rather than shoves. A wall that shoves has to
+find somewhere to shove to and postpones when it cannot, which is the stalemate over again.
 
 ## Bots
 

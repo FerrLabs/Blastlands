@@ -29,8 +29,10 @@ namespace Blastlands.Core
             int cornerAssist,
             int looseBombFuseTicks,
             PushSettings push,
-            VisionSettings vision)
+            VisionSettings vision,
+            SuddenDeathSettings suddenDeath)
         {
+            SuddenDeath = suddenDeath;
             Vision = vision;
             Push = push;
             LooseBombFuseTicks = looseBombFuseTicks;
@@ -134,6 +136,9 @@ namespace Blastlands.Core
 
         public VisionSettings Vision { get; }
 
+        // What stops a round that neither survivor can win. See #105.
+        public SuddenDeathSettings SuddenDeath { get; }
+
         public static MatchSettings Default
         {
             // Carry capacity starts at one. It is also how many bombs can be live at
@@ -198,13 +203,26 @@ namespace Blastlands.Core
                     // Past eighty the arena goes quiet for very little safety in return.
                     30, 75, 15, 26, 6, 4, 1, 1, 2, 6, 4, 35, 80, 90, 600, 90, 45, 78, 8, 90, 90, 9, 12,
                     PushSettings.Default,
-                    VisionSettings.Default);
+                    VisionSettings.Default,
+                    SuddenDeathSettings.Default);
             }
         }
 
         // Restating twenty-two positional ints to change one is where a transposition
         // eventually happens, so the copy lives here rather than at the call site. See
         // the wider problem in the tracking issue for this constructor.
+        public MatchSettings WithSuddenDeath(SuddenDeathSettings suddenDeath)
+        {
+            return new MatchSettings(
+                TicksPerSecond, FuseTicks, FlameTicks, BaseSpeed, SpeedStep, MaxSpeedSteps,
+                StartingHeldBombs, StartingCarryCapacity, StartingFireRange,
+                MaxCarryCapacity, MaxFireRange, PowerUpDropPercent,
+                TilesPerLooseBomb, BombRespawnTicks,
+                WallRegrowTicks, WallTelegraphTicks, WallRetryTicks,
+                DashSpeed, DashTicks, DashCooldownTicks,
+                PlayerRadius, CornerAssist, LooseBombFuseTicks, Push, Vision, suddenDeath);
+        }
+
         public MatchSettings WithTilesPerLooseBomb(int tilesPerBomb)
         {
             return new MatchSettings(
@@ -214,7 +232,7 @@ namespace Blastlands.Core
                 tilesPerBomb, BombRespawnTicks,
                 WallRegrowTicks, WallTelegraphTicks, WallRetryTicks,
                 DashSpeed, DashTicks, DashCooldownTicks,
-                PlayerRadius, CornerAssist, LooseBombFuseTicks, Push, Vision);
+                PlayerRadius, CornerAssist, LooseBombFuseTicks, Push, Vision, SuddenDeath);
         }
 
         public int SpeedFor(int speedSteps)

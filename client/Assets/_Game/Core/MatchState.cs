@@ -72,6 +72,7 @@ namespace Blastlands.Core
         private readonly Dictionary<GridPos, PowerUpKind> hiddenPowerUps = new Dictionary<GridPos, PowerUpKind>();
         private readonly List<GridPos> looseBombs = new List<GridPos>();
         private readonly List<WallRegrowth> regrowingWalls = new List<WallRegrowth>();
+        private int[] coastDistance;
 
         public MatchState(Arena arena, MatchSettings settings, uint seed)
         {
@@ -103,6 +104,23 @@ namespace Blastlands.Core
         public RoundOutcome Outcome { get; set; }
 
         public int WinnerId { get; set; }
+
+        // How many rings sudden death has already closed, so a match that skips ticks
+        // still closes every ring rather than only the one it happens to land on.
+        public int SuddenDeathRings { get; set; }
+
+        // Measured on first use rather than in the constructor: the island never
+        // changes shape once generated, but most matches never reach sudden death and
+        // would pay for the flood for nothing.
+        public int DistanceToCoast(GridPos tile)
+        {
+            if (coastDistance == null)
+            {
+                coastDistance = CoastDistance.Measure(Arena);
+            }
+
+            return coastDistance[(tile.Y * Arena.Width) + tile.X];
+        }
 
         public IReadOnlyList<PlayerState> Players
         {

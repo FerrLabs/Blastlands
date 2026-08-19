@@ -35,6 +35,10 @@ namespace Blastlands.Core
             BurnPowerUps(state);
             IgniteLooseBombs(state);
             KillPlayersInFlames(state);
+
+            // Before the outcome check, so a ring that takes the last two closes the
+            // round on the tick it happens rather than the one after.
+            SuddenDeath.Tick(state);
             ResolveOutcome(state);
             BombSpawner.Tick(state);
 

@@ -4,7 +4,12 @@ namespace Blastlands.Core.Tests
 {
     public class BotBrainTests
     {
-        private static readonly MatchSettings Settings = MatchSettings.Default;
+        // Sudden death off: these measure how hard the bots are to kill and how hard
+        // they hunt, and both run past the ninety seconds where the coast starts
+        // closing. Left on, the ring would do the killing and the bars would pass
+        // without the bots doing anything at all.
+        private static readonly MatchSettings Settings =
+            MatchSettings.Default.WithSuddenDeath(SuddenDeathSettings.Off);
 
         private static MatchState OpenMatch(int width, int height, params GridPos[] spawns)
         {
