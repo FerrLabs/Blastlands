@@ -219,9 +219,8 @@ namespace Blastlands.Core.Tests
             var arena = new Arena(7, 7);
             var bombs = new[] { new Bomb(new GridPos(3, 3), 0, 1) };
 
-            Assert.That(
-                () => ExplosionResolver.Resolve(arena, bombs, new[] { 1 }),
-                Throws.TypeOf<ArgumentOutOfRangeException>());
+            Assert.Throws<ArgumentOutOfRangeException>(
+                () => ExplosionResolver.Resolve(arena, bombs, new[] { 1 }));
         }
     }
 }

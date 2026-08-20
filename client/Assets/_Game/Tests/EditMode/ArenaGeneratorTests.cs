@@ -231,15 +231,15 @@ namespace Blastlands.Core.Tests
         public void ArenaSettings_AcceptEvenDimensions()
         {
             // Odd was only ever required so the pillar lattice landed inside the border.
-            Assert.That(() => new ArenaSettings(14, 12, 50), Throws.Nothing);
+            Assert.DoesNotThrow(() => new ArenaSettings(14, 12, 50));
             Assert.That(ArenaGenerator.Generate(new ArenaSettings(14, 12, 50), 3u).Spawns, Is.Not.Empty);
         }
 
         [Test]
         public void ArenaSettings_RejectDensityOutsidePercentRange()
         {
-            Assert.That(() => new ArenaSettings(15, 13, -1), Throws.TypeOf<ArgumentOutOfRangeException>());
-            Assert.That(() => new ArenaSettings(15, 13, 101), Throws.TypeOf<ArgumentOutOfRangeException>());
+            Assert.Throws<ArgumentOutOfRangeException>(() => new ArenaSettings(15, 13, -1));
+            Assert.Throws<ArgumentOutOfRangeException>(() => new ArenaSettings(15, 13, 101));
         }
 
         private static string Snapshot(Arena arena)

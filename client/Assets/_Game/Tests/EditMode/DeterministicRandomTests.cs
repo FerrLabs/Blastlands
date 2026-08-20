@@ -80,8 +80,8 @@ namespace Blastlands.Core.Tests
         {
             var random = new DeterministicRandom(1u);
 
-            Assert.That(() => random.NextInt(0), Throws.TypeOf<ArgumentOutOfRangeException>());
-            Assert.That(() => random.NextInt(-5), Throws.TypeOf<ArgumentOutOfRangeException>());
+            Assert.Throws<ArgumentOutOfRangeException>(() => random.NextInt(0));
+            Assert.Throws<ArgumentOutOfRangeException>(() => random.NextInt(-5));
         }
     }
 }
