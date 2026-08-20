@@ -231,15 +231,24 @@ namespace Blastlands.Core.Tests
         public void ArenaSettings_AcceptEvenDimensions()
         {
             // Odd was only ever required so the pillar lattice landed inside the border.
-            Assert.DoesNotThrow(() => new ArenaSettings(14, 12, 50));
+            //
+            // Spelled TestDelegate rather than passed inline. NUnit 4 overloads both
+            // Assert.Throws and Assert.DoesNotThrow on TestDelegate and Action, which
+            // are distinct delegate types a bare lambda matches equally, so an inline
+            // lambda is ambiguous and will not compile. Same reason wherever this
+            // pattern appears.
+            TestDelegate evenDimensions = () => new ArenaSettings(14, 12, 50);
+            Assert.DoesNotThrow(evenDimensions);
             Assert.That(ArenaGenerator.Generate(new ArenaSettings(14, 12, 50), 3u).Spawns, Is.Not.Empty);
         }
 
         [Test]
         public void ArenaSettings_RejectDensityOutsidePercentRange()
         {
-            Assert.Throws<ArgumentOutOfRangeException>(() => new ArenaSettings(15, 13, -1));
-            Assert.Throws<ArgumentOutOfRangeException>(() => new ArenaSettings(15, 13, 101));
+            TestDelegate belowZero = () => new ArenaSettings(15, 13, -1);
+            TestDelegate aboveHundred = () => new ArenaSettings(15, 13, 101);
+            Assert.Throws<ArgumentOutOfRangeException>(belowZero);
+            Assert.Throws<ArgumentOutOfRangeException>(aboveHundred);
         }
 
         private static string Snapshot(Arena arena)
