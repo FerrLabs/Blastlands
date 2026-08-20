@@ -13,13 +13,17 @@ friends plays a lot of them in a sitting.
 
 ## The arena
 
-Odd-sized grid (default 25×21). Three tile kinds:
+Odd-sized grid (default 25×21). Five tile kinds:
 
 - **Hard block** — indestructible, laid out on every even/even coordinate. This is the
   classic pillar lattice; it is what makes the arena readable and stops the map from
   collapsing into an open field.
 - **Soft block** — destructible, scattered randomly on the remaining floor. Hides power-ups.
+- **Bush** — walkable cover that nothing sees through, and that burns like a soft block. You
+  stand *in* it rather than behind it, which is the whole of the difference.
 - **Floor** — walkable.
+- **Void** — inside the grid and off the island. It stops movement and nothing else: sight
+  and blasts both carry across a drop, so the only thing a gap costs you is the ground.
 
 Spawn corners are cleared three tiles along each axis. The clearance has to exceed the
 starting fire range: a player sealed into a smaller pocket cannot open it, because the only
@@ -222,6 +226,46 @@ everyone took Hard from 30 survivors to 27 while lifting Normal from 16 to 20 an
 19 to 22. The commitment costs an agent that would otherwise re-plan every tick, and pays for
 one that cannot. Hard has `ReactionTicks` of zero, so it keeps walking.
 
+## Vision
+
+The arena is not fully visible. Walls block sight, and a player standing in a bush cannot be
+seen.
+
+**Vision is simulated, not merely drawn.** That was the decision everything else here hung on.
+The cheap version hides what the local player cannot see and leaves the simulation untouched,
+but then every bot keeps perfect knowledge of the whole arena and hiding fools nobody who is
+not human, which is most opponents until the netcode exists. Bots carry a knowledge model
+instead: what they have seen, when they last saw it, and what they are still entitled to
+believe.
+
+**A bush hides its occupant without blinding them.** The asymmetry is the mechanic. Cover that
+blinded you too would be a tile to avoid rather than one to use. Line of sight skips both
+endpoints, so the bush you are standing in never blocks your own view out of it.
+
+**Acting gives you away.** Dashing or shoving lights you up for about a second, wherever you
+are standing. A bush that kept hiding someone while they dashed out of it or shoved you would
+not be cover, it would be an ambush with no counterplay: the victim never had anything to
+react to. The hider chooses between staying hidden and doing something.
+
+**Only players are hidden.** Bombs, flames and the arena itself stay drawn. A blast nobody
+could see coming is not a fair death, and a fog that hid the board would make the danger map
+unreadable rather than tense.
+
+**Bots forget, and they can be wrong.** A sighting decays, and harder bots hold one longer
+than easy ones. A belief is dropped early when the bot can see the tile it remembers and finds
+it empty, because a bot hunting a corner it can plainly see is bare reads as broken rather
+than as fooled. Watching a bush tells it nothing about what is inside.
+
+Rendering is per camera. Split-screen shows one arena to four people who are each entitled to
+a different answer about who is visible, so a hidden player cannot simply be switched off: one
+GameObject cannot be on for one viewport and off for the next. Renderers are toggled around
+each camera's own render and restored afterwards. Someone stepping into a bush is held on
+screen a moment longer, or the disappearance reads as a dropped frame rather than as somebody
+taking cover.
+
+Whether the HUD keeps showing an opponent's stats while they are out of sight is left to the
+issue that builds the HUD.
+
 ## Walls grow back
 
 A destroyed soft block returns after `WallRegrowTicks`, with a marker on the floor for the
@@ -296,6 +340,11 @@ Behaviour, roughly in priority order:
 Danger evaluation is a flood fill over tiles reachable before each live bomb's fuse expires.
 Difficulty is a reaction-delay knob plus how far ahead the danger map is computed — not
 cheating with hidden information.
+
+They have less than complete information, too. A bot reads its beliefs about the arena rather
+than the arena itself: enemies it has seen, where they were, and how long ago. Cover works
+against a bot for the same reason it works against a person, and memory length is part of what
+separates the difficulties. See **Vision**.
 
 ## Art direction
 
