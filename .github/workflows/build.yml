@@ -55,7 +55,40 @@ jobs:
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          lfs: true
+          # Not lfs: true. actions/checkout runs its LFS fetch against the endpoint
+          # implied by the remote, which is GitHub, while .lfsconfig points at the
+          # self-hosted server. It only ever found the objects that predate the move,
+          # so main kept passing and every PR adding an asset failed. Fetching in a
+          # step of our own is what makes .lfsconfig apply. See #112.
+          #
+          # This is not a workaround for LFSX: git-lfs honours .lfsconfig everywhere else,
+          # including a plain clone on a workstation. It is actions/checkout that does not.
+          lfs: false
+
+      - name: Fetch LFS objects
+        env:
+          # The run's own token, no secret to manage. LFSX authenticates the password as
+          # a forge token and ignores the username, and since v1.0.0 it accepts a GitHub
+          # App installation token, which is what this is: the forge returns the
+          # repository to a token that can see it, and that is read access. Read is all a
+          # pull needs.
+          #
+          # Against an LFSX older than that, this is refused with "these credentials do
+          # not grant that access to this repository" whatever the job's permissions,
+          # because that version required a permissions block the forge does not send for
+          # an installation token. Upgrade the server, or fall back to a PAT with read
+          # access in a secret. See #112.
+          LFS_TOKEN: ${{ github.token }}
+        run: |
+          if [ -z "$LFS_TOKEN" ]; then
+            echo "::error::LFS_TOKEN is empty, so the LFS fetch would fail on a private repository. See issue #112."
+            exit 1
+          fi
+          # Expanded when git calls the helper, so the token never reaches the log or
+          # the process table.
+          git config --local credential.helper '!f() { echo "username=x-access-token"; echo "password=$LFS_TOKEN"; }; f'
+          git lfs pull
+          echo "materialised $(git lfs ls-files | wc -l) LFS files"
 
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
