@@ -181,11 +181,15 @@ namespace Blastlands.Core.Tests
             // against them, so an instrument that cannot fight cannot show whether a
             // change to fighting was good.
             //
-            // Twelve four-bot matches over 3000 ticks kill 14 between them, measured,
-            // so the bar sits at 11. Over twenty of the same matches it is 24 against 13
-            // before shoving and sealing traps existed, and the shove is where most of
-            // that came from: it is the only thing in the game that lands on the tick it
-            // happens rather than two and a half seconds later.
+            // Twelve four-bot matches over 3000 ticks kill 29 of 48 between them on the
+            // open arena, measured, so the bar sits at 24. It was 14 with a bar of 11
+            // while the pillar lattice stood: corridors one tile wide meant bots spent
+            // the round walking past each other, and taking the lattice out is what
+            // changed it rather than anything done to the bots. See #120.
+            //
+            // Before that, shoving and sealed traps took it from 13 to 24 over twenty
+            // matches, the shove being the only thing in the game that lands on the tick
+            // it happens rather than two and a half seconds later.
             //
             // Counted as deaths rather than as matches won, because a decided match is a
             // far rarer event — 1 in 20 at this length — and a bar set on it would sit at
@@ -220,7 +224,7 @@ namespace Blastlands.Core.Tests
                 deaths += 4 - state.AliveCount;
             }
 
-            Assert.That(deaths, Is.GreaterThanOrEqualTo(11), "the bots have gone back to ignoring each other");
+            Assert.That(deaths, Is.GreaterThanOrEqualTo(24), "the bots have gone back to ignoring each other");
         }
 
         private static bool SurvivesAlone(uint seed, BotSettings level, int ticks)

@@ -13,6 +13,12 @@ namespace Blastlands.Core
         // match because every bomb they considered was correctly refused as suicide.
         private const int SpawnClearance = 3;
 
+        // A clump is a few tiles across: big enough to break a sight line and to be worth
+        // walking around, small enough that several of them read as an arena rather than
+        // as a maze.
+        private const int MinClump = 3;
+        private const int MaxClump = 9;
+
         private static readonly GridPos[] Neighbours =
         {
             new GridPos(1, 0),
@@ -27,12 +33,11 @@ namespace Blastlands.Core
             var arena = new Arena(settings.Width, settings.Height);
 
             bool[] land = IslandShape.Carve(settings.Width, settings.Height, settings.Island, random);
-            FillStructure(arena, land);
-            DropUnreachableGround(arena);
+            FillGround(arena, land);
 
             IReadOnlyList<GridPos> spawns = ChooseSpawns(arena);
             HashSet<GridPos> reserved = ReserveSpawns(arena, spawns);
-            ScatterSoftBlocks(arena, reserved, settings.SoftBlockPercent, settings.BushPercent, random);
+            ScatterCover(arena, reserved, settings.SoftBlockPercent, settings.BushPercent, random);
 
             return new GeneratedArena(arena, spawns);
         }
@@ -109,7 +114,7 @@ namespace Blastlands.Core
             return new GridPos(-1, -1);
         }
 
-        private static void FillStructure(Arena arena, bool[] land)
+        private static void FillGround(Arena arena, bool[] land)
         {
             for (int y = 0; y < arena.Height; y++)
             {
@@ -123,103 +128,12 @@ namespace Blastlands.Core
                         continue;
                     }
 
-                    // No border ring any more: the coast is the edge of the world, and a
-                    // wall around an island would only hide the drop the island is for.
-                    arena[tile] = x % 2 == 0 && y % 2 == 0 ? TileKind.HardBlock : TileKind.Floor;
+                    // No border ring, and no pillar lattice either. The coast is the edge
+                    // of the world, and nothing on the island is permanent: everything a
+                    // player meets can be blown up. See #120.
+                    arena[tile] = TileKind.Floor;
                 }
             }
-        }
-
-        // The island flood guaranteed the ground was one piece. The pillar lattice is laid
-        // on top of it afterwards, and on an irregular coast a pillar and a bay between
-        // them can fence off a tile or two that nothing can ever reach.
-        //
-        // On the rectangle this was impossible: the border was a uniform ring and the
-        // lattice sat on even coordinates inside it, so every gap led somewhere. The
-        // island removed that guarantee without removing the assumption, and the arena
-        // quietly grew pockets holding a hidden power-up nobody could collect.
-        //
-        // Anything the walk cannot reach is not part of the island, so it is dropped
-        // rather than patched: carving a corridor to it would move a pillar the lattice
-        // is entitled to have.
-        private static void DropUnreachableGround(Arena arena)
-        {
-            GridPos start = NearestStandable(arena, Centre(arena), new HashSet<GridPos>());
-            if (start.X < 0)
-            {
-                return;
-            }
-
-            var reached = new HashSet<GridPos> { start };
-            var queue = new Queue<GridPos>();
-            queue.Enqueue(start);
-
-            while (queue.Count > 0)
-            {
-                GridPos current = queue.Dequeue();
-
-                for (int i = 0; i < Neighbours.Length; i++)
-                {
-                    GridPos next = current.Offset(Neighbours[i].X, Neighbours[i].Y);
-                    if (!arena.Contains(next) || arena[next] == TileKind.HardBlock || arena[next] == TileKind.Void)
-                    {
-                        continue;
-                    }
-
-                    if (reached.Add(next))
-                    {
-                        queue.Enqueue(next);
-                    }
-                }
-            }
-
-            for (int y = 0; y < arena.Height; y++)
-            {
-                for (int x = 0; x < arena.Width; x++)
-                {
-                    var tile = new GridPos(x, y);
-                    if (arena[tile] != TileKind.Void && arena[tile] != TileKind.HardBlock && !reached.Contains(tile))
-                    {
-                        arena[tile] = TileKind.Void;
-                    }
-                }
-            }
-
-            DropStrandedPillars(arena);
-        }
-
-        // A pillar left standing with nothing but water around it is a rock in the sea,
-        // not part of the board, and it would still be drawn as one.
-        private static void DropStrandedPillars(Arena arena)
-        {
-            for (int y = 0; y < arena.Height; y++)
-            {
-                for (int x = 0; x < arena.Width; x++)
-                {
-                    var tile = new GridPos(x, y);
-                    if (arena[tile] != TileKind.HardBlock)
-                    {
-                        continue;
-                    }
-
-                    bool touchesGround = false;
-                    for (int i = 0; i < Neighbours.Length && !touchesGround; i++)
-                    {
-                        GridPos next = tile.Offset(Neighbours[i].X, Neighbours[i].Y);
-                        touchesGround = arena.Contains(next) && arena[next] != TileKind.Void;
-                    }
-
-                    if (!touchesGround)
-                    {
-                        arena[tile] = TileKind.Void;
-                    }
-                }
-            }
-        }
-
-        private static GridPos Centre(Arena arena)
-        {
-            return new GridPos(arena.Width / 2, arena.Height / 2);
         }
 
         private static HashSet<GridPos> ReserveSpawns(Arena arena, IReadOnlyList<GridPos> spawns)
@@ -250,25 +164,89 @@ namespace Blastlands.Core
             return reserved;
         }
 
-        private static void ScatterSoftBlocks(
-            Arena arena, HashSet<GridPos> reserved, int softBlockPercent, int bushPercent, DeterministicRandom random)
+        // Cover in clumps rather than a roll per tile. Uniform noise at three quarters
+        // gave the same texture everywhere: nowhere open enough to fight across and
+        // nowhere dense enough to hide in. Clumps make both, and which one you are
+        // standing in becomes a thing you chose.
+        private static void ScatterCover(
+            Arena arena, HashSet<GridPos> reserved, int coverPercent, int bushPercent, DeterministicRandom random)
         {
+            List<GridPos> open = OpenFloor(arena, reserved);
+            if (coverPercent <= 0 || open.Count == 0)
+            {
+                return;
+            }
+
+            int target = open.Count * coverPercent / 100;
+            int placed = 0;
+
+            // A clump can land entirely on ground another clump already took, which
+            // places nothing and would spin forever against the target.
+            int attempts = 0;
+            int limit = open.Count * 4;
+
+            while (placed < target && attempts < limit)
+            {
+                attempts++;
+                GridPos start = open[random.NextInt(open.Count)];
+                int size = MinClump + random.NextInt(MaxClump - MinClump + 1);
+                placed += GrowClump(arena, reserved, start, size, bushPercent, random);
+            }
+        }
+
+        // Grown by taking a random tile off the frontier rather than the nearest one, so
+        // the shape comes out ragged instead of as a diamond.
+        private static int GrowClump(
+            Arena arena,
+            HashSet<GridPos> reserved,
+            GridPos start,
+            int size,
+            int bushPercent,
+            DeterministicRandom random)
+        {
+            var frontier = new List<GridPos> { start };
+            int placed = 0;
+
+            while (placed < size && frontier.Count > 0)
+            {
+                int index = random.NextInt(frontier.Count);
+                GridPos tile = frontier[index];
+                frontier.RemoveAt(index);
+
+                if (!arena.Contains(tile) || arena[tile] != TileKind.Floor || reserved.Contains(tile))
+                {
+                    continue;
+                }
+
+                arena[tile] = random.NextInt(100) < bushPercent ? TileKind.Bush : TileKind.SoftBlock;
+                placed++;
+
+                for (int i = 0; i < Neighbours.Length; i++)
+                {
+                    frontier.Add(tile.Offset(Neighbours[i].X, Neighbours[i].Y));
+                }
+            }
+
+            return placed;
+        }
+
+        private static List<GridPos> OpenFloor(Arena arena, HashSet<GridPos> reserved)
+        {
+            var open = new List<GridPos>();
+
             for (int y = 0; y < arena.Height; y++)
             {
                 for (int x = 0; x < arena.Width; x++)
                 {
                     var tile = new GridPos(x, y);
-                    if (arena[tile] != TileKind.Floor || reserved.Contains(tile))
+                    if (arena[tile] == TileKind.Floor && !reserved.Contains(tile))
                     {
-                        continue;
-                    }
-
-                    if (random.NextInt(100) < softBlockPercent)
-                    {
-                        arena[tile] = random.NextInt(100) < bushPercent ? TileKind.Bush : TileKind.SoftBlock;
+                        open.Add(tile);
                     }
                 }
             }
+
+            return open;
         }
     }
 }

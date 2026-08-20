@@ -17,8 +17,8 @@ namespace Blastlands.Core
         public ArenaSettings(
             int width, int height, int softBlockPercent, int bushPercent, IslandSettings island)
         {
-            RequireOddAndLargeEnough(width, nameof(width));
-            RequireOddAndLargeEnough(height, nameof(height));
+            RequireLargeEnough(width, nameof(width));
+            RequireLargeEnough(height, nameof(height));
 
             if (softBlockPercent < 0 || softBlockPercent > 100)
             {
@@ -37,6 +37,9 @@ namespace Blastlands.Core
 
         public int Height { get; }
 
+        // Share of the open ground that comes up as cover. It is a target the clumps aim
+        // for rather than a roll per tile, so the same number now buys fewer, larger
+        // pieces of cover instead of an even sprinkle.
         public int SoftBlockPercent { get; }
 
         // Share of the breakable tiles that come up as bushes rather than walls. Cover
@@ -55,20 +58,31 @@ namespace Blastlands.Core
             // 16:9 the old arena was exactly that. Everything tuned before this — bomb
             // supply, wall regrowth, every bot survival figure — was fitted at the old
             // size and had to be measured again rather than assumed to carry over.
-            get { return new ArenaSettings(25, 21, 75); }
+            //
+            // Cover fell from 75 to 35 when the pillar lattice went and the scatter became
+            // clumps. Seventy-five was a maze; the number is chosen on how often anybody
+            // actually dies. Twelve four-bot matches, sudden death off, deaths of 48:
+            //
+            //   20%   14      too open, nobody meets anybody
+            //   25%   23
+            //   30%   27
+            //   35%   29   <- here
+            //   40%   24
+            //   55%   21      back towards corridors
+            //
+            // The optimum is a broad plateau rather than a spike, so 30 and 35 were run
+            // again over twenty-four seeds to separate them: 43 deaths of 96 against 51.
+            // The gap held and widened, so it is not the noise it could have been.
+            get { return new ArenaSettings(25, 21, 35); }
         }
 
-        private static void RequireOddAndLargeEnough(int value, string name)
+        // Odd dimensions used to be required so the pillar lattice landed inside the
+        // border. There is no lattice and no border, so any size at all is fine.
+        private static void RequireLargeEnough(int value, string name)
         {
             if (value < 5)
             {
                 throw new ArgumentOutOfRangeException(name, value, "Arena dimension must be at least 5.");
-            }
-
-            if (value % 2 == 0)
-            {
-                throw new ArgumentOutOfRangeException(
-                    name, value, "Arena dimension must be odd so the pillar lattice lands inside the border.");
             }
         }
     }

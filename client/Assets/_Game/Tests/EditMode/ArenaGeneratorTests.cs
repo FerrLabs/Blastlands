@@ -69,23 +69,84 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
-        public void Generate_PlacesThePillarLatticeOnEvenCoordinates()
+        public void Generate_LaysNothingPermanentOnTheIsland()
         {
+            // The lattice is gone. Everything a player meets on the board can be blown
+            // up, which is what lets the arena open out as the round goes on. See #120.
             Arena arena = ArenaGenerator.Generate(ArenaSettings.Default, 7u).Arena;
 
-            // Only where there is ground to stand one on. Off the island the lattice
-            // has nothing to sit in.
-            for (int y = 2; y < arena.Height - 1; y += 2)
+            for (int y = 0; y < arena.Height; y++)
             {
-                for (int x = 2; x < arena.Width - 1; x += 2)
+                for (int x = 0; x < arena.Width; x++)
+                {
+                    Assert.That(
+                        arena[new GridPos(x, y)],
+                        Is.Not.EqualTo(TileKind.HardBlock),
+                        $"something permanent at {x},{y}");
+                }
+            }
+        }
+
+        [Test]
+        public void Generate_GrowsCoverInClumpsRatherThanSprinkling()
+        {
+            // The shape of the cover is the point, not how much of it there is. Rolling
+            // per tile gave the same texture everywhere; clumps give ground open enough
+            // to fight across and ground dense enough to hide in.
+            Arena arena = ArenaGenerator.Generate(ArenaSettings.Default, 7u).Arena;
+
+            int cover = 0;
+            var seen = new HashSet<GridPos>();
+            int pieces = 0;
+
+            for (int y = 0; y < arena.Height; y++)
+            {
+                for (int x = 0; x < arena.Width; x++)
                 {
                     var tile = new GridPos(x, y);
-                    if (arena[tile] == TileKind.Void)
+                    if (!Tiles.CanBeDestroyed(arena[tile]))
                     {
                         continue;
                     }
 
-                    Assert.That(arena[tile], Is.EqualTo(TileKind.HardBlock), $"pillar at {x},{y}");
+                    cover++;
+                    if (seen.Contains(tile))
+                    {
+                        continue;
+                    }
+
+                    pieces++;
+                    Flood(arena, tile, seen);
+                }
+            }
+
+            Assert.That(cover, Is.GreaterThan(0), "no cover at all");
+            Assert.That(
+                cover / pieces,
+                Is.GreaterThanOrEqualTo(3),
+                $"{cover} cover tiles in {pieces} pieces reads as a sprinkle, not as clumps");
+        }
+
+        private static void Flood(Arena arena, GridPos from, HashSet<GridPos> seen)
+        {
+            var pending = new Queue<GridPos>();
+            pending.Enqueue(from);
+            seen.Add(from);
+
+            while (pending.Count > 0)
+            {
+                GridPos tile = pending.Dequeue();
+                foreach (GridPos step in new[]
+                {
+                    new GridPos(1, 0), new GridPos(-1, 0), new GridPos(0, 1), new GridPos(0, -1)
+                })
+                {
+                    GridPos next = tile.Offset(step.X, step.Y);
+                    if (arena.Contains(next) && !seen.Contains(next) && Tiles.CanBeDestroyed(arena[next]))
+                    {
+                        seen.Add(next);
+                        pending.Enqueue(next);
+                    }
                 }
             }
         }
@@ -167,10 +228,11 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
-        public void ArenaSettings_RejectEvenDimensions()
+        public void ArenaSettings_AcceptEvenDimensions()
         {
-            Assert.That(() => new ArenaSettings(14, 13, 50), Throws.TypeOf<ArgumentOutOfRangeException>());
-            Assert.That(() => new ArenaSettings(15, 12, 50), Throws.TypeOf<ArgumentOutOfRangeException>());
+            // Odd was only ever required so the pillar lattice landed inside the border.
+            Assert.That(() => new ArenaSettings(14, 12, 50), Throws.Nothing);
+            Assert.That(ArenaGenerator.Generate(new ArenaSettings(14, 12, 50), 3u).Spawns, Is.Not.Empty);
         }
 
         [Test]

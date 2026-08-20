@@ -121,34 +121,6 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
-        public void TheIslandNeverKeepsAPillarStandingInOpenSky()
-        {
-            // Dropping ground the flood could not reach can leave a pillar with nothing
-            // under or beside it, and it would still be drawn: a rock hanging in the air.
-            for (uint seed = 1; seed <= 60; seed++)
-            {
-                Arena arena = ArenaGenerator.Generate(ArenaSettings.Default, seed).Arena;
-
-                for (int y = 0; y < arena.Height; y++)
-                {
-                    for (int x = 0; x < arena.Width; x++)
-                    {
-                        var tile = new GridPos(x, y);
-                        if (arena[tile] != TileKind.HardBlock)
-                        {
-                            continue;
-                        }
-
-                        Assert.That(
-                            TouchesGround(arena, tile),
-                            Is.True,
-                            $"seed {seed}: the pillar at {tile} is stranded");
-                    }
-                }
-            }
-        }
-
-        [Test]
         public void TheBombSupplyIsMeasuredInGroundRatherThanInBounds()
         {
             // Counting the bounds stocks an island half under water like a full
@@ -174,23 +146,5 @@ namespace Blastlands.Core.Tests
                 Is.EqualTo(ground / MatchSettings.Default.TilesPerLooseBomb));
         }
 
-        private static bool TouchesGround(Arena arena, GridPos tile)
-        {
-            GridPos[] around =
-            {
-                new GridPos(1, 0), new GridPos(-1, 0), new GridPos(0, 1), new GridPos(0, -1)
-            };
-
-            for (int i = 0; i < around.Length; i++)
-            {
-                GridPos next = tile.Offset(around[i].X, around[i].Y);
-                if (arena.Contains(next) && arena[next] != TileKind.Void)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
     }
 }

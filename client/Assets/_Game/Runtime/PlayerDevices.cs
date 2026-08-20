@@ -10,9 +10,14 @@ namespace Blastlands.Runtime
     // also drives player 0, so a solo player can use either without configuring
     // anything, and a second player only has to plug a pad in.
     //
-    // Devices are read directly rather than through an .inputactions asset. That
-    // asset is worth having for rebinding, but it is not what makes the game
-    // playable with friends today.
+    // Keyboard defaults: move on ZQSD, WASD or the arrows, E to drop a bomb, space to
+    // dash, left click to shove. On a pad: south face to drop, either shoulder to dash,
+    // west face to shove.
+    //
+    // Devices are read directly rather than through an .inputactions asset, so none of
+    // this can be rebound at runtime yet. That migration is #11, and it is the only
+    // honest way to make the bindings changeable: a parallel key table here would be a
+    // second input system to throw away when the asset lands.
     public sealed class PlayerDevices
     {
         private readonly bool[] dropLatches;
@@ -119,6 +124,8 @@ namespace Blastlands.Runtime
             return player >= 0 && player < Gamepad.all.Count ? Gamepad.all[player] : null;
         }
 
+        // E on the keyboard, under the same hand that holds a direction, and the south
+        // face button on a pad.
         private bool DropPressedThisFrame(int player)
         {
             Gamepad pad = PadFor(player);
@@ -133,7 +140,7 @@ namespace Blastlands.Runtime
             }
 
             Keyboard keyboard = Keyboard.current;
-            return keyboard != null && keyboard.spaceKey.wasPressedThisFrame;
+            return keyboard != null && keyboard.eKey.wasPressedThisFrame;
         }
 
         // Left click, as asked for, and the west face button on a pad. A shove is
@@ -155,9 +162,9 @@ namespace Blastlands.Runtime
             return mouse != null && mouse.leftButton.wasPressedThisFrame;
         }
 
-        // Shoulder button on a pad, shift on the keyboard: it has to be reachable
-        // without letting go of a direction, because a dash with no direction is not
-        // a dash.
+        // Space on the keyboard, shoulder button on a pad. It has to be reachable
+        // without letting go of a direction, because a dash with no direction is not a
+        // dash, and the thumb is the one finger not already holding one.
         private bool DashPressedThisFrame(int player)
         {
             Gamepad pad = PadFor(player);
@@ -172,8 +179,7 @@ namespace Blastlands.Runtime
             }
 
             Keyboard keyboard = Keyboard.current;
-            return keyboard != null
-                && (keyboard.leftShiftKey.wasPressedThisFrame || keyboard.rightShiftKey.wasPressedThisFrame);
+            return keyboard != null && keyboard.spaceKey.wasPressedThisFrame;
         }
 
         // The stick is passed through rather than reduced to one of four directions.
@@ -229,25 +235,6 @@ namespace Blastlands.Runtime
             GridPos delta = Directions.Delta(direction);
             moveX = delta.X * StickReader.Range;
             moveY = delta.Y * StickReader.Range;
-        }
-
-        private static Direction PadDirection(Gamepad pad)
-        {
-            if (pad == null)
-            {
-                return Direction.None;
-            }
-
-            // The d-pad is already four-way and unambiguous, so it wins over the stick
-            // when both are pushed.
-            Vector2 dpad = pad.dpad.ReadValue();
-            Direction fromDpad = ToDirection(dpad);
-            if (fromDpad != Direction.None)
-            {
-                return fromDpad;
-            }
-
-            return ToDirection(pad.leftStick.ReadValue());
         }
 
         // The grid's Y grows downward while the stick's grows upward, hence the flip.

@@ -13,17 +13,31 @@ friends plays a lot of them in a sitting.
 
 ## The arena
 
-Odd-sized grid (default 25×21). Five tile kinds:
+Grid of 25×21 by default, with an island carved out of it. Five tile kinds:
 
-- **Hard block** — indestructible, laid out on every even/even coordinate. This is the
-  classic pillar lattice; it is what makes the arena readable and stops the map from
-  collapsing into an open field.
-- **Soft block** — destructible, scattered randomly on the remaining floor. Hides power-ups.
+- **Soft block** — destructible cover. Hides power-ups.
 - **Bush** — walkable cover that nothing sees through, and that burns like a soft block. You
   stand *in* it rather than behind it, which is the whole of the difference.
 - **Floor** — walkable.
 - **Void** — inside the grid and off the island. It stops movement and nothing else: sight
   and blasts both carry across a drop, so the only thing a gap costs you is the ground.
+- **Hard block** — indestructible. Nothing generates one: the only source is sudden death
+  closing the coast, so on a fresh board there are none at all.
+
+**Nothing on the board is permanent, and the cover comes in clumps.** Generation used to put
+an indestructible pillar on every even/even coordinate and then roll the dice per tile at 75%
+for the rest. That is a bomberman board: a lattice for readability on a checkerboard, and an
+even sprinkle over everything else. It produced a maze of one-tile corridors where a fight was
+decided by who stood in the right slot.
+
+Cover is now grown in clumps of three to nine tiles on open ground, to a target share of it,
+and none of it is permanent. The result is ground open enough to fight across and ground dense
+enough to hide in, and which of the two you are standing in is something you chose. Bots kill
+each other more than twice as often on it: 29 deaths across twelve four-bot matches against 14
+on the lattice.
+
+It costs the old guarantee that the board never opens out completely. Sudden death is what
+replaces it, which is why that had to land first.
 
 Spawn corners are cleared three tiles along each axis. The clearance has to exceed the
 starting fire range: a player sealed into a smaller pocket cannot open it, because the only
@@ -44,6 +58,8 @@ and every client.
 Bombs are found, not owned. They lie around the arena, get picked up by walking over them,
 and are **spent when placed** — a bomb going off does not hand it back. Running out is the
 normal state of affairs, and it is what sends a player back into the open.
+
+Dropped on E, or on the south face button of a pad.
 
 The arena tops itself up toward `LooseBombTarget` every `BombRespawnTicks`, on floor the
 players can actually reach. Reachability is not a detail: a free tile can be sealed inside a
@@ -205,8 +221,8 @@ a shorter reach means a shove that only works when you are already inside somebo
 ## Dash
 
 A burst of speed on a recharge — about two and a half tiles in a third of a second, once
-every three seconds. Shoulder button on a pad, shift on the keyboard, so it is reachable
-without letting go of a direction.
+every three seconds. Shoulder button on a pad, space on the keyboard, so it is reachable
+without letting go of a direction: the thumb is the one finger not already holding one.
 
 **It is committed.** Once started it runs its length in the direction it began in, whatever
 the player does next. That commitment is the risk that pays for the speed: it is entirely
