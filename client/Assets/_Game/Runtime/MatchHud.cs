@@ -5,11 +5,17 @@ using UnityEngine.UI;
 
 namespace Blastlands.Runtime
 {
-    // One panel per player, pinned to a corner, built from the Synty Apocalypse HUD
-    // pack. Like MatchView it renders state and owns none of it, so it can be switched
-    // off without changing a match.
+    // One panel per player, pinned to a corner. Like MatchView it renders state and owns
+    // none of it, so it can be switched off without changing a match.
     //
-    // Stats are bars rather than numbers because each one is small and capped, so what
+    // Every visible part is a prefab out of the Synty Apocalypse HUD pack. Nothing here
+    // draws: the panel root is an empty RectTransform used only to group and place, and
+    // the three stat boxes bring their own plate, frame, icon slot and fill. The version
+    // before this built the plate itself from a bare sprite on a hand-made Image, then
+    // tinted it dark because the pack's metal left white icons with no contrast. Both
+    // halves of that were the wrong answer to "which prefab is this".
+    //
+    // Stats are fills rather than numbers because each one is small and capped, so what
     // matters is how close to the cap it is. It also keeps the HUD clear of TextMeshPro.
     public sealed class MatchHud : MonoBehaviour
     {
@@ -22,12 +28,12 @@ namespace Blastlands.Runtime
         };
 
         [SerializeField] private HudArt art;
-        [SerializeField] private Vector2 panelSize = new Vector2(340f, 156f);
         [SerializeField] private float margin = 26f;
 
-        // The pack's plate is light metal, which leaves the white icons and the bars
-        // sitting on top of it with almost no contrast.
-        [SerializeField] private Color plateTint = new Color(0.24f, 0.23f, 0.21f, 0.95f);
+        // The pack authors a stat box at 120 square, which is a size for one player
+        // filling the screen rather than four sharing it.
+        [SerializeField] private float boxSize = 74f;
+        [SerializeField] private float boxGap = 6f;
 
         // The pack authors the diode large enough to headline a panel of its own.
         [SerializeField] private float diodeSize = 26f;
@@ -146,7 +152,11 @@ namespace Blastlands.Runtime
             // the same edge rather than landing on top of each other.
             int row = index / Corners.Length;
 
-            var root = new GameObject("Player " + (index + 1), typeof(RectTransform), typeof(CanvasGroup), typeof(Image));
+            Vector2 panelSize = new Vector2(
+                (boxSize * 3f) + (boxGap * 2f),
+                boxSize);
+
+            var root = new GameObject("Player " + (index + 1), typeof(RectTransform), typeof(CanvasGroup));
             root.transform.SetParent(canvas.transform, false);
 
             var rect = root.GetComponent<RectTransform>();
@@ -160,77 +170,16 @@ namespace Blastlands.Runtime
 
             Color accent = MatchPalette.ForPlayer(index);
 
-            Image background = root.GetComponent<Image>();
-            background.color = plateTint;
-
-            if (art != null && art.Panel != null)
-            {
-                background.sprite = art.Panel;
-                background.type = Image.Type.Sliced;
-            }
-
             BuildDiode(root.transform, accent);
 
             var bars = new Slider[3];
             var fills = new Image[3];
             GameObject skull = BuildSkull(root.transform);
+            Sprite[] icons = { art == null ? null : art.Bombs, art == null ? null : art.Fire, art == null ? null : art.Speed };
 
-            if (art != null && art.StatsList != null)
+            for (int i = 0; i < bars.Length; i++)
             {
-                GameObject list = Instantiate(art.StatsList, root.transform);
-                var listRect = list.GetComponent<RectTransform>();
-                listRect.anchorMin = Vector2.zero;
-                listRect.anchorMax = Vector2.one;
-                listRect.offsetMin = new Vector2(12f, 10f);
-                listRect.offsetMax = new Vector2(-12f, -34f);
-
-                Sprite[] icons = { art.Bombs, art.Fire, art.Speed };
-
-                for (int i = 0; i < list.transform.childCount; i++)
-                {
-                    Transform child = list.transform.GetChild(i);
-
-                    if (i >= bars.Length)
-                    {
-                        child.gameObject.SetActive(false);
-                        continue;
-                    }
-
-                    bars[i] = child.GetComponentInChildren<Slider>(true);
-                    if (bars[i] != null)
-                    {
-                        bars[i].minValue = 0f;
-                        bars[i].maxValue = 1f;
-                        bars[i].interactable = false;
-                        bars[i].transition = Selectable.Transition.None;
-
-                        // The handle is for dragging, which these never are.
-                        if (bars[i].handleRect != null)
-                        {
-                            bars[i].handleRect.gameObject.SetActive(false);
-                            bars[i].handleRect = null;
-                        }
-
-                        if (bars[i].fillRect != null)
-                        {
-                            fills[i] = bars[i].fillRect.GetComponent<Image>();
-                            if (fills[i] != null)
-                            {
-                                fills[i].color = accent;
-                            }
-                        }
-                    }
-
-                    Transform icon = child.Find("Icon");
-                    if (icon != null && icons[i] != null)
-                    {
-                        Image image = icon.GetComponent<Image>();
-                        image.sprite = icons[i];
-
-                        // The slot is wider than it is tall, and these icons are not.
-                        image.preserveAspect = true;
-                    }
-                }
+                BuildStat(root.transform, i, icons[i], accent, bars, fills);
             }
 
             return new Panel
@@ -240,6 +189,66 @@ namespace Blastlands.Runtime
                 Fills = fills,
                 Skull = skull
             };
+        }
+
+        private void BuildStat(Transform parent, int slot, Sprite icon, Color accent, Slider[] bars, Image[] fills)
+        {
+            if (art == null || art.StatBox == null)
+            {
+                return;
+            }
+
+            GameObject box = Instantiate(art.StatBox, parent);
+            box.name = "Stat " + slot;
+
+            var rect = box.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0f, 1f);
+            rect.anchorMax = new Vector2(0f, 1f);
+            rect.pivot = new Vector2(0f, 1f);
+
+            // Scaled rather than resized. The plate, its frame and the icon inside it are
+            // separate rects the pack authored against each other, and setting the root's
+            // size leaves every child where it was.
+            float authored = rect.rect.width;
+            box.transform.localScale = Vector3.one * (authored > 0f ? boxSize / authored : 1f);
+            rect.anchoredPosition = new Vector2(slot * (boxSize + boxGap), 0f);
+
+            Slider bar = box.GetComponentInChildren<Slider>(true);
+            if (bar != null)
+            {
+                bar.minValue = 0f;
+                bar.maxValue = 1f;
+                bar.interactable = false;
+                bar.transition = Selectable.Transition.None;
+
+                // The handle is for dragging, which these never are.
+                if (bar.handleRect != null)
+                {
+                    bar.handleRect.gameObject.SetActive(false);
+                    bar.handleRect = null;
+                }
+
+                if (bar.fillRect != null)
+                {
+                    fills[slot] = bar.fillRect.GetComponent<Image>();
+                    if (fills[slot] != null)
+                    {
+                        fills[slot].color = accent;
+                    }
+                }
+
+                bars[slot] = bar;
+            }
+
+            Transform slotIcon = box.transform.Find("Icon");
+            if (slotIcon != null && icon != null)
+            {
+                Image image = slotIcon.GetComponent<Image>();
+                image.sprite = icon;
+
+                // The slot is wider than it is tall, and these icons are not.
+                image.preserveAspect = true;
+            }
         }
 
         private GameObject BuildSkull(Transform parent)

@@ -12,10 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d6f7e68fa1c29bc49afe0441a33b8688, type: 3}
   m_Name: HudArt
   m_EditorClassIdentifier: Blastlands.Runtime::Blastlands.Runtime.HudArt
-  statsList: {fileID: 7631856804230176141, guid: 2fd5b8861c35c426c9602d37329a41a5, type: 3}
+  statBox: {fileID: 1078964336793701480, guid: a489a93066b0e41ffa772d62f2b8372f, type: 3}
   icon: {fileID: 909381203363235527, guid: 1259ba2730c7f408abfcec0e3c2836fa, type: 3}
   diode: {fileID: 91339752289837389, guid: 3891ad76130758a498fdb1dc45ee3c9b, type: 3}
-  panel: {fileID: 21300000, guid: 8bf5f3da64e997248acabea33c4e0b75, type: 3}
   bombs: {fileID: 21300000, guid: 130f1f8e9664ea64cbf414e4b970d3e6, type: 3}
   fire: {fileID: 21300000, guid: a4627b7710d2e42438baeb80805cbb51, type: 3}
   speed: {fileID: 21300000, guid: ceaf1262ccf7e9043b848928bdaa53c8, type: 3}

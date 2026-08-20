@@ -7,9 +7,13 @@ namespace Blastlands.Runtime
     [CreateAssetMenu(fileName = "HudArt", menuName = "Blastlands/Hud Art")]
     public sealed class HudArt : ScriptableObject
     {
-        // A row of icon-and-bar entries from the Apocalypse HUD pack. The panel drives
-        // the first three rows and hides the rest.
-        [SerializeField] private GameObject statsList;
+        // One framed stat from the Apocalypse HUD pack: plate, icon and fill in a single
+        // prefab. Three of them are the whole panel, which is why there is no plate here
+        // any more. The old panel was a bare sprite stretched over a hand-built Image and
+        // then tinted, because the pack's metal plate left white icons with no contrast
+        // on it. Recolouring an asset to make it work is the tell that it was the wrong
+        // asset.
+        [SerializeField] private GameObject statBox;
 
         // The pack's own icon component, and the indicator light it uses to mark state.
         // Nothing here is assembled by hand: the HUD instantiates these and pushes
@@ -17,15 +21,14 @@ namespace Blastlands.Runtime
         [SerializeField] private GameObject icon;
         [SerializeField] private GameObject diode;
 
-        [SerializeField] private Sprite panel;
         [SerializeField] private Sprite bombs;
         [SerializeField] private Sprite fire;
         [SerializeField] private Sprite speed;
         [SerializeField] private Sprite dead;
 
-        public GameObject StatsList
+        public GameObject StatBox
         {
-            get { return statsList; }
+            get { return statBox; }
         }
 
         public GameObject Icon
@@ -36,11 +39,6 @@ namespace Blastlands.Runtime
         public GameObject Diode
         {
             get { return diode; }
-        }
-
-        public Sprite Panel
-        {
-            get { return panel; }
         }
 
         public Sprite Bombs
