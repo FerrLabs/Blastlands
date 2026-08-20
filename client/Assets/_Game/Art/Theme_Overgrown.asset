@@ -36,6 +36,13 @@ MonoBehaviour:
   - {fileID: 1259743623468626, guid: 8f3c2b79887cfc44c98b550b0b5da119, type: 3}
   - {fileID: 1989422713944130, guid: b6c3f8a0e79824d49be355cbf52aad27, type: 3}
   - {fileID: 7211606713778384998, guid: cc46b771562eb3e4793292607fc3f72b, type: 3}
+  cliffs:
+  - {fileID: 5883088392208447636, guid: efba04a08e834ed4da6ebc058790c7da, type: 3}
+  - {fileID: 6038491958005468761, guid: f66e9025bf3f814478d0a0927c302226, type: 3}
+  - {fileID: 7042933923181016387, guid: 8c7a891bed7ba7042b72398af03607d0, type: 3}
+  - {fileID: 7009548978709351938, guid: 4a02d6417a35ba64d9b4c0aba0b593d2, type: 3}
+  - {fileID: 3900956376870440453, guid: ef3c8ec49aa5bab449f59408bef77891, type: 3}
+  - {fileID: 3265862617242815588, guid: 8961f72670410b349bc2b8be42cdd12e, type: 3}
   groundDetail:
   - {fileID: 1613843008959600, guid: 996be341a29b4284ab4a63c87c3727ce, type: 3}
   - {fileID: 1369506455379858, guid: 516049eaa83518d4e9b0b7ece41ed7c1, type: 3}

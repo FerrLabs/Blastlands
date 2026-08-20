@@ -29,6 +29,12 @@ namespace Blastlands.Runtime
         [SerializeField] private GameObject[] bushes;
         [SerializeField] private GameObject[] scenery;
 
+        // Rock faces hung under the rim so the coast reads as a cliff. Without them
+        // the island is a stack of tinted tiles and its outline is a staircase of
+        // squares, which is the single thing that made the board look like a grid
+        // from any angle above it.
+        [SerializeField] private GameObject[] cliffs;
+
         // Flat patches laid across the floor without regard for tile boundaries. They
         // must never read as obstacles: anything with height on a walkable tile makes
         // the player misjudge where they can go.
@@ -42,6 +48,11 @@ namespace Blastlands.Runtime
         public Color GroundTint
         {
             get { return groundTint; }
+        }
+
+        public bool HasCliffs
+        {
+            get { return cliffs != null && cliffs.Length > 0; }
         }
 
         public bool HasScenery
@@ -77,6 +88,11 @@ namespace Blastlands.Runtime
         public GameObject Scenery(int variant)
         {
             return Pick(scenery, variant);
+        }
+
+        public GameObject Cliff(int variant)
+        {
+            return Pick(cliffs, variant);
         }
 
         public GameObject GroundDetail(int variant)

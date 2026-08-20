@@ -63,6 +63,19 @@ namespace Blastlands.Runtime
         // How deep the island is, and how far below it the world sits. The thickness is
         // what turns a flat cutout into something with an edge you can see over.
         [SerializeField] private float islandThickness = 0.9f;
+
+        // How wide one piece of the rock skirt is, in tiles.
+        //
+        // Scaled from width rather than from height, which was the first attempt and
+        // was wrong by a factor of three: these meshes are around twelve units across
+        // and nine tall, so sizing them by the drop made each piece three tiles wide
+        // and the skirt ate the outer ring of the board.
+        [SerializeField] private float cliffSpread = 1.7f;
+
+        // How far the top of the skirt sits below the walkable surface. Under it rather
+        // than level with it, because these pieces are grassed on top and that grass has
+        // nothing to do with the theme standing on the island.
+        [SerializeField] private float cliffSink = 0.12f;
         [SerializeField] private float skyDepth = 14f;
 
         private readonly Dictionary<GridPos, BlockView> blocks = new Dictionary<GridPos, BlockView>();
@@ -96,6 +109,14 @@ namespace Blastlands.Runtime
 
             public TileKind Kind { get; }
         }
+
+        private static readonly GridPos[] CoastSteps =
+        {
+            new GridPos(1, 0),
+            new GridPos(-1, 0),
+            new GridPos(0, 1),
+            new GridPos(0, -1)
+        };
 
         public static Vector3 ToWorld(GridPos tile, float height)
         {
@@ -146,6 +167,7 @@ namespace Blastlands.Runtime
             burningTiles.Clear();
 
             BuildGround();
+            BuildCoast();
             BuildGroundDetail();
             BuildScenery();
             SyncBlocks();
@@ -204,6 +226,87 @@ namespace Blastlands.Runtime
                     block.transform.position = ToWorld(tile, -islandThickness * 0.5f);
                 }
             }
+        }
+
+        // The coast, hung with rock rather than left as the side of a stack of tiles.
+        //
+        // Ground is built tile by tile, so the island's outline is a staircase of unit
+        // squares and every angle above the board shows it. No amount of tinting fixes
+        // that: the silhouette is the tell. A cliff face on each edge tile buries the
+        // steps behind something with its own shape.
+        //
+        // Sized from the instance rather than from numbers written here, because these
+        // pieces are between six and ten units tall against a tile of one, and every
+        // variant differs. Measure, scale to the drop we want, then hang it so its top
+        // meets the surface.
+        private void BuildCoast()
+        {
+            if (theme == null || !theme.HasCliffs)
+            {
+                return;
+            }
+
+            for (int y = 0; y < state.Arena.Height; y++)
+            {
+                for (int x = 0; x < state.Arena.Width; x++)
+                {
+                    var tile = new GridPos(x, y);
+                    if (state.Arena[tile] == TileKind.Void)
+                    {
+                        continue;
+                    }
+
+                    for (int i = 0; i < CoastSteps.Length; i++)
+                    {
+                        GridPos step = CoastSteps[i];
+                        GridPos beyond = tile.Offset(step.X, step.Y);
+                        if (state.Arena.Contains(beyond) && state.Arena[beyond] != TileKind.Void)
+                        {
+                            continue;
+                        }
+
+                        HangCliff(tile, step, TileHash.At((x * 4) + i, (y * 4) - i, state.Seed));
+                    }
+                }
+            }
+        }
+
+        private void HangCliff(GridPos tile, GridPos step, int hash)
+        {
+            GameObject cliff = Spawn(theme.Cliff(hash), PrimitiveType.Cube, theme.GroundTint, "Coast");
+
+            // Measured before it is turned, because TryMeasure reports a world-space box.
+            // Turned first, a piece hung on an east or west edge is a quarter turn round,
+            // so its world X is the mesh's depth rather than its width, and the same
+            // cliffSpread buys a very different piece. Measured: 2.60 tiles of cliff on
+            // the east edge against 2.03 on the south, a 28% difference decided by
+            // nothing but which side of the island you were standing on.
+            Bounds authored;
+            if (!TileFitter.TryMeasure(cliff, out authored) || authored.size.x <= 0.0001f)
+            {
+                Destroy(cliff);
+                return;
+            }
+
+            float spread = 0.85f + (((hash / 11) % 30) / 100f);
+            cliff.transform.localScale = Vector3.one * (cliffSpread * spread / authored.size.x);
+
+            var outward = new Vector3(step.X, 0f, -step.Y);
+            float jitter = ((hash / 7) % 25) - 12f;
+            cliff.transform.rotation = Quaternion.Euler(0f, Quaternion.LookRotation(outward).eulerAngles.y + jitter, 0f);
+
+            Bounds measured;
+            if (!TileFitter.TryMeasure(cliff, out measured))
+            {
+                Destroy(cliff);
+                return;
+            }
+
+            Vector3 rim = ToWorld(tile, 0f) + (outward * 0.75f);
+            cliff.transform.position += new Vector3(
+                rim.x - measured.center.x,
+                -measured.max.y - cliffSink,
+                rim.z - measured.center.z);
         }
 
         // What makes an arena read as a grid is not the texture, it is that everything

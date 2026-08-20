@@ -33,9 +33,14 @@ MonoBehaviour:
   - {fileID: 1796885337435754, guid: 97eeef42e1d4d814db88bb348f6c5315, type: 3}
   - {fileID: 1118852644942752, guid: 2c6eea56361198e4e99317e1f87c7a3d, type: 3}
   - {fileID: 1369509060990928, guid: 541d55964971acb4badd8724436b8489, type: 3}
-  - {fileID: 1350235754117392, guid: fffa2241c5a8ffc4f9ddf7cb7e671a9f, type: 3}
+  - {fileID: 274166536403621637, guid: a2e8aab815313704cb0cc67a12f9bd9c, type: 3}
   - {fileID: 8202731649550764293, guid: d67c6edfceeb6fc468ead41526729645, type: 3}
-  - {fileID: 6873938577213127126, guid: a9a82dc7a09f37741916c33cc3483e7c, type: 3}
+  - {fileID: 7211606713778384998, guid: cc46b771562eb3e4793292607fc3f72b, type: 3}
+  cliffs:
+  - {fileID: 4905485108370227772, guid: ae1b00ab0436c534c8afc42e19ab6e96, type: 3}
+  - {fileID: 6415082291862398264, guid: cc6ce2b1c2cc42a4680c685604f3d642, type: 3}
+  - {fileID: 8143087844690495153, guid: ed0d53bff53cd7a4182b1cd7eb6b7802, type: 3}
+  - {fileID: 8794171678619182943, guid: e39229f251ffbf3478cb0891e878d698, type: 3}
   groundDetail:
   - {fileID: 1854564238752580, guid: be921efec84bab046a38beb1065891fe, type: 3}
   - {fileID: 1229268116339154, guid: 75b666e4ef03b0c4c81ac47ee922c406, type: 3}
