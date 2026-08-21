@@ -40,7 +40,7 @@ jobs:
       id-token: write
       attestations: write
       security-events: write
-    uses: FerrLabs/.github/.github/workflows/reusable-docker-build.yml@e7f9f9dab98fc7d4051f47d02e03188174a99a4a # main
+    uses: FerrLabs/.github/.github/workflows/reusable-docker-build.yml@e186f50feddaca3b371082879a96bdd34d33bb91 # main
     with:
       image-name: ghcr.io/ferrlabs/blastlands/lobby
       tag: ${{ needs.version.outputs.value }}
