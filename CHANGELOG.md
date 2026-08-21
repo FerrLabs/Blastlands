@@ -4,6 +4,18 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.8.21] - 2026-08-21
+
+### Features
+
+- feat(client): hang cliffs under the island so the coast stops being a staircase (#126)
+- feat(client): build the hud from synty stat boxes instead of a hand-made plate (#128)
+- feat(arena): drop the pillar lattice and grow cover in clumps (#121)
+
+### Bug Fixes
+
+- fix(ci): fetch lfs objects after checkout so .lfsconfig applies (#113)
+
 ## [26.8.19] - 2026-08-19
 
 ### Features
