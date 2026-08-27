@@ -104,7 +104,10 @@ namespace Blastlands.Runtime
             yield return Send("/v1/matches/" + id + "/join", "{\"player\":\"" + Escape(player) + "\"}", done);
         }
 
-        public IEnumerator Start(string id, Action<LobbyResult<bool>> done)
+        // Not Start. Unity reserves that name as a lifecycle message and refuses one
+        // that takes parameters, so a component carrying this logged
+        // "Start() can not take parameters" every time it was instantiated.
+        public IEnumerator StartMatch(string id, Action<LobbyResult<bool>> done)
         {
             using (UnityWebRequest request = Post("/v1/matches/" + id + "/start", "{}"))
             {
