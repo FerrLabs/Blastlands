@@ -88,6 +88,31 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
+        public void AResultCarriesEitherAValueOrAReason()
+        {
+            LobbyResult<int> ok = LobbyResult<int>.Success(7);
+            LobbyResult<int> bad = LobbyResult<int>.Failed(LobbyFailure.MatchFull);
+
+            Assert.That(ok.Ok, Is.True);
+            Assert.That(ok.Value, Is.EqualTo(7));
+            Assert.That(bad.Ok, Is.False);
+            Assert.That(bad.Failure, Is.EqualTo(LobbyFailure.MatchFull));
+        }
+
+        [Test]
+        public void OnlyAnUnansweredCallIsWorthRetrying()
+        {
+            // A refusal is refused for a reason: retrying match_full just asks the lobby
+            // the same question again. Not reaching it at all is the opposite case.
+            Assert.That(LobbyResult<int>.Failed(LobbyFailure.Unreachable).WorthRetrying, Is.True);
+            Assert.That(LobbyResult<int>.Failed(LobbyFailure.Unreadable).WorthRetrying, Is.True);
+
+            Assert.That(LobbyResult<int>.Failed(LobbyFailure.MatchFull).WorthRetrying, Is.False);
+            Assert.That(LobbyResult<int>.Failed(LobbyFailure.ClientTooOld).WorthRetrying, Is.False);
+            Assert.That(LobbyResult<int>.Success(1).WorthRetrying, Is.False);
+        }
+
+        [Test]
         public void AFullListingKnowsItIsFull()
         {
             var full = new MatchListing("1", "Night raid", "Bryan", 4, 4);
