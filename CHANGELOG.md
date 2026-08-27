@@ -4,6 +4,13 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.8.27] - 2026-08-27
+
+### Features
+
+- feat(sim): add a classic bomberman mode beside the arena (#146)
+- feat(lobby): model the lobby protocol and every failure it can return (#147)
+
 ## [26.8.21] - 2026-08-21
 
 ### Features
