@@ -25,7 +25,11 @@ namespace Blastlands.Core
                 return;
             }
 
-            Shoving.Resolve(state, inputs);
+            if (state.Settings.Rules.AllowsShove)
+            {
+                Shoving.Resolve(state, inputs);
+            }
+
             MovePlayers(state, inputs);
             CollectPowerUps(state);
             CollectLooseBombs(state);
@@ -117,7 +121,7 @@ namespace Blastlands.Core
 
         private static void StartDash(MatchState state, PlayerState player, PlayerInput input)
         {
-            if (!input.Dash || !player.CanDash)
+            if (!input.Dash || !player.CanDash || !state.Settings.Rules.AllowsDash)
             {
                 return;
             }
@@ -353,6 +357,27 @@ namespace Blastlands.Core
             }
 
             ExplosionResult result = ExplosionResolver.Resolve(state.Arena, definitions, triggered);
+
+            // Classic hands the bomb back to whoever placed it. In Arena a bomb is spent
+            // for good, which is what sends a player out to find another one, so the two
+            // economies meet here and nowhere else.
+            if (state.Settings.Rules.BombsReturn)
+            {
+                // Every bomb that went off, not only the ones whose own fuse ran out:
+                // the resolver chain-triggers neighbours, and those are removed below
+                // just the same. Crediting only the fuses would quietly shrink a
+                // player's pocket every time one of their bombs set off another.
+                for (int i = 0; i < result.DetonatedBombs.Count; i++)
+                {
+                    // NoOwner is a bomb lit by fire rather than placed, and it owes
+                    // nobody anything.
+                    int owner = definitions[result.DetonatedBombs[i]].OwnerId;
+                    if (owner >= 0 && owner < state.Players.Count)
+                    {
+                        state.Players[owner].BombsHeld++;
+                    }
+                }
+            }
 
             for (int i = 0; i < result.DestroyedSoftBlocks.Count; i++)
             {

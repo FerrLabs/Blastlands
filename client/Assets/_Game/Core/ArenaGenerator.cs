@@ -32,12 +32,26 @@ namespace Blastlands.Core
             var random = new DeterministicRandom(seed);
             var arena = new Arena(settings.Width, settings.Height);
 
-            bool[] land = IslandShape.Carve(settings.Width, settings.Height, settings.Island, random);
-            FillGround(arena, land);
+            if (settings.Mode == GameMode.Classic)
+            {
+                FillClassic(arena);
+            }
+            else
+            {
+                bool[] land = IslandShape.Carve(settings.Width, settings.Height, settings.Island, random);
+                FillGround(arena, land);
+            }
 
             IReadOnlyList<GridPos> spawns = ChooseSpawns(arena);
             HashSet<GridPos> reserved = ReserveSpawns(arena, spawns);
-            ScatterCover(arena, reserved, settings.SoftBlockPercent, settings.BushPercent, random);
+            if (settings.Mode == GameMode.Classic)
+            {
+                SprinkleCover(arena, reserved, settings.SoftBlockPercent, random);
+            }
+            else
+            {
+                ScatterCover(arena, reserved, settings.SoftBlockPercent, settings.BushPercent, random);
+            }
 
             return new GeneratedArena(arena, spawns);
         }
@@ -112,6 +126,47 @@ namespace Blastlands.Core
             }
 
             return new GridPos(-1, -1);
+        }
+
+        // A border ring and a pillar on every even/even coordinate. The lattice is the
+        // readability trick a checkerboard game is built on: it gives the board a grain,
+        // and every corridor it leaves is exactly one tile wide.
+        private static void FillClassic(Arena arena)
+        {
+            for (int y = 0; y < arena.Height; y++)
+            {
+                for (int x = 0; x < arena.Width; x++)
+                {
+                    var tile = new GridPos(x, y);
+                    bool border = x == 0 || y == 0 || x == arena.Width - 1 || y == arena.Height - 1;
+                    bool pillar = x % 2 == 0 && y % 2 == 0;
+                    arena[tile] = border || pillar ? TileKind.HardBlock : TileKind.Floor;
+                }
+            }
+        }
+
+        // A roll per tile, which is the even sprinkle Arena grew out of. Here it is the
+        // right answer rather than the lazy one: with a pillar every other tile the board
+        // already has its structure, and the soft blocks are the part you dig through.
+        private static void SprinkleCover(
+            Arena arena, HashSet<GridPos> reserved, int coverPercent, DeterministicRandom random)
+        {
+            for (int y = 0; y < arena.Height; y++)
+            {
+                for (int x = 0; x < arena.Width; x++)
+                {
+                    var tile = new GridPos(x, y);
+                    if (arena[tile] != TileKind.Floor || reserved.Contains(tile))
+                    {
+                        continue;
+                    }
+
+                    if (random.NextInt(100) < coverPercent)
+                    {
+                        arena[tile] = TileKind.SoftBlock;
+                    }
+                }
+            }
         }
 
         private static void FillGround(Arena arena, bool[] land)

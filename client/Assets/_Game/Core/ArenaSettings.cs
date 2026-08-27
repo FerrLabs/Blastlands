@@ -16,6 +16,12 @@ namespace Blastlands.Core
 
         public ArenaSettings(
             int width, int height, int softBlockPercent, int bushPercent, IslandSettings island)
+            : this(width, height, softBlockPercent, bushPercent, island, GameMode.Arena)
+        {
+        }
+
+        public ArenaSettings(
+            int width, int height, int softBlockPercent, int bushPercent, IslandSettings island, GameMode mode)
         {
             RequireLargeEnough(width, nameof(width));
             RequireLargeEnough(height, nameof(height));
@@ -31,6 +37,7 @@ namespace Blastlands.Core
             SoftBlockPercent = softBlockPercent;
             BushPercent = bushPercent < 0 ? 0 : (bushPercent > 100 ? 100 : bushPercent);
             Island = island;
+            Mode = mode;
         }
 
         public int Width { get; }
@@ -50,6 +57,10 @@ namespace Blastlands.Core
         // The outline carved out of the rectangle. The dimensions are still the bounds
         // the island is cut from, not the island itself.
         public IslandSettings Island { get; }
+
+        // Which board to lay out. Classic is the full rectangle with a border and a
+        // pillar lattice; Arena is the eroded island. See #145.
+        public GameMode Mode { get; }
 
         public static ArenaSettings Default
         {
@@ -76,8 +87,20 @@ namespace Blastlands.Core
             get { return new ArenaSettings(25, 21, 35); }
         }
 
-        // Odd dimensions used to be required so the pillar lattice landed inside the
-        // border. There is no lattice and no border, so any size at all is fine.
+        // The board a bomberman inherits: odd so the lattice lands inside the border, and
+        // packed with soft blocks, which is what makes the opening minute about digging
+        // rather than about finding somebody.
+        //
+        // Odd is a real constraint here, unlike in Arena where nothing needs it any more:
+        // on an even width the lattice would collide with the border ring.
+        public static ArenaSettings Classic
+        {
+            get { return new ArenaSettings(25, 21, 75, 0, IslandSettings.Default, GameMode.Classic); }
+        }
+
+        // Any size at all. Arena has neither a lattice nor a border to line up with,
+        // and Classic is a preset rather than something a caller dimensions itself, so
+        // the odd-only rule that board does need is stated where the preset is built.
         private static void RequireLargeEnough(int value, string name)
         {
             if (value < 5)

@@ -30,8 +30,10 @@ namespace Blastlands.Core
             int looseBombFuseTicks,
             PushSettings push,
             VisionSettings vision,
-            SuddenDeathSettings suddenDeath)
+            SuddenDeathSettings suddenDeath,
+            RuleSet rules)
         {
+            Rules = rules;
             SuddenDeath = suddenDeath;
             Vision = vision;
             Push = push;
@@ -139,6 +141,9 @@ namespace Blastlands.Core
         // What stops a round that neither survivor can win. See #105.
         public SuddenDeathSettings SuddenDeath { get; }
 
+        // What differs between game modes. See #145.
+        public RuleSet Rules { get; }
+
         public static MatchSettings Default
         {
             // Carry capacity starts at one. It is also how many bombs can be live at
@@ -204,13 +209,38 @@ namespace Blastlands.Core
                     30, 75, 15, 26, 6, 4, 1, 1, 2, 6, 4, 35, 80, 90, 600, 90, 45, 78, 8, 90, 90, 9, 12,
                     PushSettings.Default,
                     VisionSettings.Default,
-                    SuddenDeathSettings.Default);
+                    SuddenDeathSettings.Default,
+                    RuleSet.Arena);
             }
         }
 
         // Restating twenty-two positional ints to change one is where a transposition
         // eventually happens, so the copy lives here rather than at the call site. See
         // the wider problem in the tracking issue for this constructor.
+        public MatchSettings WithRules(RuleSet rules)
+        {
+            return new MatchSettings(
+                TicksPerSecond, FuseTicks, FlameTicks, BaseSpeed, SpeedStep, MaxSpeedSteps,
+                StartingHeldBombs, StartingCarryCapacity, StartingFireRange,
+                MaxCarryCapacity, MaxFireRange, PowerUpDropPercent,
+                TilesPerLooseBomb, BombRespawnTicks,
+                WallRegrowTicks, WallTelegraphTicks, WallRetryTicks,
+                DashSpeed, DashTicks, DashCooldownTicks,
+                PlayerRadius, CornerAssist, LooseBombFuseTicks, Push, Vision, SuddenDeath, rules);
+        }
+
+        // Classic holds its bombs rather than finding them, so the ground stays clear of
+        // loose ones and a player starts with the whole pocketful they will ever carry.
+        public static MatchSettings Classic
+        {
+            get
+            {
+                return Default
+                    .WithRules(RuleSet.Classic)
+                    .WithTilesPerLooseBomb(0);
+            }
+        }
+
         public MatchSettings WithSuddenDeath(SuddenDeathSettings suddenDeath)
         {
             return new MatchSettings(
@@ -220,7 +250,7 @@ namespace Blastlands.Core
                 TilesPerLooseBomb, BombRespawnTicks,
                 WallRegrowTicks, WallTelegraphTicks, WallRetryTicks,
                 DashSpeed, DashTicks, DashCooldownTicks,
-                PlayerRadius, CornerAssist, LooseBombFuseTicks, Push, Vision, suddenDeath);
+                PlayerRadius, CornerAssist, LooseBombFuseTicks, Push, Vision, suddenDeath, Rules);
         }
 
         public MatchSettings WithTilesPerLooseBomb(int tilesPerBomb)
@@ -232,7 +262,7 @@ namespace Blastlands.Core
                 tilesPerBomb, BombRespawnTicks,
                 WallRegrowTicks, WallTelegraphTicks, WallRetryTicks,
                 DashSpeed, DashTicks, DashCooldownTicks,
-                PlayerRadius, CornerAssist, LooseBombFuseTicks, Push, Vision, SuddenDeath);
+                PlayerRadius, CornerAssist, LooseBombFuseTicks, Push, Vision, SuddenDeath, Rules);
         }
 
         public int SpeedFor(int speedSteps)

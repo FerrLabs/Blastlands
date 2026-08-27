@@ -33,6 +33,12 @@ namespace Blastlands.Runtime
 
         [SerializeField] private BotSkill botSkill = BotSkill.Normal;
 
+        // Which game the match is. Arena is the open island with cover you stand in,
+        // found bombs, dash and shove; Classic is the pillar lattice, bombs you own and
+        // nothing else. Serialized here rather than chosen in a lobby because there is
+        // no lobby screen yet, which is #19. See #145.
+        [SerializeField] private GameMode mode = GameMode.Arena;
+
         private MatchState state;
         private PlayerInput[] inputs;
         private PlayerDevices devices;
@@ -73,9 +79,14 @@ namespace Blastlands.Runtime
         {
             activeSeed = seed != 0u ? seed : RollSeed();
 
-            var arenaSettings = new ArenaSettings(arenaWidth, arenaHeight, softBlockPercent);
-            state = MatchFactory.Create(arenaSettings, MatchSettings.Default, playerCount, activeSeed);
-            Debug.Log("Blastlands arena seed " + activeSeed);
+            ArenaSettings arenaSettings = mode == GameMode.Classic
+                ? ArenaSettings.Classic
+                : new ArenaSettings(arenaWidth, arenaHeight, softBlockPercent);
+            MatchSettings matchSettings = (mode == GameMode.Classic ? MatchSettings.Classic : MatchSettings.Default)
+                .WithRules(RuleSet.For(mode));
+
+            state = MatchFactory.Create(arenaSettings, matchSettings, playerCount, activeSeed);
+            Debug.Log("Blastlands " + mode + " seed " + activeSeed);
             inputs = new PlayerInput[state.Players.Count];
             devices = new PlayerDevices(state.Players.Count);
             accumulator = 0f;

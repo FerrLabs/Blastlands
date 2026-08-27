@@ -17,6 +17,13 @@ namespace Blastlands.Core
                 return false;
             }
 
+            // A mode with nothing to hide behind shows the whole board. Asked here rather
+            // than at every call site, so nothing can forget to ask.
+            if (!state.Settings.Rules.HidesTheUnseen)
+            {
+                return true;
+            }
+
             if (viewer.Id == target.Id)
             {
                 return true;

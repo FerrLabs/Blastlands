@@ -17,6 +17,11 @@ namespace Blastlands.Core
 
         public static void Seed(MatchState state)
         {
+            if (state.Settings.Rules.BombsReturn)
+            {
+                return;
+            }
+
             int target = TargetFor(state);
             for (int i = 0; i < target; i++)
             {
@@ -63,6 +68,11 @@ namespace Blastlands.Core
 
         public static void Tick(MatchState state)
         {
+            if (state.Settings.Rules.BombsReturn)
+            {
+                return;
+            }
+
             if (state.Settings.BombRespawnTicks <= 0
                 || state.Tick % state.Settings.BombRespawnTicks != 0
                 || state.LooseBombs.Count >= TargetFor(state))

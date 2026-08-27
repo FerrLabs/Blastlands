@@ -11,6 +11,34 @@
 the match. Rounds are short on purpose (60–90 s) with a sudden-death timer, so a lobby of
 friends plays a lot of them in a sitting.
 
+## Game modes
+
+Two, picked before the match starts.
+
+**Arena** is the game this document otherwise describes: an eroded island with nothing
+permanent on it, cover you stand in, bombs found on the ground and spent for good, dash and
+shove, and vision you can hide from.
+
+**Classic** is the board a bomberman inherits. A full rectangle with a border ring and an
+indestructible pillar on every even/even coordinate, soft blocks sprinkled densely over the
+rest, no bushes and no drop. Bombs are owned rather than found: you hold them, and each one
+comes back once it has gone off. No dash, no shove, and the whole board is visible to
+everyone, so the only verb is placing a bomb.
+
+**Movement is free in both.** Locking Classic to four axes is the one piece of period
+accuracy deliberately left out: it would mean a second movement system to maintain, and the
+corner assist under **Movement** exists precisely so a one-tile corridor feels right without
+it. The board is what makes a match read as classic, not the axis lock.
+
+Sudden death runs in both, and Classic needs it more. Measured over twelve four-bot matches
+with it switched off, Classic resolves 5 of 12 on its own against Arena's 11, and kills 23 of
+48 against Arena's 35. The lattice is the whole difference: a pillar every other tile gives
+far more to hide behind, and bots that can hide do.
+
+The rules that differ live in a `RuleSet` the simulation asks by name, rather than an enum it
+switches on, so a third mode answers the same questions instead of adding a third branch in a
+dozen places.
+
 ## The arena
 
 Grid of 25×21 by default, with an island carved out of it. Five tile kinds:
