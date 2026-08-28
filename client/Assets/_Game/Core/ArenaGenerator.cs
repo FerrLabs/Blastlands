@@ -32,7 +32,7 @@ namespace Blastlands.Core
             var random = new DeterministicRandom(seed);
             var arena = new Arena(settings.Width, settings.Height);
 
-            if (settings.Mode == GameMode.Classic)
+            if (settings.Board == BoardKind.Lattice)
             {
                 FillClassic(arena);
             }
@@ -44,7 +44,7 @@ namespace Blastlands.Core
 
             IReadOnlyList<GridPos> spawns = ChooseSpawns(arena);
             HashSet<GridPos> reserved = ReserveSpawns(arena, spawns);
-            if (settings.Mode == GameMode.Classic)
+            if (settings.Board == BoardKind.Lattice)
             {
                 SprinkleCover(arena, reserved, settings.SoftBlockPercent, random);
             }

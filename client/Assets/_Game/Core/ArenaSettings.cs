@@ -16,12 +16,12 @@ namespace Blastlands.Core
 
         public ArenaSettings(
             int width, int height, int softBlockPercent, int bushPercent, IslandSettings island)
-            : this(width, height, softBlockPercent, bushPercent, island, GameMode.Arena)
+            : this(width, height, softBlockPercent, bushPercent, island, BoardKind.Island)
         {
         }
 
         public ArenaSettings(
-            int width, int height, int softBlockPercent, int bushPercent, IslandSettings island, GameMode mode)
+            int width, int height, int softBlockPercent, int bushPercent, IslandSettings island, BoardKind board)
         {
             RequireLargeEnough(width, nameof(width));
             RequireLargeEnough(height, nameof(height));
@@ -37,7 +37,7 @@ namespace Blastlands.Core
             SoftBlockPercent = softBlockPercent;
             BushPercent = bushPercent < 0 ? 0 : (bushPercent > 100 ? 100 : bushPercent);
             Island = island;
-            Mode = mode;
+            Board = board;
         }
 
         public int Width { get; }
@@ -58,9 +58,9 @@ namespace Blastlands.Core
         // the island is cut from, not the island itself.
         public IslandSettings Island { get; }
 
-        // Which board to lay out. Classic is the full rectangle with a border and a
-        // pillar lattice; Arena is the eroded island. See #145.
-        public GameMode Mode { get; }
+        // Which board to lay out. Named rather than derived from the game mode, because
+        // Classic and Classic Blinded share this board and differ only in the rules.
+        public BoardKind Board { get; }
 
         public static ArenaSettings Default
         {
@@ -95,7 +95,7 @@ namespace Blastlands.Core
         // on an even width the lattice would collide with the border ring.
         public static ArenaSettings Classic
         {
-            get { return new ArenaSettings(25, 21, 75, 0, IslandSettings.Default, GameMode.Classic); }
+            get { return new ArenaSettings(25, 21, 75, 0, IslandSettings.Default, BoardKind.Lattice); }
         }
 
         // Any size at all. Arena has neither a lattice nor a border to line up with,

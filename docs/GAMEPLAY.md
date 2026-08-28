@@ -13,7 +13,7 @@ friends plays a lot of them in a sitting.
 
 ## Game modes
 
-Two, picked before the match starts.
+Three, picked before the match starts.
 
 **Arena** is the game this document otherwise describes: an eroded island with nothing
 permanent on it, cover you stand in, bombs found on the ground and spent for good, dash and
@@ -25,7 +25,20 @@ rest, no bushes and no drop. Bombs are owned rather than found: you hold them, a
 comes back once it has gone off. No dash, no shove, and the whole board is visible to
 everyone, so the only verb is placing a bomb.
 
-**Movement is free in both.** Locking Classic to four axes is the one piece of period
+**Classic Blinded** is that same board and the same bombs, played without sight of anyone
+you have no line to. Cover in Arena is a tile you stand in; here it is the lattice itself, so
+a board made almost entirely of things to hide behind changes far more by switching sight off
+than open ground would.
+
+It draws far more often than the others: 6 of 12 four-bot matches end in a draw against
+Classic's 3. Blind bots stop finding each other, nobody dies, and the last ring takes the
+survivors together. Doubling the sudden-death cadence brings it to 4 of 12, which is an
+improvement rather than a fix, so the shared cadence is kept. The honest caveat is that bots
+are a weak instrument for a mode built on information denial: a person hears a fuse and reads
+a board, where a bot has only the sightings it remembers. This number is worth revisiting
+against people rather than tuned against bots.
+
+**Movement is free in all three.** Locking Classic to four axes is the one piece of period
 accuracy deliberately left out: it would mean a second movement system to maintain, and the
 corner assist under **Movement** exists precisely so a one-tile corridor feels right without
 it. The board is what makes a match read as classic, not the axis lock.

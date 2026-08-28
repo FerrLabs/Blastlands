@@ -35,8 +35,9 @@ namespace Blastlands.Runtime
 
         // Which game the match is. Arena is the open island with cover you stand in,
         // found bombs, dash and shove; Classic is the pillar lattice, bombs you own and
-        // nothing else. Serialized here rather than chosen in a lobby because there is
-        // no lobby screen yet, which is #19. See #145.
+        // nothing else; Classic Blinded is that same board played without sight of
+        // anyone you have no line to. Serialized here rather than chosen in a lobby
+        // because there is no lobby screen yet, which is #19. See #145.
         [SerializeField] private GameMode mode = GameMode.Arena;
 
         private MatchState state;
@@ -79,11 +80,10 @@ namespace Blastlands.Runtime
         {
             activeSeed = seed != 0u ? seed : RollSeed();
 
-            ArenaSettings arenaSettings = mode == GameMode.Classic
-                ? ArenaSettings.Classic
-                : new ArenaSettings(arenaWidth, arenaHeight, softBlockPercent);
-            MatchSettings matchSettings = (mode == GameMode.Classic ? MatchSettings.Classic : MatchSettings.Default)
-                .WithRules(RuleSet.For(mode));
+            ArenaSettings arenaSettings = mode == GameMode.Arena
+                ? new ArenaSettings(arenaWidth, arenaHeight, softBlockPercent)
+                : ArenaSettings.Classic;
+            MatchSettings matchSettings = MatchSettings.For(mode);
 
             state = MatchFactory.Create(arenaSettings, matchSettings, playerCount, activeSeed);
             Debug.Log("Blastlands " + mode + " seed " + activeSeed);

@@ -7,7 +7,7 @@ namespace Blastlands.Core
     // and a third mode later answers the same questions instead of adding a third branch
     // everywhere.
     //
-    // Movement is deliberately absent. It is free in both modes: locking Classic to four
+    // Movement is deliberately absent. It is free in every mode: locking Classic to four
     // axes would mean a second movement system to maintain, and PlayerBody already
     // carries the corner assist that exists so one-tile corridors feel right without it.
     public readonly struct RuleSet
@@ -46,9 +46,27 @@ namespace Blastlands.Core
             get { return new RuleSet(true, false, false, false); }
         }
 
+        // The classic board and the classic bombs, with the lights off.
+        //
+        // Cover in Arena is a tile you stand in; here it is the lattice itself. A pillar
+        // every other tile means a board made almost entirely of things to be behind, so
+        // switching sight off changes how it plays far more than it would on open ground.
+        public static RuleSet ClassicBlinded
+        {
+            get { return new RuleSet(true, false, false, true); }
+        }
+
         public static RuleSet For(GameMode mode)
         {
-            return mode == GameMode.Classic ? Classic : Arena;
+            switch (mode)
+            {
+                case GameMode.Classic:
+                    return Classic;
+                case GameMode.ClassicBlinded:
+                    return ClassicBlinded;
+                default:
+                    return Arena;
+            }
         }
     }
 }

@@ -6,6 +6,14 @@ namespace Blastlands.Core
     public enum GameMode : byte
     {
         Arena = 0,
-        Classic = 1
+
+        // The real thing: the whole board visible to everyone, and the only verb is
+        // placing a bomb.
+        Classic = 1,
+
+        // The same board and the same bombs, played blind. You see a player only when
+        // nothing stands between you, and a lattice is nothing but things standing
+        // between you.
+        ClassicBlinded = 2
     }
 }

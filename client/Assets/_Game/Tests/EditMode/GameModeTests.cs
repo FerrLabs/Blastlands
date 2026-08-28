@@ -150,6 +150,82 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
+        public void BlindedSharesTheClassicBoardRatherThanGettingAnIsland()
+        {
+            // The reason generation asks for a board rather than testing the mode. A
+            // check on the mode would have quietly handed this one an island, and the
+            // difference is the whole point of the pairing.
+            Arena classic = ArenaGenerator.Generate(ArenaSettings.Classic, 11u).Arena;
+
+            Assert.That(ArenaSettings.Classic.Board, Is.EqualTo(BoardKind.Lattice));
+            Assert.That(classic[new GridPos(4, 6)], Is.EqualTo(TileKind.HardBlock), "no lattice");
+
+            for (int y = 0; y < classic.Height; y++)
+            {
+                for (int x = 0; x < classic.Width; x++)
+                {
+                    Assert.That(classic[new GridPos(x, y)], Is.Not.EqualTo(TileKind.Void), "an island crept in");
+                }
+            }
+        }
+
+        [Test]
+        public void OnlyBlindedHidesAnyone()
+        {
+            // The pair that separates the two classic modes. Same board, same wall,
+            // opposite answer, so neither can drift into the other.
+            MatchState plain = Board(MatchSettings.Classic, new GridPos(2, 7), new GridPos(9, 7));
+            MatchState blinded = Board(MatchSettings.ClassicBlinded, new GridPos(2, 7), new GridPos(9, 7));
+
+            foreach (MatchState state in new[] { plain, blinded })
+            {
+                for (int y = 0; y < 15; y++)
+                {
+                    state.Arena[new GridPos(5, y)] = TileKind.HardBlock;
+                }
+            }
+
+            Assert.That(
+                Vision.CanSee(plain, plain.Players[0], plain.Players[1]),
+                Is.True,
+                "the real bomberman started hiding people");
+            Assert.That(
+                Vision.CanSee(blinded, blinded.Players[0], blinded.Players[1]),
+                Is.False,
+                "blinded showed someone through a wall");
+        }
+
+        [Test]
+        public void BlindedKeepsEverythingElseAboutClassic()
+        {
+            // Only sight changes. If any of these drifted, blinded would quietly be a
+            // third rule set rather than a lighting switch on the second.
+            RuleSet classic = RuleSet.Classic;
+            RuleSet blinded = RuleSet.ClassicBlinded;
+
+            Assert.That(blinded.BombsReturn, Is.EqualTo(classic.BombsReturn));
+            Assert.That(blinded.AllowsDash, Is.EqualTo(classic.AllowsDash));
+            Assert.That(blinded.AllowsShove, Is.EqualTo(classic.AllowsShove));
+            Assert.That(blinded.HidesTheUnseen, Is.Not.EqualTo(classic.HidesTheUnseen));
+        }
+
+        [Test]
+        public void EveryModeResolvesToItsOwnRules()
+        {
+            Assert.That(RuleSet.For(GameMode.Arena).AllowsDash, Is.True);
+            Assert.That(RuleSet.For(GameMode.Classic).AllowsDash, Is.False);
+            Assert.That(RuleSet.For(GameMode.ClassicBlinded).AllowsDash, Is.False);
+
+            Assert.That(RuleSet.For(GameMode.Arena).HidesTheUnseen, Is.True);
+            Assert.That(RuleSet.For(GameMode.Classic).HidesTheUnseen, Is.False);
+            Assert.That(RuleSet.For(GameMode.ClassicBlinded).HidesTheUnseen, Is.True);
+
+            Assert.That(MatchSettings.For(GameMode.Classic).Rules.HidesTheUnseen, Is.False);
+            Assert.That(MatchSettings.For(GameMode.ClassicBlinded).Rules.HidesTheUnseen, Is.True);
+            Assert.That(MatchSettings.For(GameMode.Arena).Rules.BombsReturn, Is.False);
+        }
+
+        [Test]
         public void ClassicLeavesNoLooseBombsLyingAround()
         {
             MatchState state = MatchFactory.Create(ArenaSettings.Classic, MatchSettings.Classic, 4, 3u);
@@ -197,6 +273,42 @@ namespace Blastlands.Core.Tests
             }
 
             Assert.That(deaths, Is.GreaterThanOrEqualTo(18), "the bots have stopped fighting on the classic board");
+        }
+
+        [Test]
+        public void BotsStillFightWithTheLightsOff()
+        {
+            // Blinded changes what a bot knows, not what it can do, so it needs its own
+            // bar: the others measure bots that can see. Measured over twelve four-bot
+            // matches with sudden death off, 22 deaths of 48 against Classic's 23, so the
+            // bar sits at 16.
+            MatchSettings settings = MatchSettings.ClassicBlinded.WithSuddenDeath(SuddenDeathSettings.Off);
+            int deaths = 0;
+
+            for (uint seed = 1; seed <= 12; seed++)
+            {
+                MatchState state = MatchFactory.Create(ArenaSettings.Classic, settings, 4, seed);
+                var brains = new BotBrain[4];
+                for (int i = 0; i < brains.Length; i++)
+                {
+                    brains[i] = new BotBrain(i, BotSettings.Hard);
+                }
+
+                var inputs = new PlayerInput[4];
+                for (int tick = 0; tick < 3000 && state.Outcome == RoundOutcome.Running; tick++)
+                {
+                    for (int i = 0; i < brains.Length; i++)
+                    {
+                        inputs[i] = brains[i].Think(state);
+                    }
+
+                    MatchSim.Tick(state, inputs);
+                }
+
+                deaths += 4 - state.AliveCount;
+            }
+
+            Assert.That(deaths, Is.GreaterThanOrEqualTo(16), "blinded bots have stopped finding each other at all");
         }
 
         [Test]

@@ -241,6 +241,26 @@ namespace Blastlands.Core
             }
         }
 
+        public static MatchSettings ClassicBlinded
+        {
+            get { return Classic.WithRules(RuleSet.ClassicBlinded); }
+        }
+
+        // The settings a mode runs under, in one place, so a caller picks a mode rather
+        // than remembering which preset goes with which board.
+        public static MatchSettings For(GameMode mode)
+        {
+            switch (mode)
+            {
+                case GameMode.Classic:
+                    return Classic;
+                case GameMode.ClassicBlinded:
+                    return ClassicBlinded;
+                default:
+                    return Default;
+            }
+        }
+
         public MatchSettings WithSuddenDeath(SuddenDeathSettings suddenDeath)
         {
             return new MatchSettings(
