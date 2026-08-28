@@ -4,6 +4,16 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.8.28] - 2026-08-28
+
+### Features
+
+- feat(lobby): talk to the lobby over http with typed results (#148)
+
+### Bug Fixes
+
+- fix(lobby): rename Start so it stops colliding with Unity's lifecycle message (#150)
+
 ## [26.8.27] - 2026-08-27
 
 ### Features
