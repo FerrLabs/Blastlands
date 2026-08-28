@@ -1,6 +1,7 @@
 use std::env;
 use std::net::SocketAddr;
 use std::ops::RangeInclusive;
+use std::time::Duration;
 
 use thiserror::Error;
 
@@ -28,6 +29,15 @@ pub enum ConfigError {
     Invalid { name: &'static str, reason: String },
 }
 
+const CREATES_PER_WINDOW: &str = "BLASTLANDS_LOBBY_CREATES_PER_WINDOW";
+const JOINS_PER_WINDOW: &str = "BLASTLANDS_LOBBY_JOINS_PER_WINDOW";
+const WINDOW_SECONDS: &str = "BLASTLANDS_LOBBY_RATE_WINDOW_SECONDS";
+const MATCHES_PER_ADDRESS: &str = "BLASTLANDS_LOBBY_MATCHES_PER_ADDRESS";
+const UNJOINED_TTL_SECONDS: &str = "BLASTLANDS_LOBBY_UNJOINED_TTL_SECONDS";
+const SILENT_TTL_SECONDS: &str = "BLASTLANDS_LOBBY_SILENT_TTL_SECONDS";
+const SWEEP_SECONDS: &str = "BLASTLANDS_LOBBY_SWEEP_SECONDS";
+const TRUST_FORWARDED_FOR: &str = "BLASTLANDS_LOBBY_TRUST_FORWARDED_FOR";
+
 #[derive(Debug, Clone)]
 pub struct Config {
     pub bind: SocketAddr,
@@ -35,6 +45,43 @@ pub struct Config {
     pub port_range: RangeInclusive<u16>,
     pub instance_token: String,
     pub release: ReleaseInfo,
+    pub limits: Limits,
+}
+
+/// What one address may do, and how long a match may go unattended.
+///
+/// The defaults are deliberately generous for a person and tight for a script. Three
+/// matches an hour is more than anyone hosts by hand; a thousand a minute is what a loop
+/// does. The point is to make the flood expensive, not to police normal play.
+#[derive(Debug, Clone, Copy)]
+pub struct Limits {
+    pub creates_per_window: u32,
+    pub joins_per_window: u32,
+    pub window: Duration,
+    pub matches_per_address: usize,
+    pub unjoined_ttl: Duration,
+    pub silent_ttl: Duration,
+    pub sweep_every: Duration,
+    pub trust_forwarded_for: bool,
+}
+
+impl Default for Limits {
+    fn default() -> Self {
+        Self {
+            creates_per_window: 5,
+            joins_per_window: 30,
+            window: Duration::from_secs(60),
+            matches_per_address: 3,
+            // A lobby full of matches nobody joined is the cheapest denial of service
+            // there is, so an empty one does not get to sit on a port for long.
+            unjoined_ttl: Duration::from_secs(300),
+            // Three missed heartbeats at the ten-second cadence #17 will use. One missed
+            // beat is a hiccup; three is a process that is not coming back.
+            silent_ttl: Duration::from_secs(30),
+            sweep_every: Duration::from_secs(10),
+            trust_forwarded_for: false,
+        }
+    }
 }
 
 impl Config {
@@ -60,11 +107,27 @@ impl Config {
             });
         }
 
+        let defaults = Limits::default();
+        let limits = Limits {
+            creates_per_window: number(CREATES_PER_WINDOW, defaults.creates_per_window)?,
+            joins_per_window: number(JOINS_PER_WINDOW, defaults.joins_per_window)?,
+            window: seconds(WINDOW_SECONDS, defaults.window)?,
+            matches_per_address: number::<u32>(
+                MATCHES_PER_ADDRESS,
+                defaults.matches_per_address as u32,
+            )? as usize,
+            unjoined_ttl: seconds(UNJOINED_TTL_SECONDS, defaults.unjoined_ttl)?,
+            silent_ttl: seconds(SILENT_TTL_SECONDS, defaults.silent_ttl)?,
+            sweep_every: seconds(SWEEP_SECONDS, defaults.sweep_every)?,
+            trust_forwarded_for: flag(TRUST_FORWARDED_FOR)?,
+        };
+
         Ok(Self {
             bind,
             game_server_host,
             port_range,
             instance_token,
+            limits,
             release: ReleaseInfo {
                 latest,
                 minimum,
@@ -73,6 +136,37 @@ impl Config {
             },
         })
     }
+}
+
+fn number<T>(name: &'static str, fallback: T) -> Result<T, ConfigError>
+where
+    T: std::str::FromStr + Copy,
+{
+    match env::var(name) {
+        Err(_) => Ok(fallback),
+        Ok(raw) if raw.trim().is_empty() => Ok(fallback),
+        Ok(raw) => raw.trim().parse::<T>().map_err(|_| ConfigError::Invalid {
+            name,
+            reason: format!("{raw} is not a number"),
+        }),
+    }
+}
+
+fn seconds(name: &'static str, fallback: Duration) -> Result<Duration, ConfigError> {
+    let value = number::<u64>(name, fallback.as_secs())?;
+    Ok(Duration::from_secs(value))
+}
+
+/// Anything but a clear yes is a no.
+///
+/// This one decides whether a spoofable header is believed, so an unreadable value has
+/// to land on the safe side rather than be guessed at.
+fn flag(name: &'static str) -> Result<bool, ConfigError> {
+    let raw = env::var(name).unwrap_or_default();
+    Ok(matches!(
+        raw.trim().to_ascii_lowercase().as_str(),
+        "1" | "true" | "yes" | "on"
+    ))
 }
 
 fn parse_version(name: &'static str, raw: &str) -> Result<ClientVersion, ConfigError> {

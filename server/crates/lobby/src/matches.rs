@@ -1,5 +1,7 @@
 use std::collections::HashMap;
+use std::net::IpAddr;
 use std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
+use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -41,6 +43,12 @@ pub struct Match {
     pub max_players: u8,
     pub state: MatchState,
     pub endpoint: GameServerEndpoint,
+    /// Who asked for it, so one address cannot hold the whole port pool.
+    pub host_address: IpAddr,
+    pub created_at: Instant,
+    /// Last sign of life from the instance running this match. Only meaningful once the
+    /// match is in progress: before that there is no instance to hear from.
+    pub last_seen: Instant,
 }
 
 impl Match {
@@ -54,6 +62,31 @@ pub struct CreateMatch {
     pub name: DisplayName,
     pub host: DisplayName,
     pub max_players: u8,
+    pub host_address: IpAddr,
+}
+
+/// How long a match may sit around without being looked after.
+#[derive(Debug, Clone, Copy)]
+pub struct Lifetimes {
+    /// A match nobody has joined is a squatted port. The host counts as a player from
+    /// the moment they create it, so "nobody" means the host and no one else.
+    pub unjoined: Duration,
+    /// How long a running match may go without a heartbeat before it is assumed dead.
+    pub silent: Duration,
+}
+
+/// Why a match was taken away, so the log says something useful rather than "removed".
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ReapReason {
+    NobodyJoined,
+    InstanceWentSilent,
+}
+
+#[derive(Debug, Clone)]
+pub struct Reaped {
+    pub id: MatchId,
+    pub port: u16,
+    pub reason: ReapReason,
 }
 
 #[derive(Debug)]
@@ -83,7 +116,12 @@ impl MatchDirectory {
         }
     }
 
-    pub fn create(&self, request: CreateMatch) -> Result<(Match, JoinTicket), LobbyError> {
+    pub fn create(
+        &self,
+        request: CreateMatch,
+        now: Instant,
+        max_per_address: usize,
+    ) -> Result<(Match, JoinTicket), LobbyError> {
         if !(MIN_PLAYERS..=MAX_PLAYERS).contains(&request.max_players) {
             return Err(LobbyError::InvalidPlayerCount {
                 min: MIN_PLAYERS,
@@ -92,6 +130,24 @@ impl MatchDirectory {
         }
 
         let mut state = self.write();
+
+        // Checked before a port is taken. Acquiring first and releasing on refusal would
+        // work, but it makes the pool briefly emptier than it is, which is the very thing
+        // a flood is trying to achieve.
+        if max_per_address > 0 {
+            let hosted = state
+                .matches
+                .values()
+                .filter(|entry| entry.host_address == request.host_address)
+                .count();
+
+            if hosted >= max_per_address {
+                return Err(LobbyError::TooManyMatches {
+                    max: max_per_address,
+                });
+            }
+        }
+
         let port = state.ports.acquire()?;
 
         let entry = Match {
@@ -105,6 +161,9 @@ impl MatchDirectory {
                 host: self.game_server_host.clone(),
                 port,
             },
+            host_address: request.host_address,
+            created_at: now,
+            last_seen: now,
         };
 
         state.matches.insert(entry.id, entry.clone());
@@ -163,6 +222,65 @@ impl MatchDirectory {
         Ok(())
     }
 
+    /// Records that the instance running a match is still alive.
+    pub fn heartbeat(&self, id: MatchId, now: Instant) -> Result<(), LobbyError> {
+        let mut state = self.write();
+        let entry = state
+            .matches
+            .get_mut(&id)
+            .ok_or(LobbyError::MatchNotFound)?;
+
+        entry.last_seen = now;
+        Ok(())
+    }
+
+    /// Removes matches nobody is looking after and gives their ports back.
+    ///
+    /// Only a match in progress is judged on its heartbeat. One still waiting for players
+    /// has no instance yet, so there is nothing to hear from it, and reaping it for
+    /// silence would delete every match on a lobby whose game servers do not exist. It is
+    /// judged on whether anyone ever joined instead.
+    pub fn reap(&self, now: Instant, lifetimes: Lifetimes) -> Vec<Reaped> {
+        let mut state = self.write();
+        let mut doomed = Vec::new();
+
+        for entry in state.matches.values() {
+            let reason = match entry.state {
+                MatchState::InProgress => {
+                    if now.duration_since(entry.last_seen) > lifetimes.silent {
+                        Some(ReapReason::InstanceWentSilent)
+                    } else {
+                        None
+                    }
+                }
+                MatchState::WaitingForPlayers => {
+                    if entry.players.len() <= 1
+                        && now.duration_since(entry.created_at) > lifetimes.unjoined
+                    {
+                        Some(ReapReason::NobodyJoined)
+                    } else {
+                        None
+                    }
+                }
+            };
+
+            if let Some(reason) = reason {
+                doomed.push(Reaped {
+                    id: entry.id,
+                    port: entry.endpoint.port,
+                    reason,
+                });
+            }
+        }
+
+        for reaped in &doomed {
+            state.matches.remove(&reaped.id);
+            state.ports.release(reaped.port);
+        }
+
+        doomed
+    }
+
     pub fn finish(&self, id: MatchId) -> Result<(), LobbyError> {
         let mut state = self.write();
         let entry = state.matches.remove(&id).ok_or(LobbyError::MatchNotFound)?;
@@ -185,6 +303,14 @@ impl MatchDirectory {
 
 #[cfg(test)]
 mod tests {
+    use std::net::Ipv4Addr;
+
+    /// A distinct address per caller, so the per-address cap can be exercised without
+    /// every test pretending to be the same machine.
+    fn caller(last: u8) -> IpAddr {
+        IpAddr::V4(Ipv4Addr::new(203, 0, 113, last))
+    }
+
     use super::*;
 
     fn directory() -> MatchDirectory {
@@ -200,11 +326,16 @@ mod tests {
 
     fn create(directory: &MatchDirectory, max_players: u8) -> Match {
         directory
-            .create(CreateMatch {
-                name: name("Friday night"),
-                host: name("Bryan"),
-                max_players,
-            })
+            .create(
+                CreateMatch {
+                    name: name("Friday night"),
+                    host: name("Bryan"),
+                    max_players,
+                    host_address: caller(1),
+                },
+                Instant::now(),
+                0,
+            )
             .expect("create should succeed")
             .0
     }
@@ -236,11 +367,16 @@ mod tests {
         create(&directory, 2);
         create(&directory, 2);
 
-        let result = directory.create(CreateMatch {
-            name: name("One too many"),
-            host: name("Bryan"),
-            max_players: 2,
-        });
+        let result = directory.create(
+            CreateMatch {
+                name: name("One too many"),
+                host: name("Bryan"),
+                max_players: 2,
+                host_address: caller(1),
+            },
+            Instant::now(),
+            0,
+        );
 
         assert_eq!(result.err(), Some(LobbyError::NoCapacity));
     }
@@ -250,11 +386,16 @@ mod tests {
         let directory = directory();
 
         for count in [0, 1, MAX_PLAYERS + 1] {
-            let result = directory.create(CreateMatch {
-                name: name("Bad size"),
-                host: name("Bryan"),
-                max_players: count,
-            });
+            let result = directory.create(
+                CreateMatch {
+                    name: name("Bad size"),
+                    host: name("Bryan"),
+                    max_players: count,
+                    host_address: caller(1),
+                },
+                Instant::now(),
+                0,
+            );
 
             assert_eq!(
                 result.err(),
@@ -270,11 +411,16 @@ mod tests {
     fn a_rejected_creation_does_not_leak_a_port() {
         let directory = directory();
 
-        let _ = directory.create(CreateMatch {
-            name: name("Bad size"),
-            host: name("Bryan"),
-            max_players: 99,
-        });
+        let _ = directory.create(
+            CreateMatch {
+                name: name("Bad size"),
+                host: name("Bryan"),
+                max_players: 99,
+                host_address: caller(1),
+            },
+            Instant::now(),
+            0,
+        );
 
         assert_eq!(create(&directory, 2).endpoint.port, 7000);
     }
@@ -374,5 +520,154 @@ mod tests {
             directory.finish(unknown).err(),
             Some(LobbyError::MatchNotFound)
         );
+    }
+    fn lifetimes() -> Lifetimes {
+        Lifetimes {
+            unjoined: Duration::from_secs(300),
+            silent: Duration::from_secs(30),
+        }
+    }
+
+    fn make(directory: &MatchDirectory, address: IpAddr, now: Instant) -> MatchId {
+        directory
+            .create(
+                CreateMatch {
+                    name: name("Night raid"),
+                    host: name("Bryan"),
+                    max_players: 4,
+                    host_address: address,
+                },
+                now,
+                0,
+            )
+            .expect("create should succeed")
+            .0
+            .id
+    }
+
+    #[test]
+    fn a_match_nobody_joined_is_taken_away_and_its_port_returned() {
+        let directory = MatchDirectory::new("game.test".to_owned(), PortPool::new(7000..=7000));
+        let start = Instant::now();
+        make(&directory, caller(1), start);
+
+        // The pool holds exactly one port, so a second create can only succeed if the
+        // first match really gave its port back.
+        let reaped = directory.reap(start + Duration::from_secs(301), lifetimes());
+
+        assert_eq!(reaped.len(), 1);
+        assert_eq!(reaped[0].reason, ReapReason::NobodyJoined);
+        assert!(directory.open_matches().is_empty());
+        make(&directory, caller(2), start + Duration::from_secs(302));
+    }
+
+    #[test]
+    fn a_match_someone_joined_is_left_alone() {
+        let directory = MatchDirectory::new("game.test".to_owned(), PortPool::new(7000..=7001));
+        let start = Instant::now();
+        let id = make(&directory, caller(1), start);
+        directory
+            .join(id, name("Sam"))
+            .expect("join should succeed");
+
+        let reaped = directory.reap(start + Duration::from_secs(301), lifetimes());
+
+        assert!(reaped.is_empty(), "a match with players in it was reaped");
+    }
+
+    #[test]
+    fn a_match_still_waiting_is_never_reaped_for_silence() {
+        // The trap this design exists to avoid. A match nobody has started has no
+        // instance, so it has nothing to heartbeat with. Judging it on silence would
+        // delete every match on a lobby whose game servers do not exist yet, which is
+        // exactly the state of this project.
+        let directory = MatchDirectory::new("game.test".to_owned(), PortPool::new(7000..=7001));
+        let start = Instant::now();
+        let id = make(&directory, caller(1), start);
+        directory
+            .join(id, name("Sam"))
+            .expect("join should succeed");
+
+        let long_after = start + Duration::from_secs(3_600);
+        assert!(directory.reap(long_after, lifetimes()).is_empty());
+    }
+
+    #[test]
+    fn a_running_match_whose_instance_went_quiet_is_reaped() {
+        let directory = MatchDirectory::new("game.test".to_owned(), PortPool::new(7000..=7000));
+        let start = Instant::now();
+        let id = make(&directory, caller(1), start);
+        directory.start(id).expect("start should succeed");
+
+        let reaped = directory.reap(start + Duration::from_secs(31), lifetimes());
+
+        assert_eq!(reaped.len(), 1);
+        assert_eq!(reaped[0].reason, ReapReason::InstanceWentSilent);
+        make(&directory, caller(2), start + Duration::from_secs(32));
+    }
+
+    #[test]
+    fn a_heartbeat_keeps_a_running_match_alive() {
+        let directory = MatchDirectory::new("game.test".to_owned(), PortPool::new(7000..=7001));
+        let start = Instant::now();
+        let id = make(&directory, caller(1), start);
+        directory.start(id).expect("start should succeed");
+
+        directory
+            .heartbeat(id, start + Duration::from_secs(25))
+            .expect("heartbeat should succeed");
+
+        assert!(
+            directory
+                .reap(start + Duration::from_secs(31), lifetimes())
+                .is_empty(),
+            "a match that reported in was reaped anyway"
+        );
+    }
+
+    #[test]
+    fn one_address_may_only_hold_so_many_matches() {
+        let directory = MatchDirectory::new("game.test".to_owned(), PortPool::new(7000..=7010));
+        let now = Instant::now();
+
+        for _ in 0..2 {
+            directory
+                .create(
+                    CreateMatch {
+                        name: name("Mine"),
+                        host: name("Bryan"),
+                        max_players: 4,
+                        host_address: caller(1),
+                    },
+                    now,
+                    2,
+                )
+                .expect("under the cap");
+        }
+
+        let refused = directory.create(
+            CreateMatch {
+                name: name("One too many"),
+                host: name("Bryan"),
+                max_players: 4,
+                host_address: caller(1),
+            },
+            now,
+            2,
+        );
+        assert!(matches!(refused, Err(LobbyError::TooManyMatches { .. })));
+
+        directory
+            .create(
+                CreateMatch {
+                    name: name("Someone else"),
+                    host: name("Sam"),
+                    max_players: 4,
+                    host_address: caller(2),
+                },
+                now,
+                2,
+            )
+            .expect("a different address was punished for the first one");
     }
 }

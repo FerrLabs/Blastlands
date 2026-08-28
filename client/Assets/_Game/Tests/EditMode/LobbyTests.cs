@@ -20,6 +20,8 @@ namespace Blastlands.Core.Tests
             Assert.That(LobbyFailures.FromCode("client_too_old"), Is.EqualTo(LobbyFailure.ClientTooOld));
             Assert.That(LobbyFailures.FromCode("invalid_version"), Is.EqualTo(LobbyFailure.InvalidVersion));
             Assert.That(LobbyFailures.FromCode("unauthorized"), Is.EqualTo(LobbyFailure.Unauthorized));
+            Assert.That(LobbyFailures.FromCode("rate_limited"), Is.EqualTo(LobbyFailure.RateLimited));
+            Assert.That(LobbyFailures.FromCode("too_many_matches"), Is.EqualTo(LobbyFailure.TooManyMatches));
         }
 
         [Test]
@@ -49,6 +51,8 @@ namespace Blastlands.Core.Tests
         {
             Assert.That(LobbyFailures.IsTheirsToFix(LobbyFailure.InvalidName), Is.True);
             Assert.That(LobbyFailures.IsTheirsToFix(LobbyFailure.InvalidPlayerCount), Is.True);
+            Assert.That(LobbyFailures.IsTheirsToFix(LobbyFailure.TooManyMatches), Is.True, "closing one is something they can do");
+            Assert.That(LobbyFailures.IsTheirsToFix(LobbyFailure.RateLimited), Is.False, "waiting is not a fix");
             Assert.That(LobbyFailures.IsTheirsToFix(LobbyFailure.ClientTooOld), Is.False);
             Assert.That(LobbyFailures.IsTheirsToFix(LobbyFailure.Unreachable), Is.False);
         }

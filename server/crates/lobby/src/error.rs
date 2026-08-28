@@ -23,6 +23,12 @@ pub enum LobbyError {
     #[error("unauthorized")]
     Unauthorized,
 
+    #[error("too many requests, slow down")]
+    RateLimited,
+
+    #[error("one address may host at most {max} matches at a time")]
+    TooManyMatches { max: usize },
+
     #[error("{0}")]
     InvalidName(String),
 
@@ -46,6 +52,7 @@ impl LobbyError {
             Self::MatchFull | Self::MatchAlreadyStarted => StatusCode::CONFLICT,
             Self::NoCapacity => StatusCode::SERVICE_UNAVAILABLE,
             Self::Unauthorized => StatusCode::UNAUTHORIZED,
+            Self::RateLimited | Self::TooManyMatches { .. } => StatusCode::TOO_MANY_REQUESTS,
             Self::InvalidName(_) | Self::InvalidPlayerCount { .. } | Self::InvalidVersion(_) => {
                 StatusCode::BAD_REQUEST
             }
@@ -62,6 +69,8 @@ impl LobbyError {
             Self::MatchAlreadyStarted => "match_already_started",
             Self::NoCapacity => "no_capacity",
             Self::Unauthorized => "unauthorized",
+            Self::RateLimited => "rate_limited",
+            Self::TooManyMatches { .. } => "too_many_matches",
             Self::InvalidName(_) => "invalid_name",
             Self::InvalidPlayerCount { .. } => "invalid_player_count",
             Self::InvalidVersion(_) => "invalid_version",

@@ -26,6 +26,14 @@ namespace Blastlands.Core.Lobby
         InvalidVersion = 9,
         Unauthorized = 10,
 
+        // Too fast. The lobby throttles creates and joins per address, and a screen
+        // should say "wait a moment" rather than "something went wrong".
+        RateLimited = 12,
+
+        // Not too fast, but holding too many matches at once. Different advice: close
+        // one rather than wait.
+        TooManyMatches = 13,
+
         // The lobby refused with a code this build has never heard of, which happens
         // when the server is ahead of the client.
         Unknown = 11
@@ -55,6 +63,10 @@ namespace Blastlands.Core.Lobby
                     return LobbyFailure.InvalidVersion;
                 case "unauthorized":
                     return LobbyFailure.Unauthorized;
+                case "rate_limited":
+                    return LobbyFailure.RateLimited;
+                case "too_many_matches":
+                    return LobbyFailure.TooManyMatches;
                 default:
                     return LobbyFailure.Unknown;
             }
@@ -74,7 +86,8 @@ namespace Blastlands.Core.Lobby
         public static bool IsTheirsToFix(LobbyFailure failure)
         {
             return failure == LobbyFailure.InvalidName
-                || failure == LobbyFailure.InvalidPlayerCount;
+                || failure == LobbyFailure.InvalidPlayerCount
+                || failure == LobbyFailure.TooManyMatches;
         }
     }
 }

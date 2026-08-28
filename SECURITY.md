@@ -33,9 +33,27 @@ Ces points sont réels et suivis comme des issues, pas comme des acquis.
   parfaits. C'est le seul cheat qui survit à un serveur autoritaire, dans tous les jeux.
   Mitigation réaliste : détection statistique côté serveur (temps de réaction, régularité
   inhumaine des timings), pas d'anti-cheat kernel.
-- **Abus du lobby.** Création massive de parties, squat de slots, noms abusifs. Mitigation :
-  rate limit par IP sur `POST /v1/matches` et sur les joins, TTL court sur les parties sans
-  joueur, longueur et charset des pseudos contraints côté serveur.
+- **Abus du lobby.** Création massive de parties, squat de slots, noms abusifs. **Traité**
+  (#22, #23) : rate limit par adresse sur `POST /v1/matches` et sur les joins, plafond de
+  parties hébergées simultanément par une adresse, TTL sur les parties que personne n'a
+  rejointes, et moissonnage des parties dont l'instance ne donne plus signe de vie. Les
+  pseudos étaient déjà contraints en longueur et en charset côté serveur.
+
+  Une réserve à connaître avant d'exposer le service : l'adresse retenue est celle du
+  socket, sauf si `BLASTLANDS_LOBBY_TRUST_FORWARDED_FOR` est activé. Derrière un reverse
+  proxy sans ce réglage, tout le trafic partage un seul compteur ; avec ce réglage sur un
+  lobby joignable en direct, n'importe qui peut écrire l'adresse de son choix et les
+  limites ne valent plus rien. Le bon réglage dépend du déploiement, il n'y a pas de
+  valeur juste par défaut.
+
+  Quand ce réglage est actif, c'est la **dernière** entrée de `X-Forwarded-For` qui est
+  lue, pas la première. La plupart des proxys ajoutent au lieu de remplacer (le
+  `$proxy_add_x_forwarded_for` de nginx, les ALB), donc un client qui envoie lui-même
+  l'en-tête arrive sous la forme `<ce qu'il a écrit>, <ce que le proxy a vu>` : lire le
+  début de cette liste revient à croire l'attaquant, qui se fabriquerait une adresse
+  neuve à chaque requête. Cela suppose **exactement un saut de confiance**. Avec
+  plusieurs proxys, ou avec un proxy qui laisse passer tel quel un en-tête fourni par le
+  client, même la dernière entrée n'est pas fiable sans retirer un nombre connu de sauts.
 - **Forge de ticket de join.** Le ticket rendu par le lobby doit être signé et à durée de
   vie courte, sinon on peut se connecter à une instance sans passer par le lobby ou entrer
   dans une partie pleine.

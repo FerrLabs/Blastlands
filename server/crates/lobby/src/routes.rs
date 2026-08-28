@@ -1,6 +1,8 @@
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
+use std::time::Instant;
 
-use axum::extract::{Path, State};
+use axum::extract::{ConnectInfo, Path, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::routing::{delete, get, post};
 use axum::{Json, Router};
@@ -12,12 +14,83 @@ use crate::error::LobbyError;
 use crate::matches::{CreateMatch, GameServerEndpoint, JoinTicket, Match, MatchDirectory, MatchId};
 use crate::names::DisplayName;
 use crate::release::ReleaseInfo;
+use crate::throttle::RateLimiter;
+
+/// How the address a request came from is decided.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ClientAddress {
+    /// The socket's own peer address. Correct when the lobby is reached directly.
+    Peer,
+    /// The entry your own proxy appended to `X-Forwarded-For`, for a lobby behind a
+    /// reverse proxy that terminates TLS.
+    ///
+    /// The **last** entry, not the first. Most proxies append rather than overwrite
+    /// (nginx's `$proxy_add_x_forwarded_for`, ALB, and most defaults), so a client that
+    /// sends `X-Forwarded-For: 1.2.3.4` itself arrives as `1.2.3.4, <real address>`.
+    /// Reading the front of that list means reading whatever the caller typed, which
+    /// would let a flood mint a fresh address per request and walk straight through the
+    /// limits this exists to enforce.
+    ///
+    /// This assumes exactly one trusted hop. More than one, or a proxy that passes a
+    /// client-supplied header through untouched, and the last entry is not trustworthy
+    /// either without stripping a known number of hops.
+    ///
+    /// Off unless turned on, because on a directly reachable lobby the header is simply
+    /// whatever the caller wrote.
+    Forwarded,
+}
 
 #[derive(Clone)]
 pub struct AppState {
     pub directory: Arc<MatchDirectory>,
     pub instance_token: Arc<str>,
     pub release: Arc<ReleaseInfo>,
+    pub creates: Arc<RateLimiter>,
+    pub joins: Arc<RateLimiter>,
+    pub matches_per_address: usize,
+    pub address_source: ClientAddress,
+}
+
+/// The address a request is attributed to for the per-address limits.
+///
+/// Written as an extractor rather than a helper so it can run before the body: axum
+/// requires everything but the last extractor to work on the request parts alone, and
+/// the last one is always the JSON payload.
+#[derive(Debug, Clone, Copy)]
+pub struct Caller(pub IpAddr);
+
+impl axum::extract::FromRequestParts<AppState> for Caller {
+    type Rejection = std::convert::Infallible;
+
+    async fn from_request_parts(
+        parts: &mut axum::http::request::Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        if state.address_source == ClientAddress::Forwarded {
+            if let Some(forwarded) = parts
+                .headers
+                .get("x-forwarded-for")
+                .and_then(|value| value.to_str().ok())
+                .and_then(|value| value.rsplit(',').next())
+                .map(str::trim)
+                .and_then(|value| value.parse::<IpAddr>().ok())
+            {
+                return Ok(Self(forwarded));
+            }
+        }
+
+        // Falling back rather than refusing. A missing peer address means the router was
+        // built without connect info, which is a wiring mistake on our side and not
+        // something a caller should be told about. Every such request then shares one
+        // bucket, so the limits still hold, they just hold together.
+        let peer = parts
+            .extensions
+            .get::<ConnectInfo<SocketAddr>>()
+            .map(|ConnectInfo(socket)| socket.ip())
+            .unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED));
+
+        Ok(Self(peer))
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -75,6 +148,7 @@ pub fn app(state: AppState) -> Router {
         .route("/v1/matches/{id}/join", post(join_match))
         .route("/v1/matches/{id}/start", post(start_match))
         .route("/internal/matches/{id}", delete(finish_match))
+        .route("/internal/matches/{id}/heartbeat", post(heartbeat_match))
         .layer(TraceLayer::new_for_http())
         .with_state(state)
 }
@@ -102,16 +176,28 @@ async fn list_matches(State(state): State<AppState>) -> Json<Vec<MatchSummary>> 
 
 async fn create_match(
     State(state): State<AppState>,
+    Caller(address): Caller,
     headers: HeaderMap,
     Json(request): Json<CreateMatchRequest>,
 ) -> Result<(StatusCode, Json<MatchCreated>), LobbyError> {
     state.release.require_supported(&headers)?;
 
-    let (entry, ticket) = state.directory.create(CreateMatch {
-        name: request.name,
-        host: request.host,
-        max_players: request.max_players,
-    })?;
+    let now = Instant::now();
+
+    if !state.creates.allow(address, now) {
+        return Err(LobbyError::RateLimited);
+    }
+
+    let (entry, ticket) = state.directory.create(
+        CreateMatch {
+            name: request.name,
+            host: request.host,
+            max_players: request.max_players,
+            host_address: address,
+        },
+        now,
+        state.matches_per_address,
+    )?;
 
     let created = MatchCreated {
         summary: MatchSummary::from(&entry),
@@ -125,10 +211,15 @@ async fn create_match(
 async fn join_match(
     State(state): State<AppState>,
     Path(id): Path<MatchId>,
+    Caller(address): Caller,
     headers: HeaderMap,
     Json(request): Json<JoinRequest>,
 ) -> Result<Json<JoinAccepted>, LobbyError> {
     state.release.require_supported(&headers)?;
+
+    if !state.joins.allow(address, Instant::now()) {
+        return Err(LobbyError::RateLimited);
+    }
 
     let admitted = state.directory.join(id, request.player)?;
 
@@ -143,6 +234,16 @@ async fn start_match(
     Path(id): Path<MatchId>,
 ) -> Result<StatusCode, LobbyError> {
     state.directory.start(id)?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+async fn heartbeat_match(
+    State(state): State<AppState>,
+    Path(id): Path<MatchId>,
+    headers: HeaderMap,
+) -> Result<StatusCode, LobbyError> {
+    require_instance_token(&headers, &state.instance_token)?;
+    state.directory.heartbeat(id, Instant::now())?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -181,6 +282,53 @@ mod tests {
         }
     }
 
+    use std::time::Duration;
+
+    /// A router that believes `X-Forwarded-For`, as it would behind a reverse proxy.
+    fn forwarded_router(creates: u32) -> Router {
+        app(AppState {
+            directory: Arc::new(MatchDirectory::new(
+                "game.blastlands.test".to_owned(),
+                PortPool::new(7000..=7010),
+            )),
+            instance_token: Arc::from(TOKEN),
+            release: Arc::new(release()),
+            creates: Arc::new(RateLimiter::new(creates, Duration::from_secs(60))),
+            joins: Arc::new(RateLimiter::new(0, Duration::from_secs(60))),
+            matches_per_address: 0,
+            address_source: ClientAddress::Forwarded,
+        })
+    }
+
+    fn forwarded_post(forwarded: &str, name: &str) -> Request<Body> {
+        Request::builder()
+            .method("POST")
+            .uri("/v1/matches")
+            .header(header::CONTENT_TYPE, "application/json")
+            .header(VERSION_HEADER, CURRENT)
+            .header("x-forwarded-for", forwarded)
+            .body(Body::from(
+                json!({ "name": name, "host": "Bryan", "max_players": 4 }).to_string(),
+            ))
+            .expect("request should build")
+    }
+
+    /// A router whose limits are switched on, for the tests that are about the limits.
+    fn throttled_router(creates: u32, per_address: usize) -> Router {
+        app(AppState {
+            directory: Arc::new(MatchDirectory::new(
+                "game.blastlands.test".to_owned(),
+                PortPool::new(7000..=7010),
+            )),
+            instance_token: Arc::from(TOKEN),
+            release: Arc::new(release()),
+            creates: Arc::new(RateLimiter::new(creates, Duration::from_secs(60))),
+            joins: Arc::new(RateLimiter::new(0, Duration::from_secs(60))),
+            matches_per_address: per_address,
+            address_source: ClientAddress::Peer,
+        })
+    }
+
     fn router() -> Router {
         app(AppState {
             directory: Arc::new(MatchDirectory::new(
@@ -189,6 +337,13 @@ mod tests {
             )),
             instance_token: Arc::from(TOKEN),
             release: Arc::new(release()),
+            // Limits off by default in these tests: they are about routing and payloads,
+            // and a limiter counting their requests would make them order-dependent.
+            // The tests that are about the limits turn them on themselves.
+            creates: Arc::new(RateLimiter::new(0, Duration::from_secs(60))),
+            joins: Arc::new(RateLimiter::new(0, Duration::from_secs(60))),
+            matches_per_address: 0,
+            address_source: ClientAddress::Peer,
         })
     }
 
@@ -500,6 +655,163 @@ mod tests {
         assert_eq!(
             body_json(response).await.as_array().expect("a list").len(),
             1
+        );
+    }
+    #[tokio::test]
+    async fn a_burst_of_creates_from_one_caller_is_refused() {
+        // The flood #22 is about: every create takes a port from a finite pool, so the
+        // limit has to bite before the pool does.
+        let router = throttled_router(2, 0);
+
+        for attempt in 0..2 {
+            let response = router
+                .clone()
+                .oneshot(post_json(
+                    "/v1/matches",
+                    json!({ "name": format!("Match {attempt}"), "host": "Bryan", "max_players": 4 }),
+                ))
+                .await
+                .expect("request should be handled");
+            assert_eq!(response.status(), StatusCode::CREATED);
+        }
+
+        let response = router
+            .clone()
+            .oneshot(post_json(
+                "/v1/matches",
+                json!({ "name": "One too many", "host": "Bryan", "max_players": 4 }),
+            ))
+            .await
+            .expect("request should be handled");
+
+        assert_eq!(response.status(), StatusCode::TOO_MANY_REQUESTS);
+        assert_eq!(body_json(response).await["code"], "rate_limited");
+    }
+
+    #[tokio::test]
+    async fn one_caller_cannot_hoard_the_port_pool() {
+        // Distinct from the rate limit: this one is about how many matches an address
+        // holds at once, not how fast it asks. Slow enough to pass the limiter and still
+        // refused.
+        let router = throttled_router(0, 2);
+
+        for attempt in 0..2 {
+            let response = router
+                .clone()
+                .oneshot(post_json(
+                    "/v1/matches",
+                    json!({ "name": format!("Match {attempt}"), "host": "Bryan", "max_players": 4 }),
+                ))
+                .await
+                .expect("request should be handled");
+            assert_eq!(response.status(), StatusCode::CREATED);
+        }
+
+        let response = router
+            .oneshot(post_json(
+                "/v1/matches",
+                json!({ "name": "Third", "host": "Bryan", "max_players": 4 }),
+            ))
+            .await
+            .expect("request should be handled");
+
+        assert_eq!(response.status(), StatusCode::TOO_MANY_REQUESTS);
+        assert_eq!(body_json(response).await["code"], "too_many_matches");
+    }
+
+    #[tokio::test]
+    async fn a_heartbeat_needs_the_instance_token() {
+        let router = router();
+        let created = create_match_on(&router, "Night raid").await;
+        let id = created["id"].as_str().expect("an id").to_owned();
+
+        let response = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(format!("/internal/matches/{id}/heartbeat"))
+                    .body(Body::empty())
+                    .expect("request should build"),
+            )
+            .await
+            .expect("request should be handled");
+
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn a_heartbeat_with_the_token_is_accepted() {
+        let router = router();
+        let created = create_match_on(&router, "Night raid").await;
+        let id = created["id"].as_str().expect("an id").to_owned();
+
+        let response = router
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(format!("/internal/matches/{id}/heartbeat"))
+                    .header(header::AUTHORIZATION, format!("Bearer {TOKEN}"))
+                    .body(Body::empty())
+                    .expect("request should build"),
+            )
+            .await
+            .expect("request should be handled");
+
+        assert_eq!(response.status(), StatusCode::NO_CONTENT);
+    }
+    #[tokio::test]
+    async fn a_spoofed_forwarded_entry_cannot_mint_a_fresh_address() {
+        // Most proxies append rather than overwrite, so a caller who sends their own
+        // X-Forwarded-For arrives as "<what they typed>, <what the proxy saw>". Reading
+        // the front of that list means reading the attacker, and it would let one machine
+        // present a different address on every request and walk through the limit
+        // untouched. The entry our own proxy appended is the last one.
+        let router = forwarded_router(1);
+
+        let allowed = router
+            .clone()
+            .oneshot(forwarded_post("1.2.3.4, 203.0.113.9", "First"))
+            .await
+            .expect("request should be handled");
+        assert_eq!(allowed.status(), StatusCode::CREATED);
+
+        // Same real caller, a different lie in front of it.
+        let refused = router
+            .oneshot(forwarded_post("5.6.7.8, 203.0.113.9", "Second"))
+            .await
+            .expect("request should be handled");
+
+        assert_eq!(
+            refused.status(),
+            StatusCode::TOO_MANY_REQUESTS,
+            "the spoofed leading entry was believed, so the limit was bypassed"
+        );
+        assert_eq!(body_json(refused).await["code"], "rate_limited");
+    }
+
+    #[tokio::test]
+    async fn two_real_callers_behind_the_proxy_are_still_told_apart() {
+        // The other half: reading the last entry must not collapse everyone into one
+        // bucket either, or a busy proxy would throttle its own users as a group.
+        let router = forwarded_router(1);
+
+        let first = router
+            .clone()
+            .oneshot(forwarded_post("203.0.113.9", "First"))
+            .await
+            .expect("request should be handled");
+        assert_eq!(first.status(), StatusCode::CREATED);
+
+        let second = router
+            .oneshot(forwarded_post("203.0.113.10", "Second"))
+            .await
+            .expect("request should be handled");
+
+        assert_eq!(
+            second.status(),
+            StatusCode::CREATED,
+            "a different caller behind the same proxy was punished"
         );
     }
 }
