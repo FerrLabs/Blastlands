@@ -4,6 +4,13 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.8.29] - 2026-08-29
+
+### Features
+
+- feat(sim): add a blinded classic mode and pick boards by name (#155)
+- feat(lobby): throttle abuse per address and reap matches nobody is minding (#152)
+
 ## [26.8.28] - 2026-08-28
 
 ### Features
