@@ -20,8 +20,12 @@ permanent on it, cover you stand in, bombs found on the ground and spent for goo
 shove, and vision you can hide from.
 
 **Classic** is the board a bomberman inherits. A full rectangle with a border ring and an
-indestructible pillar on every even/even coordinate, soft blocks sprinkled densely over the
-rest, no bushes and no drop. Bombs are owned rather than found: you hold them, and each one
+indestructible pillar on every even/even coordinate, soft blocks sprinkled over the rest at
+40%, no bushes and no drop. That share is the one thing tuned rather than inherited: at the
+75% this board first shipped with, a player could walk to eight tiles before having to bomb
+something, which is a spawn pocket rather than an opening. Forty gives them around forty
+while still leaving 93% of spawn pairs walled off from each other, so the mode opens by
+digging toward somebody rather than by finding them. Bombs are owned rather than found: you hold them, and each one
 comes back once it has gone off. No dash, no shove, and the whole board is visible to
 everyone, so the only verb is placing a bomb.
 

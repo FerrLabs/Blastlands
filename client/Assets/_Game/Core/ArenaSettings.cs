@@ -88,14 +88,35 @@ namespace Blastlands.Core
         }
 
         // The board a bomberman inherits: odd so the lattice lands inside the border, and
-        // packed with soft blocks, which is what makes the opening minute about digging
-        // rather than about finding somebody.
+        // denser than Arena, which is what makes the opening about digging rather than
+        // about finding somebody.
         //
         // Odd is a real constraint here, unlike in Arena where nothing needs it any more:
         // on an even width the lattice would collide with the border ring.
+        //
+        // Cover fell from 75 to 40. Seventy-five was inherited from the smaller board and
+        // never measured on this one. Deaths, the figure Arena was tuned on, says nothing
+        // here: over 24 seeds of four bots it sits between 62 and 75 of 96 across the
+        // whole range, so density is not what limits how often anybody dies in Classic.
+        //
+        // What it does limit is whether you can move at all. Counting the tiles a player
+        // can walk to from their spawn without bombing anything, over 80 spawns:
+        //
+        //   75%    8      sealed into the spawn pocket
+        //   65%   10
+        //   55%   15
+        //   45%   27
+        //   40%   37   <- here
+        //   35%   66      spawns start joined up 16% of the time, which is Arena's job
+        //
+        // Forty gives roughly five times the room to move while still leaving 93% of
+        // spawn pairs walled off from each other, so the mode opens by digging toward
+        // somebody rather than by finding them. It also stays above Arena's 35, which
+        // matters on its own: the two modes converge into each other if the only
+        // difference left between them is the lattice.
         public static ArenaSettings Classic
         {
-            get { return new ArenaSettings(25, 21, 75, 0, IslandSettings.Default, BoardKind.Lattice); }
+            get { return new ArenaSettings(25, 21, 40, 0, IslandSettings.Default, BoardKind.Lattice); }
         }
 
         // Any size at all. Arena has neither a lattice nor a border to line up with,

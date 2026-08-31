@@ -40,6 +40,73 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
+        public void AClassicSpawnHasSomewhereToGoBeforeYouDigAnything()
+        {
+            // The failure this guards is not a crash, it is a board nobody wants to play:
+            // packed tight enough and a player starts sealed into their spawn pocket with
+            // no move available but to bomb the wall in front of them.
+            //
+            // Measured over the same twenty seeds this asserts on, a spawn reaches 40.7
+            // tiles on average. At the 75% this board shipped with it was 9.3.
+            //
+            // The bar is 20 rather than something close to 40.7 on purpose. It is there
+            // to catch a board packed back into spawn pockets, not to pin one particular
+            // tuning: 45% is a defensible number too and gives 27.4, and a bar that
+            // failed on it would be blocking a reasonable retune rather than a bug.
+            int reachable = 0;
+            int spawns = 0;
+
+            for (uint seed = 1; seed <= 20; seed++)
+            {
+                MatchState state = MatchFactory.Create(
+                    ArenaSettings.Classic, MatchSettings.For(GameMode.Classic), 4, seed);
+
+                for (int i = 0; i < state.Players.Count; i++)
+                {
+                    spawns++;
+                    reachable += WalkableFrom(state.Arena, state.Players[i].Tile);
+                }
+            }
+
+            Assert.That(reachable / (double)spawns, Is.GreaterThan(20d));
+        }
+
+        private static int WalkableFrom(Arena arena, GridPos start)
+        {
+            var seen = new System.Collections.Generic.HashSet<GridPos> { start };
+            var queue = new System.Collections.Generic.Queue<GridPos>();
+            queue.Enqueue(start);
+
+            var steps = new[]
+            {
+                new GridPos(1, 0), new GridPos(-1, 0), new GridPos(0, 1), new GridPos(0, -1)
+            };
+
+            while (queue.Count > 0)
+            {
+                GridPos at = queue.Dequeue();
+                foreach (GridPos step in steps)
+                {
+                    var next = new GridPos(at.X + step.X, at.Y + step.Y);
+                    if (!arena.Contains(next) || seen.Contains(next))
+                    {
+                        continue;
+                    }
+
+                    if (arena[next] != TileKind.Floor)
+                    {
+                        continue;
+                    }
+
+                    seen.Add(next);
+                    queue.Enqueue(next);
+                }
+            }
+
+            return seen.Count;
+        }
+
+        [Test]
         public void ClassicHasNoCoverToHideIn()
         {
             // No bushes and no drop: the board is a closed rectangle, so the only thing
