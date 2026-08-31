@@ -44,10 +44,6 @@ namespace Blastlands.Runtime
         // they do not fight each other either.
         [SerializeField] private float groundDetailLift = 0.02f;
 
-        // Rocks laid out at one uniform size make the lattice look manufactured. A
-        // little variation reads as terrain without moving anything off its tile.
-        [SerializeField] private float hardBlockSizeJitter = 0.16f;
-
         // Both kinds of cover are sized against the player rather than against the tile.
         // They hide what is behind them in the simulation now, and a knee-high wall that
         // blocks the view of a whole corridor reads as a bug.
@@ -408,9 +404,20 @@ namespace Blastlands.Runtime
 
         private GameObject CreateBlock(GridPos tile, TileKind kind)
         {
+            // Every hard block in the game is a lattice pillar: FillClassic is the only
+            // thing that lays one, and it only runs for a Classic board. So they are not
+            // dressed as terrain but as structure, all identical, all square to the axes,
+            // all exactly one tile. That is the whole readability trick a checkerboard
+            // game rests on. Varied meshes on free angles leave the grid intact in the
+            // simulation and invisible on screen, and the corridors stop reading as
+            // corridors.
+            //
+            // Wallpaper is the goal here rather than the failure mode the theme warns
+            // about: the eye gives up on the pillars and starts reading the gaps, which
+            // is where the game happens.
             bool hard = kind == TileKind.HardBlock;
             bool bush = kind == TileKind.Bush;
-            int variant = Variant(tile, hard ? 4 : 5);
+            int variant = hard ? 0 : Variant(tile, 5);
 
             GameObject prefab = null;
             if (theme != null)
@@ -431,17 +438,17 @@ namespace Blastlands.Runtime
                 return block;
             }
 
-            // Rocks are organic, so any angle suits them. Bushes are shapeless enough
-            // that a quarter turn is only there to stop them repeating. A wall is a
-            // panel, and which way it faces is the difference between a wall and a stick.
+            // Bushes are shapeless enough that a quarter turn is only there to stop them
+            // repeating. A wall is a panel, and which way it faces is the difference
+            // between a wall and a stick. Pillars stay square, per the note above.
             block.transform.rotation = Quaternion.Euler(
                 0f,
-                hard ? variant % 360 : bush ? QuarterTurn(variant) : WallAngle(block, tile, variant),
+                hard ? 0f : bush ? QuarterTurn(variant) : WallAngle(block, tile, variant),
                 0f);
 
             if (hard)
             {
-                TileFitter.FitInBox(block, 1f + ((((variant / 11) % 100) / 100f) - 0.5f) * 2f * hardBlockSizeJitter);
+                TileFitter.FitInBox(block, 1f);
             }
             else
             {
