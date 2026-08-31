@@ -55,6 +55,18 @@ forever.
 
 Renders, reads input, predicts local movement, reconciles against server state.
 
+Presentation reads the simulation, never the other way round. Character animation is the
+case where that is easiest to get wrong, so it is worth stating: the animator is told what
+the player did last tick, and is never allowed to move anyone. Root motion is off on every
+character, and the in-place clips (`Walk_Static`, `Run_Static`) are the ones selected, so a
+stride cannot displace a transform the simulation owns down to the sub-tile unit. A player
+who animates their way off their own position is a player the server will disagree with.
+
+The stride rate is a ratio of the ground the simulation actually moved someone over
+against the speed the clip was authored at, which is why `MatchView.runClipSpeed` exists.
+Swapping animation packs means measuring that number again rather than accepting whatever
+skating falls out.
+
 ## The simulation core
 
 `client/Assets/_Game/Core/` is plain C# with **no `UnityEngine` dependency**. This is a hard

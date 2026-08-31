@@ -15,6 +15,12 @@ namespace Blastlands.Runtime
         [SerializeField] private ArenaTheme theme;
         [SerializeField] private float blockFootprint = 0.92f;
         [SerializeField] private float playerHeight = 1.15f;
+
+        // How much ground the Run clip covers per second when it is played back at its
+        // authored rate, measured off SimpleCharacter_5.0's own root motion. It is what
+        // the cadence is a ratio against, so a different animation pack means a different
+        // number here rather than characters that skate.
+        [SerializeField] private float runClipSpeed = 4.08f;
         [SerializeField] private float bombFootprint = 0.72f;
         [SerializeField] private float powerUpSize = 0.78f;
         [SerializeField] private Color telegraphColor = new Color(0.95f, 0.35f, 0.12f, 1f);
@@ -79,6 +85,8 @@ namespace Blastlands.Runtime
         private readonly List<GameObject> looseBombPool = new List<GameObject>();
         private readonly List<GameObject> telegraphPool = new List<GameObject>();
         private static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
+        private static readonly int Speed = Animator.StringToHash("Speed_f");
+        private static readonly int Static = Animator.StringToHash("Static_b");
         private readonly List<Vector3> bombBaseScales = new List<Vector3>();
         private readonly List<GameObject> flamePool = new List<GameObject>();
         private readonly List<GameObject> playerViews = new List<GameObject>();
@@ -88,6 +96,9 @@ namespace Blastlands.Runtime
         private readonly List<GridPos> pickupTiles = new List<GridPos>();
         private readonly List<GridPos> detonated = new List<GridPos>();
         private readonly List<bool> wasAlive = new List<bool>();
+        private readonly List<Animator> playerAnimators = new List<Animator>();
+        private readonly List<SubPos> lastSampled = new List<SubPos>();
+        private int lastSampledTick = -1;
         private readonly HashSet<GridPos> burningTiles = new HashSet<GridPos>();
 
         private MatchState state;
@@ -160,6 +171,9 @@ namespace Blastlands.Runtime
             pickupTiles.Clear();
             detonated.Clear();
             wasAlive.Clear();
+            playerAnimators.Clear();
+            lastSampled.Clear();
+            lastSampledTick = -1;
             burningTiles.Clear();
 
             BuildGround();
@@ -884,28 +898,53 @@ namespace Blastlands.Runtime
                 else
                 {
                     TileFitter.FitToHeight(view, playerHeight);
-                    Animate(view);
                 }
 
                 playerViews.Add(view);
+                playerAnimators.Add(Rig(view));
                 wasAlive.Add(state.Players[i].Alive);
+                lastSampled.Add(state.Players[i].Position);
             }
         }
 
-        // Only where the prefab brought no controller of its own. Overwriting one that
-        // is already there would throw away whatever the pack author wired up.
-        private void Animate(GameObject view)
+        // Hands back the animator this view will be driven through, or null for the
+        // primitive fallback, which has no rig to drive.
+        //
+        // The controller is only supplied where the prefab brought none of its own.
+        // Overwriting one that is already there would throw away whatever the pack
+        // author wired up.
+        private Animator Rig(GameObject view)
         {
-            if (art == null || art.PlayerAnimator == null)
+            var animator = view.GetComponentInChildren<Animator>(true);
+            if (animator == null)
             {
-                return;
+                return null;
             }
 
-            var animator = view.GetComponentInChildren<Animator>(true);
-            if (animator != null && animator.runtimeAnimatorController == null)
+            if (animator.runtimeAnimatorController == null && art != null && art.PlayerAnimator != null)
             {
                 animator.runtimeAnimatorController = art.PlayerAnimator;
             }
+
+            if (animator.runtimeAnimatorController == null)
+            {
+                return null;
+            }
+
+            // The simulation owns where a player is, down to the sub-tile unit, and it
+            // has to stay that way: it is what makes a replay reproduce and what the
+            // netcode will reconcile against. Root motion would let the clip push the
+            // transform around on top of that, so the character would drift off its own
+            // position by however much the animator felt like.
+            animator.applyRootMotion = false;
+
+            // Which is why the static variants: Walk and Run travel, Walk_Static and
+            // Run_Static are the same strides authored on the spot. Discarding root
+            // motion from a travelling clip leaves the feet skating, playing the clip
+            // that was drawn for this case does not.
+            animator.SetBool(Static, true);
+
+            return animator;
         }
 
         // The stain stays for the round: in a four-way match you often miss the moment
@@ -937,6 +976,8 @@ namespace Blastlands.Runtime
 
         private void SyncPlayers()
         {
+            PaceAnimators();
+
             for (int i = 0; i < playerViews.Count && i < state.Players.Count; i++)
             {
                 PlayerState player = state.Players[i];
@@ -957,6 +998,35 @@ namespace Blastlands.Runtime
                 view.SetActive(true);
                 view.transform.position = ToWorld(player.Position, 0f);
                 view.transform.rotation = Quaternion.Euler(0f, FacingAngle(player.Facing), 0f);
+            }
+        }
+
+        // Sampled per tick rather than per frame. Render runs every frame and a position
+        // only moves on a tick boundary, so a frame-to-frame delta is the true step on
+        // the frames a tick landed on and zero on all the others, which at a few hundred
+        // frames a second reads as a player who is standing still almost all the time.
+        private void PaceAnimators()
+        {
+            if (state.Tick == lastSampledTick)
+            {
+                return;
+            }
+
+            lastSampledTick = state.Tick;
+
+            for (int i = 0; i < playerAnimators.Count && i < state.Players.Count; i++)
+            {
+                PlayerState player = state.Players[i];
+                Animator animator = playerAnimators[i];
+
+                if (animator != null)
+                {
+                    Gait gait = PlayerPace.For(player, lastSampled[i], state.Settings, runClipSpeed);
+                    animator.SetFloat(Speed, gait.Speed);
+                    animator.speed = gait.Cadence;
+                }
+
+                lastSampled[i] = player.Position;
             }
         }
 
