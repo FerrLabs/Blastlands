@@ -38,21 +38,30 @@ namespace Blastlands.Runtime
         // The pack authors the diode large enough to headline a panel of its own.
         [SerializeField] private float diodeSize = 26f;
 
+        private static readonly Rect WholeScreen = new Rect(0f, 0f, 1f, 1f);
+
         private readonly List<Panel> panels = new List<Panel>();
         private MatchState state;
+        private MatchCamera cameras;
         private Canvas canvas;
 
         private sealed class Panel
         {
+            public int PlayerIndex;
             public CanvasGroup Group;
             public Slider[] Bars;
             public Image[] Fills;
             public GameObject Skull;
         }
 
-        public void Bind(MatchState matchState)
+        // The cameras are needed because a panel belongs inside the viewport of the
+        // person it describes. On one screen that is the whole window and nothing here
+        // changes; split four ways it is a quadrant, and a HUD that ignores the split
+        // hands each player somebody else's numbers.
+        public void Bind(MatchState matchState, MatchCamera matchCameras)
         {
             state = matchState;
+            cameras = matchCameras;
             Rebuild();
         }
 
@@ -63,10 +72,10 @@ namespace Blastlands.Runtime
                 return;
             }
 
-            for (int i = 0; i < panels.Count && i < state.Players.Count; i++)
+            for (int i = 0; i < panels.Count; i++)
             {
-                PlayerState player = state.Players[i];
                 Panel panel = panels[i];
+                PlayerState player = state.Players[panel.PlayerIndex];
 
                 // What is carried, against what could be carried. The bar empties as
                 // bombs are spent, which is the number that decides what you can do.
@@ -117,9 +126,23 @@ namespace Blastlands.Runtime
 
             EnsureCanvas();
 
-            for (int i = 0; i < state.Players.Count; i++)
+            // One full set of panels per viewport, rather than the set split between
+            // them. Everybody keeps the corner and the colour they have on a single
+            // screen, and nobody loses sight of what the other three are carrying just
+            // because the window was divided up.
+            int viewports = cameras == null ? 0 : cameras.ViewCount;
+
+            if (viewports <= 1)
             {
-                panels.Add(BuildPanel(i));
+                BuildPanels(WholeScreen);
+            }
+            else
+            {
+                for (int i = 0; i < viewports; i++)
+                {
+                    Camera view = cameras.ViewAt(i);
+                    BuildPanels(view == null ? WholeScreen : view.rect);
+                }
             }
 
             Render();
@@ -144,7 +167,30 @@ namespace Blastlands.Runtime
             scaler.matchWidthOrHeight = 0.5f;
         }
 
-        private Panel BuildPanel(int index)
+        // Anchors and viewports are both fractions of the window, so a corner of a
+        // viewport is that same corner read inside the viewport's own rectangle. On a
+        // single screen the rectangle is the whole window and this is the arithmetic the
+        // HUD was already doing.
+        //
+        // Public because the thing that can be wrong here is the arithmetic, not the
+        // GameObjects around it, and a transposed axis puts a panel over somebody else's
+        // half of the screen without anything failing.
+        public static Vector2 AnchorIn(Rect viewport, Vector2 corner)
+        {
+            return new Vector2(
+                viewport.x + (corner.x * viewport.width),
+                viewport.y + (corner.y * viewport.height));
+        }
+
+        private void BuildPanels(Rect viewport)
+        {
+            for (int i = 0; i < state.Players.Count; i++)
+            {
+                panels.Add(BuildPanel(i, viewport));
+            }
+        }
+
+        private Panel BuildPanel(int index, Rect viewport)
         {
             Vector2 corner = Corners[index % Corners.Length];
 
@@ -159,9 +205,11 @@ namespace Blastlands.Runtime
             var root = new GameObject("Player " + (index + 1), typeof(RectTransform), typeof(CanvasGroup));
             root.transform.SetParent(canvas.transform, false);
 
+            Vector2 anchor = AnchorIn(viewport, corner);
+
             var rect = root.GetComponent<RectTransform>();
-            rect.anchorMin = corner;
-            rect.anchorMax = corner;
+            rect.anchorMin = anchor;
+            rect.anchorMax = anchor;
             rect.pivot = corner;
             rect.sizeDelta = panelSize;
             rect.anchoredPosition = new Vector2(
@@ -184,6 +232,7 @@ namespace Blastlands.Runtime
 
             return new Panel
             {
+                PlayerIndex = index,
                 Group = root.GetComponent<CanvasGroup>(),
                 Bars = bars,
                 Fills = fills,

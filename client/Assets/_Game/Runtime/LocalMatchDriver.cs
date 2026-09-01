@@ -110,14 +110,16 @@ namespace Blastlands.Runtime
                 view.Render();
             }
 
-            if (hud != null)
-            {
-                hud.Bind(state);
-            }
-
             if (matchCamera != null)
             {
                 matchCamera.Bind(state, humans);
+            }
+
+            // After the cameras: the HUD lays a panel set inside each viewport, so it has
+            // to be able to see how many there are and where they sit.
+            if (hud != null)
+            {
+                hud.Bind(state, matchCamera);
             }
 
             // After the view, which is what owns the renderers it switches around.
