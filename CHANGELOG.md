@@ -4,6 +4,18 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.1] - 2026-09-01
+
+### Features
+
+- feat(client): animate players from what the simulation says they did (#164)
+
+### Bug Fixes
+
+- fix(client): cut classic soft block density so a spawn has somewhere to go (#166)
+- fix(client): render classic pillars as a lattice rather than as scattered rock (#162)
+- fix(client): keep simulating when the window loses focus (#160)
+
 ## [26.8.29] - 2026-08-29
 
 ### Features
