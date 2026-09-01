@@ -52,6 +52,12 @@ with it switched off, Classic resolves 5 of 12 on its own against Arena's 11, an
 48 against Arena's 35. The lattice is the whole difference: a pillar every other tile gives
 far more to hide behind, and bots that can hide do.
 
+Those two figures were taken while Classic still rolled soft blocks at 75%, and have not been
+run again since it dropped to 40%. The direction is not in doubt, the lattice is still there
+and still the difference, but treat the numbers as describing the old board. Density turned
+out to move Classic's death count very little in a separate sweep, between 62 and 75 of 96
+across the whole range from 25% to 75%, so they are unlikely to be far off.
+
 The rules that differ live in a `RuleSet` the simulation asks by name, rather than an enum it
 switches on, so a third mode answers the same questions instead of adding a third branch in a
 dozen places.
