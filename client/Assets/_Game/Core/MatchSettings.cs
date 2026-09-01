@@ -62,6 +62,47 @@ namespace Blastlands.Core
             BombRespawnTicks = bombRespawnTicks;
         }
 
+        // The copy every With reaches for. Written once, as a column of `X = from.X`,
+        // because the alternative was each of them restating twenty-seven positional
+        // arguments and a transposition in any one of them compiling, running, and
+        // quietly changing the game. A wrong line here reads as `A = from.B` and is
+        // visible on the line itself.
+        private MatchSettings(
+            MatchSettings from,
+            RuleSet rules,
+            SuddenDeathSettings suddenDeath,
+            int tilesPerLooseBomb)
+        {
+            Rules = rules;
+            SuddenDeath = suddenDeath;
+            TilesPerLooseBomb = tilesPerLooseBomb;
+
+            Vision = from.Vision;
+            Push = from.Push;
+            LooseBombFuseTicks = from.LooseBombFuseTicks;
+            PlayerRadius = from.PlayerRadius;
+            CornerAssist = from.CornerAssist;
+            DashSpeed = from.DashSpeed;
+            DashTicks = from.DashTicks;
+            DashCooldownTicks = from.DashCooldownTicks;
+            WallRegrowTicks = from.WallRegrowTicks;
+            WallTelegraphTicks = from.WallTelegraphTicks;
+            WallRetryTicks = from.WallRetryTicks;
+            TicksPerSecond = from.TicksPerSecond;
+            FuseTicks = from.FuseTicks;
+            FlameTicks = from.FlameTicks;
+            BaseSpeed = from.BaseSpeed;
+            SpeedStep = from.SpeedStep;
+            MaxSpeedSteps = from.MaxSpeedSteps;
+            StartingHeldBombs = from.StartingHeldBombs;
+            StartingCarryCapacity = from.StartingCarryCapacity;
+            StartingFireRange = from.StartingFireRange;
+            MaxCarryCapacity = from.MaxCarryCapacity;
+            MaxFireRange = from.MaxFireRange;
+            PowerUpDropPercent = from.PowerUpDropPercent;
+            BombRespawnTicks = from.BombRespawnTicks;
+        }
+
         public int TicksPerSecond { get; }
 
         public int FuseTicks { get; }
@@ -206,27 +247,39 @@ namespace Blastlands.Core
                     //  130 tiles/bomb ( 4 bombs)   25 of 40 survive   39 destroyed
                     //
                     // Past eighty the arena goes quiet for very little safety in return.
-                    30, 75, 15, 26, 6, 4, 1, 1, 2, 6, 4, 35, 80, 90, 600, 90, 45, 78, 8, 90, 90, 9, 12,
-                    PushSettings.Default,
-                    VisionSettings.Default,
-                    SuddenDeathSettings.Default,
-                    RuleSet.Arena);
+                    ticksPerSecond: 30,
+                    fuseTicks: 75,
+                    flameTicks: 15,
+                    baseSpeed: 26,
+                    speedStep: 6,
+                    maxSpeedSteps: 4,
+                    startingHeldBombs: 1,
+                    startingCarryCapacity: 1,
+                    startingFireRange: 2,
+                    maxCarryCapacity: 6,
+                    maxFireRange: 4,
+                    powerUpDropPercent: 35,
+                    tilesPerLooseBomb: 80,
+                    bombRespawnTicks: 90,
+                    wallRegrowTicks: 600,
+                    wallTelegraphTicks: 90,
+                    wallRetryTicks: 45,
+                    dashSpeed: 78,
+                    dashTicks: 8,
+                    dashCooldownTicks: 90,
+                    playerRadius: 90,
+                    cornerAssist: 9,
+                    looseBombFuseTicks: 12,
+                    push: PushSettings.Default,
+                    vision: VisionSettings.Default,
+                    suddenDeath: SuddenDeathSettings.Default,
+                    rules: RuleSet.Arena);
             }
         }
 
-        // Restating twenty-two positional ints to change one is where a transposition
-        // eventually happens, so the copy lives here rather than at the call site. See
-        // the wider problem in the tracking issue for this constructor.
         public MatchSettings WithRules(RuleSet rules)
         {
-            return new MatchSettings(
-                TicksPerSecond, FuseTicks, FlameTicks, BaseSpeed, SpeedStep, MaxSpeedSteps,
-                StartingHeldBombs, StartingCarryCapacity, StartingFireRange,
-                MaxCarryCapacity, MaxFireRange, PowerUpDropPercent,
-                TilesPerLooseBomb, BombRespawnTicks,
-                WallRegrowTicks, WallTelegraphTicks, WallRetryTicks,
-                DashSpeed, DashTicks, DashCooldownTicks,
-                PlayerRadius, CornerAssist, LooseBombFuseTicks, Push, Vision, SuddenDeath, rules);
+            return new MatchSettings(this, rules, SuddenDeath, TilesPerLooseBomb);
         }
 
         // Classic holds its bombs rather than finding them, so the ground stays clear of
@@ -263,26 +316,12 @@ namespace Blastlands.Core
 
         public MatchSettings WithSuddenDeath(SuddenDeathSettings suddenDeath)
         {
-            return new MatchSettings(
-                TicksPerSecond, FuseTicks, FlameTicks, BaseSpeed, SpeedStep, MaxSpeedSteps,
-                StartingHeldBombs, StartingCarryCapacity, StartingFireRange,
-                MaxCarryCapacity, MaxFireRange, PowerUpDropPercent,
-                TilesPerLooseBomb, BombRespawnTicks,
-                WallRegrowTicks, WallTelegraphTicks, WallRetryTicks,
-                DashSpeed, DashTicks, DashCooldownTicks,
-                PlayerRadius, CornerAssist, LooseBombFuseTicks, Push, Vision, suddenDeath, Rules);
+            return new MatchSettings(this, Rules, suddenDeath, TilesPerLooseBomb);
         }
 
         public MatchSettings WithTilesPerLooseBomb(int tilesPerBomb)
         {
-            return new MatchSettings(
-                TicksPerSecond, FuseTicks, FlameTicks, BaseSpeed, SpeedStep, MaxSpeedSteps,
-                StartingHeldBombs, StartingCarryCapacity, StartingFireRange,
-                MaxCarryCapacity, MaxFireRange, PowerUpDropPercent,
-                tilesPerBomb, BombRespawnTicks,
-                WallRegrowTicks, WallTelegraphTicks, WallRetryTicks,
-                DashSpeed, DashTicks, DashCooldownTicks,
-                PlayerRadius, CornerAssist, LooseBombFuseTicks, Push, Vision, SuddenDeath, Rules);
+            return new MatchSettings(this, Rules, SuddenDeath, tilesPerBomb);
         }
 
         public int SpeedFor(int speedSteps)
