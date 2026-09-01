@@ -105,8 +105,18 @@ namespace Blastlands.Core.Tests
         [Test]
         public void MostBotsLeftAloneSurviveThemselves()
         {
-            // A Hard bot survives 25 of these 40 unsupervised matches on the island,
-            // against 22 on the filled 25x21 rectangle and 37 on the old 15x13 one.
+            // A Hard bot survives all 40 of these unsupervised matches on the island.
+            // It used to be 25, against 22 on the filled 25x21 rectangle and 37 on the
+            // old 15x13 one, and the comment sat at 25 long after that stopped being
+            // true while the bar sat at 20 and slept through the difference.
+            //
+            // Easy and Normal are both 28 of 40, which is a wider spread than the
+            // difficulty knobs were meant to open up and is worth a look on its own.
+            //
+            // The bar is 38 rather than 40. Two seeds of slack leaves room for a change
+            // that shifts a match without weakening the bots, and still catches a real
+            // regression: three separate attempts at #72 all landed on 35, and a bar of
+            // 20 would have waved every one of them through.
             //
             // The island did not make the bots better. It made the arena smaller, and
             // BombSpawner counts ground rather than bounds, so a smaller island is a
@@ -124,6 +134,11 @@ namespace Blastlands.Core.Tests
             // one point, and that number was worthless. The bots were deadlocked, never
             // placing a bomb at all, and a bot that does nothing survives beautifully.
             //
+            // Which is why today's 40 was checked against that before the bar moved: the
+            // bot places 816 bombs across these 40 matches and spends 117k ticks moving
+            // against 2.6k standing still. It is surviving because it plays well, not
+            // because it has stopped playing.
+            //
             // An earlier version of this test ran one seed that happened to be among the
             // survivors, and reported the bots as safe for as long as it existed.
             int survived = 0;
@@ -135,7 +150,7 @@ namespace Blastlands.Core.Tests
                 }
             }
 
-            Assert.That(survived, Is.GreaterThanOrEqualTo(20), "bot self-preservation has regressed");
+            Assert.That(survived, Is.GreaterThanOrEqualTo(38), "bot self-preservation has regressed");
         }
 
         [Test]
