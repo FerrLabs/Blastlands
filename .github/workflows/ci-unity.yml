@@ -107,7 +107,19 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           projectPath: client
-          testMode: all
+          # editmode, not all. Both test assemblies are Editor-only
+          # (`includePlatforms: ["Editor"]`), so there is not a single PlayMode test in
+          # the project and `all` spends several minutes booting a player to run nothing.
+          #
+          # It also stopped being free. On 2026-09-01 that empty phase segfaulted the
+          # editor, exit 139, and took the whole job red while the 224 EditMode tests it
+          # had already passed sat in the artifact. The stack is entirely Unity's own
+          # startup, ScriptingCoverage::FilterRecordedMethods under
+          # InitializeCoreScriptingClasses, with no project code in it.
+          #
+          # Put this back to `all` the day a PlayMode test exists, or it will be skipped
+          # silently.
+          testMode: editmode
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           checkName: Unity test results
 
