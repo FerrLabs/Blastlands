@@ -44,7 +44,7 @@ namespace Blastlands.Runtime
         private PlayerInput[] inputs;
         private PlayerDevices devices;
         private BotBrain[] bots;
-        private float accumulator;
+        private TickPacer pacer;
         private uint activeSeed;
 
         public MatchState State
@@ -61,6 +61,16 @@ namespace Blastlands.Runtime
         {
             seed = newSeed;
             StartMatch();
+        }
+
+        private void Awake()
+        {
+#if UNITY_SERVER
+            // A server build has no screen, no pad and nobody sitting at it. The match
+            // it runs belongs to ServerBootstrap, and this driver going first would
+            // build a whole view for nobody.
+            enabled = false;
+#endif
         }
 
         private void Start()
@@ -89,7 +99,7 @@ namespace Blastlands.Runtime
             Debug.Log("Blastlands " + mode + " seed " + activeSeed);
             inputs = new PlayerInput[state.Players.Count];
             devices = new PlayerDevices(state.Players.Count);
-            accumulator = 0f;
+            pacer = new TickPacer(state.Settings.TicksPerSecond, MaxCatchUpTicks);
 
             // Every seat a human is not holding gets a bot, so a match is full whether
             // one person is playing or four.
@@ -157,26 +167,16 @@ namespace Blastlands.Runtime
 
             devices.PollPresses();
 
-            float step = 1f / state.Settings.TicksPerSecond;
-            accumulator += Time.deltaTime;
+            int ticks = pacer.Advance(Time.deltaTime);
 
-            int ticked = 0;
-            while (accumulator >= step && ticked < MaxCatchUpTicks)
+            for (int tick = 0; tick < ticks; tick++)
             {
-                accumulator -= step;
-                ticked++;
-
                 for (int i = 0; i < inputs.Length; i++)
                 {
                     inputs[i] = bots[i] != null ? bots[i].Think(state) : devices.Sample(i);
                 }
 
                 MatchSim.Tick(state, inputs);
-            }
-
-            if (ticked == MaxCatchUpTicks)
-            {
-                accumulator = 0f;
             }
 
             if (view != null)

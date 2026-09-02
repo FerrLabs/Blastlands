@@ -51,6 +51,23 @@ once. A separate Rust game server was considered and rejected — it would mean 
 bomb, blast and power-up rule twice, in two languages, and keeping them bit-identical
 forever.
 
+It starts itself. `ServerBootstrap` runs on load in a server build, so there is no scene to
+wire and no inspector to fill in: everything it needs comes from `--port`, `--match`,
+`--players` and `--lobby`, or from `BLASTLANDS_PORT` and friends when the host is configured
+once and the arguments name the instance. All four are required, an argument beats the
+environment, and a bad one refuses to start rather than guessing. A wrong port collides with
+a neighbour, a wrong match id releases somebody else's match.
+
+The guard is `UNITY_SERVER`, which Unity defines for the Dedicated Server subtarget itself,
+rather than a hand-added `SERVER` define somebody has to keep in step with `build.yml`.
+`LocalMatchDriver` switches itself off under it, and since the view, HUD, camera and fog are
+only ever built when that driver binds them, the client scene sits inert and nothing renders.
+
+Exit codes are what a supervisor reads: 0 for a match that resolved, 1 for options it would
+not start on, 2 for a match that failed to start or ran out its clock without resolving.
+Anything non-zero has to mean failure, or a crash loop reads as a clean shutdown and the
+match is never released.
+
 ### Client (`client/`, Unity Standalone build)
 
 Renders, reads input, predicts local movement, reconciles against server state.
