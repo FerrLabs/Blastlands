@@ -4,6 +4,21 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.2] - 2026-09-02
+
+### Features
+
+- feat(server): package the dedicated server build as an image (#181)
+- feat(server): start a dedicated server build headless and tick a match (#177)
+
+### Bug Fixes
+
+- fix(client): put each player's HUD panel inside their own viewport (#171)
+
+### Refactoring
+
+- refactor(core): name the match settings and copy them in one place (#172)
+
 ## [26.9.1] - 2026-09-01
 
 ### Features
