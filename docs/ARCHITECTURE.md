@@ -167,14 +167,28 @@ whatever it downloaded is a remote code execution vector.
 
 Single VPS to start. Both images run under Docker on the same host:
 
-- `ghcr.io/ferrlabs/blastlands-lobby` — one container, behind TLS, public HTTP.
-- `ghcr.io/ferrlabs/blastlands-server` — N containers, one per match, UDP ports from a
-  pool the lobby allocates from.
+- `ghcr.io/ferrlabs/blastlands/lobby` — one container, behind TLS, public HTTP. Built and
+  published by `docker.yml`.
+- A game server image. Planned, not built: `docker.yml` publishes only the lobby, and
+  nothing turns the Linux dedicated server artifact from `build.yml` into an image.
 
-Instance allocation starts as "the lobby runs a container and tracks the port". That is
-enough for a single host and does not need Kubernetes. If concurrency ever outgrows one
-VPS, the allocation seam is the only thing that changes — the client already treats the
-game server endpoint as opaque.
+**The lobby allocates a port, not an instance.** This section used to say allocation starts
+as "the lobby runs a container and tracks the port". It does not, and never did. What
+`PortPool` hands out is a number from `BLASTLANDS_PORT_RANGE`, which the lobby returns to
+the client as `BLASTLANDS_GAME_SERVER_HOST:port` and then assumes something is already
+listening on. The crate has no process spawning and no container client at all: its whole
+dependency list is axum, serde, thiserror, tokio, tower-http, tracing and uuid, and the only
+`spawn` in it is the tokio task that reaps silent matches.
+
+So the seam is not "the allocation seam is the only thing that changes". The seam does not
+exist yet, on either side of the port. What does exist is everything either side of it: the
+lobby hands out the number and waits, and an instance started on that number reports in and
+releases when it is done. Starting one is the missing piece, and #169 holds the decision
+between a warm pool of instances on fixed ports, the lobby learning to create Kubernetes
+Jobs, and Agones.
+
+Worth keeping in mind whichever way that goes: the client already treats the game server
+endpoint as opaque, so it is the only part of this that needs no changes.
 
 Nothing here touches `FerrLabs-Cloud/api` or the `Kit` crates. Like FerrGames, Blastlands is
 standalone: its own service, its own state, no shared back-office, no accounts. It is a
