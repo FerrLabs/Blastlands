@@ -59,9 +59,12 @@ namespace Blastlands.Runtime
 
             while (!releasing)
             {
-                using (UnityWebRequest beat = Post(Url("heartbeat")))
+                UnityWebRequest beat = Post(Url("heartbeat"));
+                UnityWebRequestAsyncOperation sending = Begin(beat);
+
+                if (sending != null)
                 {
-                    yield return beat.SendWebRequest();
+                    yield return sending;
 
                     // Warned about and carried on. A missed beat is not worth abandoning
                     // a match over: the lobby allows three, and the players in this one
@@ -72,6 +75,7 @@ namespace Blastlands.Runtime
                     }
                 }
 
+                beat.Dispose();
                 yield return wait;
             }
         }
@@ -82,7 +86,15 @@ namespace Blastlands.Runtime
             {
                 Authorise(release);
                 release.timeout = TimeoutSeconds;
-                yield return release.SendWebRequest();
+
+                UnityWebRequestAsyncOperation sending = Begin(release);
+                if (sending == null)
+                {
+                    done?.Invoke();
+                    yield break;
+                }
+
+                yield return sending;
 
                 if (release.result == UnityWebRequest.Result.Success)
                 {
@@ -98,6 +110,30 @@ namespace Blastlands.Runtime
             }
 
             done?.Invoke();
+        }
+
+        // SendWebRequest throws rather than returning a failed result for a request the
+        // player refuses outright, and the throw is what a `yield return` cannot catch.
+        // Left alone it killed the heartbeat coroutine on its first beat: no further
+        // beats, nothing logged by us, and an instance reaped for a silence it did not
+        // know it was keeping.
+        //
+        // Found by running the container. The editor does not enforce the player's
+        // insecure-http setting, so an http lobby works there and refuses here.
+        private static UnityWebRequestAsyncOperation Begin(UnityWebRequest request)
+        {
+            try
+            {
+                return request.SendWebRequest();
+            }
+            catch (Exception refused)
+            {
+                Debug.LogError(
+                    "Blastlands server: the lobby could not be called at all, "
+                    + refused.Message
+                    + ". An http URL is refused outright unless the player allows insecure connections.");
+                return null;
+            }
         }
 
         private UnityWebRequest Post(string url)
