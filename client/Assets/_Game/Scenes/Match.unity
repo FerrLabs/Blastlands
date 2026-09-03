@@ -265,6 +265,7 @@ MonoBehaviour:
   playerCount: 4
   seed: 0
   botSkill: 1
+  mode: 0
 --- !u!114 &613233826
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -281,10 +282,12 @@ MonoBehaviour:
   theme: {fileID: 11400000, guid: 4787bde93129f154e9ce0c149fd3014e, type: 2}
   blockFootprint: 0.92
   playerHeight: 1.15
+  runClipSpeed: 4.08
   bombFootprint: 0.72
   powerUpSize: 0.78
   telegraphColor: {r: 0.95, g: 0.35, b: 0.12, a: 1}
   sfx: {fileID: 613233828}
+  cameras: {fileID: 1120936999}
   flameScale: 0.18
   burstScale: 0.22
   flameLifetime: 0.4
@@ -297,10 +300,13 @@ MonoBehaviour:
   groundDetailMinSize: 0.9
   groundDetailMaxSize: 2.4
   groundDetailLift: 0.02
-  hardBlockSizeJitter: 0.16
   wallHeight: 1.1
   bushHeight: 1
   wallThickness: 0.5
+  islandThickness: 0.9
+  cliffSpread: 1.7
+  cliffSink: 0.12
+  skyDepth: 14
 --- !u!4 &613233827
 Transform:
   m_ObjectHideFlags: 0
@@ -443,9 +449,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Blastlands.Runtime::Blastlands.Runtime.MatchHud
   art: {fileID: 11400000, guid: 60607a3b2b9136d4d94e66a78b3d7b32, type: 2}
-  panelSize: {x: 340, y: 156}
   margin: 26
-  plateTint: {r: 0.24, g: 0.23, b: 0.21, a: 0.95}
+  boxSize: 74
+  boxGap: 6
   diodeSize: 26
 --- !u!114 &613233831
 MonoBehaviour:
@@ -501,6 +507,8 @@ MonoBehaviour:
   lookahead: 1.6
   dashLookahead: 3.2
   globalMinSize: 4
+  shakeDistance: 0.32
+  screenShake: 1
 --- !u!20 &1120937000
 Camera:
   m_ObjectHideFlags: 0

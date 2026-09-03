@@ -38,8 +38,19 @@ namespace Blastlands.Runtime
         // supposed to solve.
         [SerializeField] private float globalMinSize = 4f;
 
+        // How far a blast can throw the view, in world units. Small on purpose: the
+        // camera is how a player reads the board, and one that moves far enough to be
+        // noticed as movement has stopped doing its job.
+        [SerializeField] private float shakeDistance = 0.32f;
+
+        // Off switch. Camera shake is a common migraine and motion sickness trigger, so
+        // it has to be possible to play without it rather than only to endure it. There
+        // is no settings screen to drive this yet, so for now it is the inspector.
+        [SerializeField] private bool screenShake = true;
+
         private readonly List<Camera> views = new List<Camera>();
         private readonly List<Vector3> velocities = new List<Vector3>();
+        private readonly List<CameraShake> shakes = new List<CameraShake>();
 
         private MatchState state;
         private Camera own;
@@ -103,6 +114,32 @@ namespace Blastlands.Runtime
             Rebuild();
         }
 
+        // What a blast does to each viewport, worked out per viewport because in
+        // split-screen the same bomb is next to one player and across the board from
+        // another.
+        public void Felt(Vector3 at, int flameTiles)
+        {
+            if (!screenShake)
+            {
+                return;
+            }
+
+            for (int i = 0; i < views.Count && i < shakes.Count; i++)
+            {
+                Camera view = views[i];
+                if (view == null)
+                {
+                    continue;
+                }
+
+                Vector3 watching = view.transform.position + (view.transform.forward * 40f);
+                float distance = Vector2.Distance(
+                    new Vector2(at.x, at.z), new Vector2(watching.x, watching.z));
+
+                shakes[i].Felt(CameraShake.StrengthOf(distance, flameTiles, CameraShake.ReachTiles));
+            }
+        }
+
         public void Use(CameraMode next)
         {
             mode = next;
@@ -145,12 +182,18 @@ namespace Blastlands.Runtime
 
                 views.RemoveAt(i);
                 velocities.RemoveAt(i);
+                shakes.RemoveAt(i);
             }
 
             while (views.Count < wanted)
             {
                 views.Add(views.Count == 0 ? Own() : Clone(views.Count));
                 velocities.Add(Vector3.zero);
+
+                // A phase per viewport, so one bomb reaching two of them does not shake
+                // both the same way at the same moment, which reads as the whole window
+                // moving rather than as two people feeling the same blast.
+                shakes.Add(new CameraShake(shakes.Count * 0.41f));
             }
 
             for (int i = 0; i < views.Count; i++)
@@ -214,7 +257,17 @@ namespace Blastlands.Runtime
             looking = Vector3.SmoothDamp(looking, target, ref velocity, followSmoothing);
             velocities[index] = velocity;
 
-            view.transform.position = looking - (view.transform.forward * 40f);
+            Vector3 seat = looking - (view.transform.forward * 40f);
+
+            // After the smoothing, not before. Fed through SmoothDamp the shake would be
+            // averaged away into a slow drift, which is the opposite of the point.
+            if (index < shakes.Count)
+            {
+                Vector2 jolt = shakes[index].Advance(Time.deltaTime, shakeDistance);
+                seat += new Vector3(jolt.x, 0f, jolt.y);
+            }
+
+            view.transform.position = seat;
         }
 
         private Vector3 FollowFocus(int index, out float size)

@@ -26,6 +26,10 @@ namespace Blastlands.Runtime
         [SerializeField] private Color telegraphColor = new Color(0.95f, 0.35f, 0.12f, 1f);
         [SerializeField] private MatchAudio sfx;
 
+        // Told about blasts so it can shake the viewport each one is near. The view is
+        // where detonations are noticed, the same place the audio is fired from.
+        [SerializeField] private MatchCamera cameras;
+
         // Particle prefabs carry no useful renderer bounds, so they cannot be measured
         // like meshes. The Synty FX are authored as set dressing and are far too large
         // for a single tile.
@@ -95,6 +99,7 @@ namespace Blastlands.Runtime
         private readonly HashSet<GridPos> bombTiles = new HashSet<GridPos>();
         private readonly List<GridPos> pickupTiles = new List<GridPos>();
         private readonly List<GridPos> detonated = new List<GridPos>();
+        private readonly List<GridPos> freshFlames = new List<GridPos>();
         private readonly List<bool> wasAlive = new List<bool>();
         private readonly List<Animator> playerAnimators = new List<Animator>();
         private readonly List<SubPos> lastSampled = new List<SubPos>();
@@ -848,18 +853,71 @@ namespace Blastlands.Runtime
         // burning tile meant a single range-three blast stacked nine smoke plumes on
         // top of each other and the arena stayed fogged in. The flames along the arms
         // already draw the shape of the blast.
+        // How much of this frame's new fire belongs to one detonation, by giving every
+        // fresh tile to the blast it is nearest to.
+        //
+        // The frame total is the wrong number to hand a camera. A single bomb going off
+        // in the same frame as a chain reaction across the board would be described by
+        // the chain's size and shake as hard as it did, which is a small pop throwing the
+        // view like a nine-tile blast.
+        private int FlamesOf(int detonation)
+        {
+            if (detonated.Count == 1)
+            {
+                return freshFlames.Count;
+            }
+
+            GridPos at = detonated[detonation];
+            int mine = 0;
+
+            for (int i = 0; i < freshFlames.Count; i++)
+            {
+                if (Nearest(freshFlames[i]) == detonation)
+                {
+                    mine++;
+                }
+            }
+
+            return mine;
+        }
+
+        // Ties go to the first, which only decides which of two equally close blasts
+        // counts a tile it is equally entitled to.
+        private int Nearest(GridPos flame)
+        {
+            int best = 0;
+            int shortest = int.MaxValue;
+
+            for (int i = 0; i < detonated.Count; i++)
+            {
+                int dx = flame.X - detonated[i].X;
+                int dy = flame.Y - detonated[i].Y;
+                int distance = (dx * dx) + (dy * dy);
+
+                if (distance < shortest)
+                {
+                    shortest = distance;
+                    best = i;
+                }
+            }
+
+            return best;
+        }
+
         private void EmitBursts()
         {
             GameObject prefab = art == null ? null : art.ExplosionBurst;
-            int caught = 0;
 
+            freshFlames.Clear();
             for (int i = 0; i < state.Flames.Count; i++)
             {
                 if (!burningTiles.Contains(state.Flames[i].Tile))
                 {
-                    caught++;
+                    freshFlames.Add(state.Flames[i].Tile);
                 }
             }
+
+            int caught = freshFlames.Count;
 
             if (prefab != null)
             {
@@ -875,6 +933,14 @@ namespace Blastlands.Runtime
             if (caught > 0 && sfx != null)
             {
                 sfx.Exploded(caught);
+            }
+
+            if (caught > 0 && cameras != null)
+            {
+                for (int i = 0; i < detonated.Count; i++)
+                {
+                    cameras.Felt(ToWorld(detonated[i], 0f), FlamesOf(i));
+                }
             }
 
             burningTiles.Clear();
