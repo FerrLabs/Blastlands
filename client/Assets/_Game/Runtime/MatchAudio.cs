@@ -18,6 +18,14 @@ namespace Blastlands.Runtime
 
         private void Awake()
         {
+#if UNITY_SERVER
+            // A server build has no audio device, so synthesising these four clips ends
+            // in four `AudioClip.SetData failed` lines and nothing to play them through.
+            // #13 says the server skips audio entirely; without this it only skipped
+            // hearing it.
+            enabled = false;
+            return;
+#else
             source = GetComponent<AudioSource>();
             source.playOnAwake = false;
             source.spatialBlend = 0f;
@@ -41,6 +49,7 @@ namespace Blastlands.Runtime
             {
                 death = SfxSynth.Death();
             }
+#endif
         }
 
         public void BombDropped()
