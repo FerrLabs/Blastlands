@@ -39,6 +39,14 @@ Ces points sont réels et suivis comme des issues, pas comme des acquis.
   rejointes, et moissonnage des parties dont l'instance ne donne plus signe de vie. Les
   pseudos étaient déjà contraints en longueur et en charset côté serveur.
 
+  Une quatrième forme d'abus manquait à cette liste et a été corrigée depuis :
+  `POST /v1/matches/{id}/start` ne vérifiait rien. Les identifiants de parties sont
+  publics, `GET /v1/matches` les donne à qui les demande, donc n'importe qui pouvait
+  parcourir la liste et démarrer chaque partie ouverte. Une partie démarrée sort du
+  listing et refuse les joins, ce qui suffisait à rendre le lobby inutilisable, une
+  requête non authentifiée par partie. Le lobby retient maintenant le ticket qu'il a
+  remis à l'hôte et exige qu'il soit présenté pour démarrer.
+
   Une réserve à connaître avant d'exposer le service : l'adresse retenue est celle du
   socket, sauf si `BLASTLANDS_LOBBY_TRUST_FORWARDED_FOR` est activé. Derrière un reverse
   proxy sans ce réglage, tout le trafic partage un seul compteur ; avec ce réglage sur un

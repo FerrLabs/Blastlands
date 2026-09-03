@@ -126,6 +126,13 @@ impl From<&Match> for MatchSummary {
     }
 }
 
+/// Proof that the caller is the one who created this match. Match ids are public, so
+/// without it anybody could start anybody else's.
+#[derive(Debug, Deserialize)]
+pub struct StartRequest {
+    pub ticket: JoinTicket,
+}
+
 #[derive(Debug, Serialize)]
 pub struct MatchCreated {
     #[serde(flatten)]
@@ -232,8 +239,9 @@ async fn join_match(
 async fn start_match(
     State(state): State<AppState>,
     Path(id): Path<MatchId>,
+    Json(request): Json<StartRequest>,
 ) -> Result<StatusCode, LobbyError> {
-    state.directory.start(id)?;
+    state.directory.start(id, request.ticket)?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -564,14 +572,68 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn a_stranger_cannot_start_somebody_elses_match() {
+        // Match ids are public: GET /v1/matches hands them to anyone. Before the ticket
+        // was checked, this request answered 204, took the match out of the listing and
+        // left everybody still trying to join with match_already_started. One
+        // unauthorised request per match, walked straight off the public list.
+        let router = router();
+        let created = create_match_on(&router, "Alice game").await;
+        let id = created["id"].as_str().expect("an id").to_owned();
+
+        let refused = router
+            .clone()
+            .oneshot(post_json(
+                &format!("/v1/matches/{id}/start"),
+                json!({ "ticket": "0b7f3f5a-1c2d-4e5f-8a9b-0c1d2e3f4a5b" }),
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(refused.status(), StatusCode::UNAUTHORIZED);
+
+        // And the match is untouched: still joinable, which is the thing the attack took
+        // away.
+        let joined = router
+            .clone()
+            .oneshot(post_json(
+                &format!("/v1/matches/{id}/join"),
+                json!({ "player": "Bob" }),
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(joined.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn starting_without_a_ticket_at_all_is_refused() {
+        let router = router();
+        let created = create_match_on(&router, "Alice game").await;
+        let id = created["id"].as_str().expect("an id").to_owned();
+
+        let refused = router
+            .clone()
+            .oneshot(post_json(&format!("/v1/matches/{id}/start"), json!({})))
+            .await
+            .unwrap();
+
+        assert_eq!(refused.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    }
+
+    #[tokio::test]
     async fn joining_a_started_match_is_a_conflict() {
         let router = router();
         let created = create_match_on(&router, "Friday night").await;
         let id = created["id"].as_str().expect("an id").to_owned();
+        let ticket = created["ticket"].as_str().expect("a ticket").to_owned();
 
         let started = router
             .clone()
-            .oneshot(post_json(&format!("/v1/matches/{id}/start"), json!({})))
+            .oneshot(post_json(
+                &format!("/v1/matches/{id}/start"),
+                json!({ "ticket": ticket }),
+            ))
             .await
             .unwrap();
         assert_eq!(started.status(), StatusCode::NO_CONTENT);

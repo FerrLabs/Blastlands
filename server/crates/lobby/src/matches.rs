@@ -17,7 +17,7 @@ pub const MAX_PLAYERS: u8 = 8;
 #[serde(transparent)]
 pub struct MatchId(Uuid);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct JoinTicket(Uuid);
 
@@ -49,6 +49,9 @@ pub struct Match {
     /// Last sign of life from the instance running this match. Only meaningful once the
     /// match is in progress: before that there is no instance to hear from.
     pub last_seen: Instant,
+    /// The ticket handed to whoever created this match, kept so that starting it can be
+    /// proved to come from them. Never serialised: `MatchSummary` is what leaves here.
+    pub host_ticket: JoinTicket,
 }
 
 impl Match {
@@ -150,6 +153,11 @@ impl MatchDirectory {
 
         let port = state.ports.acquire()?;
 
+        // Generated once and kept, rather than minted fresh on the way out. The copy the
+        // host is handed is the only thing that can start this match later, so the lobby
+        // has to remember which one it gave away.
+        let host_ticket = JoinTicket(Uuid::new_v4());
+
         let entry = Match {
             id: MatchId(Uuid::new_v4()),
             name: request.name,
@@ -164,11 +172,12 @@ impl MatchDirectory {
             host_address: request.host_address,
             created_at: now,
             last_seen: now,
+            host_ticket,
         };
 
         state.matches.insert(entry.id, entry.clone());
 
-        Ok((entry, JoinTicket(Uuid::new_v4())))
+        Ok((entry, host_ticket))
     }
 
     pub fn open_matches(&self) -> Vec<Match> {
@@ -207,12 +216,24 @@ impl MatchDirectory {
         })
     }
 
-    pub fn start(&self, id: MatchId) -> Result<(), LobbyError> {
+    /// Starting is the host's call, so it has to be proved to come from the host.
+    ///
+    /// Match ids are public: `GET /v1/matches` hands them to anyone. Without this check
+    /// a stranger could walk that list and start every open match in it, which takes each
+    /// one out of the listing and refuses everybody still trying to join, one unauthorised
+    /// request per match.
+    pub fn start(&self, id: MatchId, ticket: JoinTicket) -> Result<(), LobbyError> {
         let mut state = self.write();
         let entry = state
             .matches
             .get_mut(&id)
             .ok_or(LobbyError::MatchNotFound)?;
+
+        // Before the already-started check, so a wrong ticket cannot tell the difference
+        // between a match that is running and one that is waiting.
+        if entry.host_ticket != ticket {
+            return Err(LobbyError::Unauthorized);
+        }
 
         if entry.state == MatchState::InProgress {
             return Err(LobbyError::MatchAlreadyStarted);
@@ -470,7 +491,9 @@ mod tests {
         let directory = directory();
         let entry = create(&directory, 4);
 
-        directory.start(entry.id).expect("start should succeed");
+        directory
+            .start(entry.id, entry.host_ticket)
+            .expect("start should succeed");
 
         assert!(directory.open_matches().is_empty());
         assert_eq!(
@@ -484,10 +507,10 @@ mod tests {
         let directory = directory();
         let entry = create(&directory, 4);
 
-        directory.start(entry.id).unwrap();
+        directory.start(entry.id, entry.host_ticket).unwrap();
 
         assert_eq!(
-            directory.start(entry.id).err(),
+            directory.start(entry.id, entry.host_ticket).err(),
             Some(LobbyError::MatchAlreadyStarted)
         );
     }
@@ -513,7 +536,7 @@ mod tests {
             Some(LobbyError::MatchNotFound)
         );
         assert_eq!(
-            directory.start(unknown).err(),
+            directory.start(unknown, stranger_ticket()).err(),
             Some(LobbyError::MatchNotFound)
         );
         assert_eq!(
@@ -528,8 +551,18 @@ mod tests {
         }
     }
 
+    // A ticket that belongs to nobody, for the cases where the call is expected to be
+    // refused before the ticket is ever looked at.
+    fn stranger_ticket() -> JoinTicket {
+        JoinTicket(Uuid::new_v4())
+    }
+
     fn make(directory: &MatchDirectory, address: IpAddr, now: Instant) -> MatchId {
-        directory
+        made(directory, address, now).0
+    }
+
+    fn made(directory: &MatchDirectory, address: IpAddr, now: Instant) -> (MatchId, JoinTicket) {
+        let (entry, ticket) = directory
             .create(
                 CreateMatch {
                     name: name("Night raid"),
@@ -540,9 +573,9 @@ mod tests {
                 now,
                 0,
             )
-            .expect("create should succeed")
-            .0
-            .id
+            .expect("create should succeed");
+
+        (entry.id, ticket)
     }
 
     #[test]
@@ -596,8 +629,8 @@ mod tests {
     fn a_running_match_whose_instance_went_quiet_is_reaped() {
         let directory = MatchDirectory::new("game.test".to_owned(), PortPool::new(7000..=7000));
         let start = Instant::now();
-        let id = make(&directory, caller(1), start);
-        directory.start(id).expect("start should succeed");
+        let (id, ticket) = made(&directory, caller(1), start);
+        directory.start(id, ticket).expect("start should succeed");
 
         let reaped = directory.reap(start + Duration::from_secs(31), lifetimes());
 
@@ -610,8 +643,8 @@ mod tests {
     fn a_heartbeat_keeps_a_running_match_alive() {
         let directory = MatchDirectory::new("game.test".to_owned(), PortPool::new(7000..=7001));
         let start = Instant::now();
-        let id = make(&directory, caller(1), start);
-        directory.start(id).expect("start should succeed");
+        let (id, ticket) = made(&directory, caller(1), start);
+        directory.start(id, ticket).expect("start should succeed");
 
         directory
             .heartbeat(id, start + Duration::from_secs(25))
