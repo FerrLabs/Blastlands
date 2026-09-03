@@ -35,15 +35,30 @@ namespace Blastlands.Runtime
         [SerializeField] private float boxSize = 74f;
         [SerializeField] private float boxGap = 6f;
 
+        // Bigger than a player's stat so it reads as the odd one out, and scaled
+        // uniformly: the plate is authored art, and stretching it on one axis distorts
+        // its frame and the bar inside it.
+        [SerializeField] private float clockSize = 104f;
+
         // The pack authors the diode large enough to headline a panel of its own.
         [SerializeField] private float diodeSize = 26f;
 
         private static readonly Rect WholeScreen = new Rect(0f, 0f, 1f, 1f);
 
         private readonly List<Panel> panels = new List<Panel>();
+        private readonly List<Clock> clocks = new List<Clock>();
         private MatchState state;
         private MatchCamera cameras;
         private Canvas canvas;
+
+        // The match clock, one per viewport for the same reason the panels are: on a
+        // split screen each player reads their own quadrant and nothing else.
+        private sealed class Clock
+        {
+            public CanvasGroup Group;
+            public Slider Bar;
+            public Image Fill;
+        }
 
         private sealed class Panel
         {
@@ -71,6 +86,8 @@ namespace Blastlands.Runtime
             {
                 return;
             }
+
+            RenderClock();
 
             for (int i = 0; i < panels.Count; i++)
             {
@@ -119,6 +136,16 @@ namespace Blastlands.Runtime
 
             panels.Clear();
 
+            for (int i = 0; i < clocks.Count; i++)
+            {
+                if (clocks[i].Group != null)
+                {
+                    Destroy(clocks[i].Group.gameObject);
+                }
+            }
+
+            clocks.Clear();
+
             if (state == null)
             {
                 return;
@@ -135,13 +162,16 @@ namespace Blastlands.Runtime
             if (viewports <= 1)
             {
                 BuildPanels(WholeScreen);
+                BuildClock(WholeScreen);
             }
             else
             {
                 for (int i = 0; i < viewports; i++)
                 {
                     Camera view = cameras.ViewAt(i);
-                    BuildPanels(view == null ? WholeScreen : view.rect);
+                    Rect viewport = view == null ? WholeScreen : view.rect;
+                    BuildPanels(viewport);
+                    BuildClock(viewport);
                 }
             }
 
@@ -167,6 +197,40 @@ namespace Blastlands.Runtime
             scaler.matchWidthOrHeight = 0.5f;
         }
 
+        // Hidden outright when sudden death is off, rather than left sitting full. A bar
+        // that never moves is claiming there is a deadline when there is none, which is
+        // worse than not showing one.
+        private void RenderClock()
+        {
+            bool deadline = MatchClock.HasDeadline(state);
+            float remaining = MatchClock.Remaining(state);
+            bool closing = MatchClock.Closing(state);
+
+            Color colour = closing
+                ? MatchPalette.ClockClosing
+                : MatchClock.Warning(state) ? MatchPalette.ClockWarning : MatchPalette.ClockCalm;
+
+            for (int i = 0; i < clocks.Count; i++)
+            {
+                Clock clock = clocks[i];
+
+                if (clock.Group != null)
+                {
+                    clock.Group.alpha = deadline ? 1f : 0f;
+                }
+
+                if (clock.Bar != null)
+                {
+                    clock.Bar.value = remaining;
+                }
+
+                if (clock.Fill != null)
+                {
+                    clock.Fill.color = colour;
+                }
+            }
+        }
+
         // Anchors and viewports are both fractions of the window, so a corner of a
         // viewport is that same corner read inside the viewport's own rectangle. On a
         // single screen the rectangle is the whole window and this is the arithmetic the
@@ -180,6 +244,74 @@ namespace Blastlands.Runtime
             return new Vector2(
                 viewport.x + (corner.x * viewport.width),
                 viewport.y + (corner.y * viewport.height));
+        }
+
+        // Top centre of the viewport, away from the four corners the players occupy. It
+        // is the one thing on screen that belongs to nobody in particular.
+        private void BuildClock(Rect viewport)
+        {
+            if (art == null || art.StatBox == null || state == null)
+            {
+                return;
+            }
+
+            GameObject box = Instantiate(art.StatBox, canvas.transform);
+            box.name = "Match clock";
+
+            var group = box.GetComponent<CanvasGroup>();
+            if (group == null)
+            {
+                group = box.AddComponent<CanvasGroup>();
+            }
+
+            var rect = box.GetComponent<RectTransform>();
+            Vector2 anchor = AnchorIn(viewport, new Vector2(0.5f, 1f));
+            rect.anchorMin = anchor;
+            rect.anchorMax = anchor;
+            rect.pivot = new Vector2(0.5f, 1f);
+
+            // Scaled rather than resized, for the reason BuildStat gives: the pack
+            // authored the plate, its frame and its bar against each other.
+            float authored = rect.rect.width;
+            rect.localScale = Vector3.one * (authored > 0f ? clockSize / authored : 1f);
+            rect.anchoredPosition = new Vector2(0f, -margin);
+
+            var clock = new Clock { Group = group };
+
+            Slider bar = box.GetComponentInChildren<Slider>(true);
+            if (bar != null)
+            {
+                bar.minValue = 0f;
+                bar.maxValue = 1f;
+                bar.interactable = false;
+                bar.transition = Selectable.Transition.None;
+
+                if (bar.handleRect != null)
+                {
+                    bar.handleRect.gameObject.SetActive(false);
+                    bar.handleRect = null;
+                }
+
+                if (bar.fillRect != null)
+                {
+                    clock.Fill = bar.fillRect.GetComponent<Image>();
+                }
+
+                clock.Bar = bar;
+            }
+
+            // The icon slot holds a stat's symbol on a player panel. There is no symbol
+            // for time here, and an empty plate reads better than a borrowed one.
+            Image[] images = box.GetComponentsInChildren<Image>(true);
+            for (int i = 0; i < images.Length; i++)
+            {
+                if (images[i] != clock.Fill && images[i].sprite == art.Bombs)
+                {
+                    images[i].enabled = false;
+                }
+            }
+
+            clocks.Add(clock);
         }
 
         private void BuildPanels(Rect viewport)

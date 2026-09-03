@@ -11,6 +11,14 @@ namespace Blastlands.Runtime
         public static readonly Color Bomb = new Color(0.09f, 0.09f, 0.11f);
         public static readonly Color Flame = new Color(0.95f, 0.45f, 0.12f);
 
+        // The match clock, which says how long is left before the coast starts closing.
+        // Three states told apart by colour alone: no emoji, no blinking, nothing that
+        // moves. A bar that pulses in the corner of the eye is exactly what a player
+        // fighting for their life does not need.
+        public static readonly Color ClockCalm = new Color(0.62f, 0.72f, 0.55f);
+        public static readonly Color ClockWarning = new Color(0.92f, 0.72f, 0.24f);
+        public static readonly Color ClockClosing = new Color(0.88f, 0.28f, 0.20f);
+
         // The FerrLabs product accents, which happen to be four highly separable hues.
         public static readonly Color[] Players =
         {
