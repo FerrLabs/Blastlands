@@ -170,8 +170,16 @@ namespace Blastlands.Core.Tests
             Assert.That(ServerOptions.TryRead(arguments, NoEnvironment, out ServerOptions options, out _), Is.True);
             Assert.That(options.ExpectedPlayers, Is.EqualTo(99));
 
-            Assert.Throws<ArgumentOutOfRangeException>(
-                () => MatchFactory.Create(ArenaSettings.Default, MatchSettings.Default, options.ExpectedPlayers, 1u));
+            // Spelled TestDelegate rather than passed inline, the same way
+            // ArenaGeneratorTests does and for the same reason: NUnit 4 overloads
+            // Assert.Throws on both TestDelegate and Action, so a bare lambda is
+            // ambiguous. Unity ships NUnit 3.5, which has only the TestDelegate
+            // overload, so the editor compiles the lambda happily and the dotnet build
+            // in CI does not. TestDelegate is the form both versions accept.
+            TestDelegate tooManyForTheBoard = () =>
+                MatchFactory.Create(ArenaSettings.Default, MatchSettings.Default, options.ExpectedPlayers, 1u);
+
+            Assert.Throws<ArgumentOutOfRangeException>(tooManyForTheBoard);
         }
 
         [Test]
