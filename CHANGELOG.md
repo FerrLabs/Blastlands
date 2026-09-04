@@ -4,6 +4,20 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.4] - 2026-09-04
+
+### Features
+
+- feat(client): sound the fuse burning down and the walls coming apart (#193)
+- feat(client): shake the view when a blast lands near it (#182)
+- feat(client): show how long is left before the coast closes (#188)
+
+### Bug Fixes
+
+- fix(server): stop synthesising sound a server build cannot play (#191)
+- fix(core): spell the exception delegate so both NUnit versions agree (#190)
+- fix(server): keep heartbeating when the lobby call throws (#189)
+
 ## [26.9.3] - 2026-09-03
 
 ### Bug Fixes
