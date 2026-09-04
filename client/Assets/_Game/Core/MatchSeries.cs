@@ -49,6 +49,43 @@ namespace Blastlands.Core
             get { return Champion != NoChampion; }
         }
 
+        // The arena for the round after this one, derived from the one that just played
+        // rather than rolled fresh. A series is then described by a single number: pin
+        // the first round's seed and every round after it follows, which is what makes
+        // a generator flaw or a bug report reproducible past round one.
+        //
+        // Lives here because the series is the thing that spans rounds, and one draw
+        // from the project's own generator is a better answer than a hash written for
+        // this. Zero is the one value that would break the chain, since the driver reads
+        // it as "roll a random one", and xorshift cannot produce it: zero is a fixed
+        // point of the shift, so a state that is not zero never becomes zero, and
+        // DeterministicRandom substitutes a constant when handed zero to begin with.
+        //
+        // The xor is not decoration and must not be simplified away. Without it the
+        // derived seed is the first number the previous round drew, so every round in a
+        // series reads one xorshift stream a single draw further along: round N runs on
+        // f(S), f2(S), f3(S) and round N+1 on f2(S), f3(S), the same numbers offset by
+        // one. On the Classic board, where the lattice is fixed and the cover spends one
+        // draw per eligible tile in a fixed order, that puts round N+1's cover one tile
+        // along from round N's. Measured at 314 of 337 eligible tiles matching at an
+        // offset of one, against 191 for two unrelated seeds. The xor lands the derived
+        // seed a long way round the cycle instead of one step, and takes the match back
+        // to 196, which is chance.
+        //
+        // Advancing by more draws would not have fixed it: a round consumes an unbounded
+        // number of them, so any fixed offset can still fall inside the next round's
+        // window.
+        public static uint NextSeed(uint seed)
+        {
+            return new DeterministicRandom(seed ^ StreamShift).NextUInt();
+        }
+
+        // The golden-ratio constant, chosen for having its bits spread out rather than
+        // for any property of its value. Only seed == StreamShift xors to zero, and
+        // DeterministicRandom substitutes its own fallback for zero, so the derived seed
+        // is still never zero.
+        private const uint StreamShift = 0x9E3779B9u;
+
         public int Wins(int player)
         {
             return player >= 0 && player < wins.Length ? wins[player] : 0;

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using NUnit.Framework;
 
 namespace Blastlands.Core.Tests
@@ -152,6 +153,125 @@ namespace Blastlands.Core.Tests
 
             Assert.Throws<ArgumentOutOfRangeException>(noRounds);
             Assert.Throws<ArgumentOutOfRangeException>(noPlayers);
+        }
+
+        [Test]
+        public void TheSeedForTheNextRoundIsNeverZero()
+        {
+            // The one that matters. The driver reads a zero seed as "roll a random one",
+            // so a single zero anywhere in the chain silently turns a reproducible series
+            // back into an unreproducible one from that round on, and nothing about the
+            // match looks wrong while it happens.
+            for (uint seed = 1; seed <= 20000; seed++)
+            {
+                Assert.That(MatchSeries.NextSeed(seed), Is.Not.Zero, $"seed {seed} derived zero");
+            }
+
+            Assert.That(MatchSeries.NextSeed(0u), Is.Not.Zero, "zero has to derive something usable");
+        }
+
+        [Test]
+        public void TheSameSeedAlwaysGivesTheSameNextRound()
+        {
+            // The whole point of deriving rather than rolling: one number describes a
+            // whole series, so a bug report can be replayed past its first round.
+            Assert.That(MatchSeries.NextSeed(12345u), Is.EqualTo(MatchSeries.NextSeed(12345u)));
+            Assert.That(MatchSeries.NextSeed(1u), Is.EqualTo(MatchSeries.NextSeed(1u)));
+        }
+
+        [Test]
+        public void ARoundNeverDealsTheArenaItJustPlayed()
+        {
+            // A seed mapping to itself would stick a series on one arena for ever, which
+            // is the failure a lazy derivation like "add one and hope" would not have.
+            for (uint seed = 1; seed <= 20000; seed++)
+            {
+                Assert.That(MatchSeries.NextSeed(seed), Is.Not.EqualTo(seed), $"seed {seed} maps to itself");
+            }
+        }
+
+        [Test]
+        public void ASeriesDoesNotLoopBackOnItselfWithinAMatch()
+        {
+            // Long enough to cover any series anybody would sit through. A short cycle
+            // would quietly replay arenas in a fixed order.
+            var seen = new HashSet<uint>();
+            uint seed = 7u;
+            seen.Add(seed);
+
+            for (int round = 0; round < 50; round++)
+            {
+                seed = MatchSeries.NextSeed(seed);
+                Assert.That(seen.Add(seed), Is.True, $"round {round} came back to a seed already played");
+            }
+        }
+
+        [Test]
+        public void TwoSeriesThatStartNextToEachOtherDoNotConverge()
+        {
+            // Adjacent seeds are what a person types. If they produced neighbouring
+            // arenas, or met after a round or two, pinning a seed would say much less
+            // than it appears to.
+            uint a = 7u;
+            uint b = 8u;
+
+            for (int round = 0; round < 10; round++)
+            {
+                a = MatchSeries.NextSeed(a);
+                b = MatchSeries.NextSeed(b);
+                Assert.That(a, Is.Not.EqualTo(b), $"the two chains met at round {round}");
+            }
+        }
+
+        [Test]
+        public void TheNextRoundIsADifferentBoardAndNotTheSameOneShiftedAlong()
+        {
+            // Different seeds are not the point. Different arenas are, and the two are
+            // not the same claim: deriving a seed by one draw of the same generator gave
+            // every round the previous round's stream offset by a single step, so the
+            // Classic cover came out one tile along and the tests that only compared
+            // seeds all passed.
+            //
+            // Measured at 314 of 337 eligible tiles matching at an offset of one before
+            // the fix, 196 after it, and 191 for two unrelated seeds. The bar is three
+            // quarters, well clear of chance and well under what the bug produced.
+            const uint Seed = 424242u;
+            MatchState first = MatchFactory.Create(ArenaSettings.Classic, MatchSettings.Default, 2, Seed);
+            MatchState second = MatchFactory.Create(
+                ArenaSettings.Classic, MatchSettings.Default, 2, MatchSeries.NextSeed(Seed));
+
+            var before = new List<bool>();
+            var after = new List<bool>();
+
+            for (int y = 0; y < first.Arena.Height; y++)
+            {
+                for (int x = 0; x < first.Arena.Width; x++)
+                {
+                    var tile = new GridPos(x, y);
+                    if (first.Arena[tile] == TileKind.HardBlock || second.Arena[tile] == TileKind.HardBlock
+                        || first.Arena[tile] == TileKind.Void || second.Arena[tile] == TileKind.Void)
+                    {
+                        continue;
+                    }
+
+                    before.Add(first.Arena[tile] == TileKind.SoftBlock);
+                    after.Add(second.Arena[tile] == TileKind.SoftBlock);
+                }
+            }
+
+            int shifted = 0;
+            for (int i = 0; i + 1 < before.Count; i++)
+            {
+                if (after[i] == before[i + 1])
+                {
+                    shifted++;
+                }
+            }
+
+            Assert.That(
+                shifted,
+                Is.LessThan((before.Count - 1) * 3 / 4),
+                $"round two is round one shifted by a tile ({shifted} of {before.Count - 1})");
         }
 
         [Test]

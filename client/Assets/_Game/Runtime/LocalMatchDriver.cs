@@ -247,7 +247,10 @@ namespace Blastlands.Runtime
             intermissionRemaining -= Time.deltaTime;
             if (intermissionRemaining <= 0f)
             {
-                seed = 0u;
+                // Derived rather than rolled, so a pinned seed describes the whole
+                // series instead of only its first round. The reroll key still rolls,
+                // because Restart clears the seed on its way through.
+                seed = MatchSeries.NextSeed(activeSeed);
                 StartMatch();
             }
         }
