@@ -5,27 +5,33 @@ name: CI Unity
 # They are skipped entirely until the Unity licence secrets are configured —
 # the simulation core is covered without a licence by the CI workflow.
 
+# The path filter that used to live on these triggers is now a step in the gate job
+# below. A workflow skipped by a trigger-level `paths:` never reports its checks at
+# all, so `Unity tests` simply did not exist on a PR that touched no client file:
+# #187, a Renovate bump, has no such check. That is harmless while the check is
+# optional and fatal the moment it is required, because a required check that never
+# reports leaves the pull request pending for ever. See #175.
 on:
   push:
     branches: [main]
-    paths:
-      - 'client/**'
-      - '.github/workflows/ci-unity.yml'
   pull_request:
     branches: [main]
-    paths:
-      - 'client/**'
-      - '.github/workflows/ci-unity.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
   checks: write
+  pull-requests: read
 
 jobs:
+  # On a hosted runner rather than ours, though it does nothing but read a secret.
+  # The whole workflow waits on this job, so on ours it queues behind everything else
+  # in the organisation: this run sat eleven minutes behind a busy pool before the
+  # editor could even be asked to start. A check that gates merges should not inherit
+  # that queue. See #175.
   licence:
     name: Licence
-    runs-on: ferrlabs-k8s
+    runs-on: ubuntu-latest
     outputs:
       available: ${{ steps.check.outputs.available }}
     steps:
@@ -40,22 +46,80 @@ jobs:
             echo '::notice::UNITY_LICENSE is not configured, so the Unity tests are skipped. Set UNITY_LICENSE, UNITY_EMAIL and UNITY_PASSWORD to enable them.'
           fi
 
+  # Every step below is conditional rather than the job itself, so this reports a
+  # conclusion on every pull request instead of being skipped. A skipped job is
+  # accepted by a ruleset in most cases, but "always succeeds" needs no reading of the
+  # rules to be sure of, and the runner it wastes when there is nothing to do is a few
+  # seconds against the nine minutes the editor takes when there is.
   tests:
     name: Unity tests
     needs: licence
-    if: needs.licence.outputs.available == 'true'
     runs-on: ubuntu-latest
     steps:
+      # Which files changed, asked of the API rather than read from a checkout: the
+      # answer is a list of names, and cloning the repository to get it would cost more
+      # than the question is worth. Run here rather than in the licence job because gh
+      # is a given on a GitHub-hosted runner and not on ours. A dispatch has nothing to
+      # compare against, so it always runs.
+      - name: Decide whether the editor has to start
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          EVENT: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+          LICENSED: ${{ needs.licence.outputs.available }}
+        run: |
+          set -euo pipefail
+
+          case "$EVENT" in
+            pull_request)
+              # previous_filename as well as filename: a file renamed out of client/
+              # reports only its new path, so the client tree would look untouched by a
+              # change that emptied it. The paths: filter this replaces did match that.
+              changed=$(gh api --paginate "repos/$REPOSITORY/pulls/$PR_NUMBER/files" --jq '.[] | .filename, (.previous_filename // empty)')
+              ;;
+            push)
+              # All zeroes is a branch that did not exist before, which has no range to
+              # compare and is treated as "everything changed".
+              if [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+                changed='client/'
+              else
+                changed=$(gh api "repos/$REPOSITORY/compare/$BEFORE...$AFTER" --jq '.files[] | .filename, (.previous_filename // empty)')
+              fi
+              ;;
+            *)
+              changed='client/'
+              ;;
+          esac
+
+          if [ "$LICENSED" != 'true' ]; then
+            echo 'RUN=false' >> "$GITHUB_ENV"
+          # A here-string rather than a pipe into grep. With pipefail set, `grep -q`
+          # exiting at its first match kills the still-writing echo with SIGPIPE, the
+          # pipeline reports 141, and the branch is skipped: a client change big enough
+          # to fill the pipe buffer would have gone green without starting the editor.
+          # Reproduced at 4000 paths, every one of them under client/.
+          elif grep -qE '^(client/|\.github/workflows/ci-unity\.yml$)' <<<"$changed"; then
+            echo 'RUN=true' >> "$GITHUB_ENV"
+          else
+            echo 'RUN=false' >> "$GITHUB_ENV"
+            echo '::notice::No client file changed, so the Unity editor is not started. The check still reports so it can be required.'
+          fi
+
       # The unityci/editor image is around 10 GB and the hosted runner does not have
       # the headroom out of the box: the pull fails with "no space left on device".
       # None of these toolchains are used by the Unity job.
-      - name: Free disk space for the Unity image
+      - if: env.RUN == 'true'
+        name: Free disk space for the Unity image
         run: |
           sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup \
                       /opt/hostedtoolcache/CodeQL /usr/local/share/boost
           df -h /
 
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - if: env.RUN == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           # Not lfs: true. actions/checkout runs its LFS fetch against the endpoint
           # implied by the remote, which is GitHub, while .lfsconfig points at the
@@ -67,7 +131,8 @@ jobs:
           # including a plain clone on a workstation. It is actions/checkout that does not.
           lfs: false
 
-      - name: Fetch LFS objects
+      - if: env.RUN == 'true'
+        name: Fetch LFS objects
         env:
           # The run's own token, no secret to manage. LFSX authenticates the password as
           # a forge token and ignores the username, and since v1.0.0 it accepts a GitHub
@@ -92,14 +157,16 @@ jobs:
           git lfs pull
           echo "materialised $(git lfs ls-files | wc -l) LFS files"
 
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      - if: env.RUN == 'true'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: client/Library
           key: Library-${{ hashFiles('client/Assets/**', 'client/Packages/**', 'client/ProjectSettings/**') }}
           restore-keys: |
             Library-
 
-      - uses: game-ci/unity-test-runner@0ff419b913a3630032cbe0de48a0099b5a9f0ed9 # v4
+      - if: env.RUN == 'true'
+        uses: game-ci/unity-test-runner@0ff419b913a3630032cbe0de48a0099b5a9f0ed9 # v4
         id: tests
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
@@ -123,8 +190,14 @@ jobs:
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           checkName: Unity test results
 
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        if: always()
+      - if: always() && env.RUN == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: unity-test-results
           path: ${{ steps.tests.outputs.artifactsPath }}
+
+      - if: env.RUN != 'true'
+        name: Say why nothing ran
+        run: |
+          echo "Unity was not started: no client file changed, or UNITY_LICENSE is not set."
+          echo "This job still reports so the check can be a required one. See #175."
