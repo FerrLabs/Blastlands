@@ -1,3 +1,4 @@
+using System.Text;
 using Blastlands.Core;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -40,7 +41,18 @@ namespace Blastlands.Runtime
         // because there is no lobby screen yet, which is #19. See #145.
         [SerializeField] private GameMode mode = GameMode.Arena;
 
+        // Best of five. Long enough that one unlucky round does not decide it, short
+        // enough to finish in a sitting.
+        [SerializeField] private int roundsToWin = 3;
+
+        // Long enough to see who died and read the score in the log, short enough that
+        // nobody reaches for the reroll key.
+        [SerializeField] private float intermissionSeconds = 3f;
+
         private MatchState state;
+        private MatchSeries series;
+        private float intermissionRemaining;
+        private bool roundRecorded;
         private PlayerInput[] inputs;
         private PlayerDevices devices;
         private BotBrain[] bots;
@@ -57,9 +69,13 @@ namespace Blastlands.Runtime
             get { return activeSeed; }
         }
 
+        // The reroll key, which is a tool for looking at arenas rather than a way to
+        // play. It starts a new series as well as a new round: carrying the score across
+        // a deliberate reset would be scoring rounds nobody played to the end.
         public void Restart(uint newSeed)
         {
             seed = newSeed;
+            series = null;
             StartMatch();
         }
 
@@ -96,6 +112,16 @@ namespace Blastlands.Runtime
             MatchSettings matchSettings = MatchSettings.For(mode);
 
             state = MatchFactory.Create(arenaSettings, matchSettings, playerCount, activeSeed);
+
+            // Survives the rebuild the next round does. A series is only built when
+            // there is none, or when the seat count changed under it and the old score
+            // no longer describes who is playing.
+            if (series == null || series.PlayerCount != state.Players.Count)
+            {
+                series = new MatchSeries(state.Players.Count, Mathf.Max(1, roundsToWin));
+            }
+
+            roundRecorded = false;
             Debug.Log("Blastlands " + mode + " seed " + activeSeed);
             inputs = new PlayerInput[state.Players.Count];
             devices = new PlayerDevices(state.Players.Count);
@@ -160,8 +186,7 @@ namespace Blastlands.Runtime
             // layout flaw only shows up across many maps, not one.
             if (devices.RerollPressed())
             {
-                seed = 0u;
-                StartMatch();
+                Restart(0u);
                 return;
             }
 
@@ -188,6 +213,71 @@ namespace Blastlands.Runtime
             {
                 hud.Render();
             }
+
+            if (state.Outcome != RoundOutcome.Running)
+            {
+                HoldOrAdvance();
+            }
+        }
+
+        // A finished round is scored once, then left on screen for a beat before the
+        // next one replaces it. Cutting straight to a new arena on the frame somebody
+        // died hides the blast that decided it.
+        private void HoldOrAdvance()
+        {
+            if (series == null)
+            {
+                return;
+            }
+
+            if (!roundRecorded)
+            {
+                roundRecorded = true;
+                intermissionRemaining = intermissionSeconds;
+                series.Record(state.Outcome, state.WinnerId);
+                Debug.Log("Blastlands round " + series.RoundsPlayed + ": " + Result()
+                    + " | " + Score());
+            }
+
+            if (series.Decided)
+            {
+                return;
+            }
+
+            intermissionRemaining -= Time.deltaTime;
+            if (intermissionRemaining <= 0f)
+            {
+                seed = 0u;
+                StartMatch();
+            }
+        }
+
+        private string Result()
+        {
+            if (state.Outcome != RoundOutcome.Winner)
+            {
+                return "draw";
+            }
+
+            return series.Decided
+                ? "player " + state.WinnerId + " takes the series"
+                : "player " + state.WinnerId;
+        }
+
+        private string Score()
+        {
+            var text = new StringBuilder();
+            for (int i = 0; i < series.PlayerCount; i++)
+            {
+                if (i > 0)
+                {
+                    text.Append(", ");
+                }
+
+                text.Append(series.Wins(i));
+            }
+
+            return text.ToString();
         }
     }
 }
