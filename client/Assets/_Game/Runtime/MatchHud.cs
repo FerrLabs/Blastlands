@@ -43,11 +43,17 @@ namespace Blastlands.Runtime
         // The pack authors the diode large enough to headline a panel of its own.
         [SerializeField] private float diodeSize = 26f;
 
+        // Smaller than the identity diode, so a row of them reads as a tally rather
+        // than as four more panels.
+        [SerializeField] private float pipSize = 14f;
+        [SerializeField] private float pipGap = 5f;
+
         private static readonly Rect WholeScreen = new Rect(0f, 0f, 1f, 1f);
 
         private readonly List<Panel> panels = new List<Panel>();
         private readonly List<Clock> clocks = new List<Clock>();
         private MatchState state;
+        private MatchSeries series;
         private MatchCamera cameras;
         private Canvas canvas;
 
@@ -67,16 +73,21 @@ namespace Blastlands.Runtime
             public Slider[] Bars;
             public Image[] Fills;
             public GameObject Skull;
+
+            // One entry per round it takes to win the series, each holding every image
+            // in that pip so the whole thing can be lit or left dark in one go.
+            public List<Image[]> Pips;
         }
 
         // The cameras are needed because a panel belongs inside the viewport of the
         // person it describes. On one screen that is the whole window and nothing here
         // changes; split four ways it is a quadrant, and a HUD that ignores the split
         // hands each player somebody else's numbers.
-        public void Bind(MatchState matchState, MatchCamera matchCameras)
+        public void Bind(MatchState matchState, MatchCamera matchCameras, MatchSeries matchSeries)
         {
             state = matchState;
             cameras = matchCameras;
+            series = matchSeries;
             Rebuild();
         }
 
@@ -107,9 +118,41 @@ namespace Blastlands.Runtime
                     panel.Skull.SetActive(!player.Alive);
                 }
 
+                RenderPips(panel);
+
                 if (panel.Group != null)
                 {
-                    panel.Group.alpha = player.Alive ? 1f : 0.45f;
+                    bool won = state.Outcome == RoundOutcome.Winner
+                        && state.WinnerId == player.Id;
+                    panel.Group.alpha = PanelMood.AlphaFor(player.Alive, state.Outcome, won);
+                }
+            }
+        }
+
+        // Lit for a round won, dark for one still to play. Read straight off the series
+        // every frame rather than incremented on an event: a HUD that counts for itself
+        // is a second score to drift away from the real one.
+        private void RenderPips(Panel panel)
+        {
+            if (panel.Pips == null)
+            {
+                return;
+            }
+
+            int won = series == null ? 0 : series.Wins(panel.PlayerIndex);
+            Color accent = MatchPalette.ForPlayer(panel.PlayerIndex);
+
+            for (int i = 0; i < panel.Pips.Count; i++)
+            {
+                Image[] images = panel.Pips[i];
+                Color colour = i < won ? accent : MatchPalette.PipUnwon;
+
+                for (int j = 0; j < images.Length; j++)
+                {
+                    if (images[j] != null)
+                    {
+                        images[j].color = colour;
+                    }
                 }
             }
         }
@@ -344,9 +387,14 @@ namespace Blastlands.Runtime
             rect.anchorMax = anchor;
             rect.pivot = corner;
             rect.sizeDelta = panelSize;
+            // Past four players the corners are taken and panels stack in rows, so the
+            // gap between two rows has to clear the tally hanging off the one before it
+            // as well as the panel itself. At a flat ten it did not: the last stretch of
+            // a row-0 tally was drawn over the row-1 stat boxes, at the same x.
+            float rowGap = pipGap + pipSize + 6f;
             rect.anchoredPosition = new Vector2(
                 corner.x > 0.5f ? -margin : margin,
-                (corner.y > 0.5f ? -1f : 1f) * (margin + (row * (panelSize.y + 10f))));
+                (corner.y > 0.5f ? -1f : 1f) * (margin + (row * (panelSize.y + rowGap))));
 
             Color accent = MatchPalette.ForPlayer(index);
 
@@ -368,7 +416,8 @@ namespace Blastlands.Runtime
                 Group = root.GetComponent<CanvasGroup>(),
                 Bars = bars,
                 Fills = fills,
-                Skull = skull
+                Skull = skull,
+                Pips = BuildPips(root.transform, panelSize)
             };
         }
 
@@ -459,6 +508,51 @@ namespace Blastlands.Runtime
             skull.transform.SetAsLastSibling();
             skull.SetActive(false);
             return skull;
+        }
+
+        // One small light per round it takes to win, in a row under the stat boxes. The
+        // HUD has no text and wants none, and for a count this small a row of lights is
+        // read faster than a number would be anyway.
+        //
+        // Placed below the panel on the top corners and above it on the bottom ones, so
+        // the tally always sits between the stats and the middle of the screen rather
+        // than running off the edge.
+        private List<Image[]> BuildPips(Transform parent, Vector2 panelSize)
+        {
+            if (art == null || art.Diode == null || series == null)
+            {
+                return null;
+            }
+
+            var pips = new List<Image[]>();
+            Vector2 corner = ((RectTransform)parent).pivot;
+            float y = corner.y > 0.5f ? -(panelSize.y + pipGap) : panelSize.y + pipGap;
+
+            for (int i = 0; i < series.RoundsToWin; i++)
+            {
+                GameObject pip = Instantiate(art.Diode, parent);
+                pip.name = "Round " + (i + 1);
+
+                // Same reason BuildDiode gives: the glow is a particle system a
+                // RectTransform cannot size, and it spills across the arena.
+                foreach (ParticleSystem system in pip.GetComponentsInChildren<ParticleSystem>(true))
+                {
+                    system.gameObject.SetActive(false);
+                }
+
+                var rect = pip.GetComponent<RectTransform>();
+                rect.anchorMin = new Vector2(0f, corner.y);
+                rect.anchorMax = new Vector2(0f, corner.y);
+                rect.pivot = new Vector2(0f, corner.y);
+
+                float authored = rect.rect.width;
+                pip.transform.localScale = Vector3.one * (authored > 0f ? pipSize / authored : 1f);
+                rect.anchoredPosition = new Vector2(i * (pipSize + pipGap), y);
+
+                pips.Add(pip.GetComponentsInChildren<Image>(true));
+            }
+
+            return pips;
         }
 
         // The pack's indicator light, tinted to the player. A HUD diode is already the

@@ -19,6 +19,13 @@ namespace Blastlands.Runtime
         public static readonly Color ClockWarning = new Color(0.92f, 0.72f, 0.24f);
         public static readonly Color ClockClosing = new Color(0.88f, 0.28f, 0.20f);
 
+        // A round still to play. Measured against the pack's diode sprite, which is warm
+        // and dark to begin with: at 0.24 a spent pip came out at (52, 41, 33) against a
+        // lit one at (135, 51, 24), close enough to read as a dim light rather than as an
+        // empty slot. This keeps it clear of the panel's near-black ground while leaving
+        // the lit pip about four times brighter.
+        public static readonly Color PipUnwon = new Color(0.17f, 0.18f, 0.17f);
+
         // The FerrLabs product accents, which happen to be four highly separable hues.
         public static readonly Color[] Players =
         {
