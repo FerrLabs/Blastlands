@@ -8,10 +8,17 @@ namespace Blastlands.Core
         public ActiveBomb(Bomb bomb, int fuseTicks)
         {
             Bomb = bomb;
+            FuseTicks = fuseTicks;
             FuseRemaining = fuseTicks;
         }
 
         public Bomb Bomb { get; }
+
+        // What this bomb started with, which is not the same for every bomb: one a
+        // player drops burns for MatchSettings.FuseTicks, one the fire lights burns for
+        // LooseBombFuseTicks. Anything reading the fuse as a fraction has to divide by
+        // the bomb's own total rather than by the settings.
+        public int FuseTicks { get; }
 
         public int FuseRemaining { get; set; }
 

@@ -51,6 +51,46 @@ namespace Blastlands.Runtime
             return Finish("SfxExplosion", samples, 0.85f);
         }
 
+        // Dry and short, where the explosion is long and wet. A block coming apart in a
+        // blast has to be tellable from the blast itself, or the two run together into
+        // one noise and the player learns nothing from either.
+        public static AudioClip BlockBreak()
+        {
+            float[] samples = Buffer(0.18f);
+            var random = new System.Random(20260903);
+            float lowPassed = 0f;
+
+            for (int i = 0; i < samples.Length; i++)
+            {
+                float t = Seconds(i);
+                float noise = ((float)random.NextDouble() * 2f) - 1f;
+
+                // Less smoothing than the explosion uses, so this keeps the grit that
+                // reads as splintering rather than as a thud.
+                lowPassed = Mathf.Lerp(lowPassed, noise, 0.45f);
+                float knock = Mathf.Sin(2f * Mathf.PI * 190f * t) * Decay(t, 30f) * 0.5f;
+
+                samples[i] = (lowPassed * Decay(t, 22f)) + knock;
+            }
+
+            return Finish("SfxBlockBreak", samples, 0.5f);
+        }
+
+        // The one cue that has to carry off screen, so it is a bare tick high enough to
+        // cut through everything else and short enough not to muddy a fight. It says
+        // "something near you is about to go off" and nothing more.
+        public static AudioClip Fuse()
+        {
+            float[] samples = Buffer(0.06f);
+            for (int i = 0; i < samples.Length; i++)
+            {
+                float t = Seconds(i);
+                samples[i] = Mathf.Sin(2f * Mathf.PI * 2300f * t) * Decay(t, 70f);
+            }
+
+            return Finish("SfxFuse", samples, 0.3f);
+        }
+
         public static AudioClip Pickup()
         {
             float[] samples = Buffer(0.22f);

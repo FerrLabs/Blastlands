@@ -11,6 +11,8 @@ namespace Blastlands.Runtime
         [SerializeField] private AudioClip explosion;
         [SerializeField] private AudioClip pickup;
         [SerializeField] private AudioClip death;
+        [SerializeField] private AudioClip blockBreak;
+        [SerializeField] private AudioClip fuse;
 
         [SerializeField, Range(0f, 1f)] private float volume = 0.8f;
 
@@ -19,8 +21,8 @@ namespace Blastlands.Runtime
         private void Awake()
         {
 #if UNITY_SERVER
-            // A server build has no audio device, so synthesising these four clips ends
-            // in four `AudioClip.SetData failed` lines and nothing to play them through.
+            // A server build has no audio device, so synthesising these clips ends in a
+            // `AudioClip.SetData failed` line each and nothing to play them through.
             // #13 says the server skips audio entirely; without this it only skipped
             // hearing it.
             enabled = false;
@@ -49,12 +51,37 @@ namespace Blastlands.Runtime
             {
                 death = SfxSynth.Death();
             }
+
+            if (blockBreak == null)
+            {
+                blockBreak = SfxSynth.BlockBreak();
+            }
+
+            if (fuse == null)
+            {
+                fuse = SfxSynth.Fuse();
+            }
 #endif
         }
 
         public void BombDropped()
         {
             Play(bombDrop, 0.7f);
+        }
+
+        // Under the explosion rather than over it: the blast is the event, this is the
+        // texture of it, and a rubble cue as loud as the bang would just smear both.
+        public void BlockBroken(int blocks)
+        {
+            Play(blockBreak, blocks > 2 ? 0.6f : 0.45f);
+        }
+
+        // Quiet on purpose. It fires for every bomb entering its last second, including
+        // ones across the board, so it has to be audible without being the loudest thing
+        // in a four-player fight.
+        public void FuseBurningDown()
+        {
+            Play(fuse, 0.35f);
         }
 
         // Called once per tick that produced fire, not once per burning tile: a chain

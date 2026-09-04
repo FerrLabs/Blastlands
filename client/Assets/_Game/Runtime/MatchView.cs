@@ -97,6 +97,8 @@ namespace Blastlands.Runtime
         private readonly List<GameObject> powerUpViews = new List<GameObject>();
         private readonly List<PowerUpKind> powerUpKinds = new List<PowerUpKind>();
         private readonly HashSet<GridPos> bombTiles = new HashSet<GridPos>();
+        private readonly HashSet<GridPos> warnedFuses = new HashSet<GridPos>();
+        private readonly List<GridPos> staleFuses = new List<GridPos>();
         private readonly List<GridPos> pickupTiles = new List<GridPos>();
         private readonly List<GridPos> detonated = new List<GridPos>();
         private readonly List<GridPos> freshFlames = new List<GridPos>();
@@ -173,6 +175,8 @@ namespace Blastlands.Runtime
             powerUpViews.Clear();
             powerUpKinds.Clear();
             bombTiles.Clear();
+            warnedFuses.Clear();
+            staleFuses.Clear();
             pickupTiles.Clear();
             detonated.Clear();
             wasAlive.Clear();
@@ -564,6 +568,8 @@ namespace Blastlands.Runtime
         // changes what it is, which regrowth does every time a bush burns.
         private void SyncBlocks()
         {
+            int broken = 0;
+
             for (int y = 0; y < state.Arena.Height; y++)
             {
                 for (int x = 0; x < state.Arena.Width; x++)
@@ -581,6 +587,15 @@ namespace Blastlands.Runtime
                     {
                         Destroy(view.Instance);
                         blocks.Remove(tile);
+
+                        // Only where something stood and now nothing does. A block
+                        // turning into another block is the walls growing back, and a
+                        // block turning into void is the coast falling away in sudden
+                        // death: neither of those is a blast taking a wall apart.
+                        if (kind == TileKind.Floor)
+                        {
+                            broken++;
+                        }
                     }
 
                     // Asked as "is there something to draw here", not as "is this not
@@ -593,6 +608,14 @@ namespace Blastlands.Runtime
                         blocks[tile] = new BlockView(CreateBlock(tile, kind), kind);
                     }
                 }
+            }
+
+            // One cue for the frame, not one per wall. A blast that opens four tiles at
+            // once is one collapse to whoever is watching, and four overlapping copies
+            // of the same clip is just clipping.
+            if (broken > 0 && sfx != null)
+            {
+                sfx.BlockBroken(broken);
             }
         }
 
@@ -758,7 +781,7 @@ namespace Blastlands.Runtime
                 }
 
                 ActiveBomb bomb = state.Bombs[i];
-                float fuse = bomb.FuseRemaining / (float)state.Settings.FuseTicks;
+                float fuse = bomb.FuseRemaining / (float)bomb.FuseTicks;
                 float pulse = 1f + (0.14f * Mathf.Sin((1f - fuse) * 34f));
 
                 view.transform.localScale = bombBaseScales[i] * pulse;
@@ -776,9 +799,23 @@ namespace Blastlands.Runtime
         {
             for (int i = 0; i < state.Bombs.Count; i++)
             {
-                if (!bombTiles.Contains(state.Bombs[i].Bomb.Position) && sfx != null)
+                ActiveBomb bomb = state.Bombs[i];
+                if (sfx == null)
+                {
+                    continue;
+                }
+
+                if (!bombTiles.Contains(bomb.Bomb.Position))
                 {
                     sfx.BombDropped();
+                }
+                else if (BombFuse.IsWarning(bomb.FuseRemaining, bomb.FuseTicks, state.Settings.TicksPerSecond)
+                         && warnedFuses.Add(bomb.Bomb.Position))
+                {
+                    // Once per bomb rather than once per frame, which is what the set is
+                    // for. The warning is the moment it enters its last second, and a
+                    // clip restarted sixty times over that second is a buzz.
+                    sfx.FuseBurningDown();
                 }
             }
 
@@ -795,6 +832,24 @@ namespace Blastlands.Runtime
             for (int i = 0; i < state.Bombs.Count; i++)
             {
                 bombTiles.Add(state.Bombs[i].Bomb.Position);
+            }
+
+            // Collected first and removed after, because a set cannot be written to
+            // while it is being read. Spelled out rather than handed to RemoveWhere: the
+            // predicate would capture this and allocate a delegate on every frame, and
+            // nothing else on this path allocates.
+            staleFuses.Clear();
+            foreach (GridPos tile in warnedFuses)
+            {
+                if (!bombTiles.Contains(tile))
+                {
+                    staleFuses.Add(tile);
+                }
+            }
+
+            for (int i = 0; i < staleFuses.Count; i++)
+            {
+                warnedFuses.Remove(staleFuses[i]);
             }
         }
 

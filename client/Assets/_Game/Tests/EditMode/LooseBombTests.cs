@@ -95,6 +95,62 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
+        public void ABombLitByFireRemembersItsOwnShortFuse()
+        {
+            // The two fuse lengths share one list, so anything reading a bomb's fuse as
+            // a fraction has to divide by that bomb's total. Divided by the settings, a
+            // loose bomb reads as 12/75 the instant it lights: permanently on the edge of
+            // going off, which drives both the pulse and the warning sound.
+            MatchState state = OpenMatch(new GridPos(1, 1), new GridPos(7, 7));
+            state.AddLooseBomb(new GridPos(5, 4));
+            state.AddBomb(new ActiveBomb(new Bomb(new GridPos(4, 4), 99, 2), 2));
+
+            Run(state, 6, PlayerInput.None, PlayerInput.None);
+
+            ActiveBomb lit = null;
+            foreach (ActiveBomb bomb in state.Bombs)
+            {
+                if (bomb.Position.Equals(new GridPos(5, 4)))
+                {
+                    lit = bomb;
+                }
+            }
+
+            Assert.That(lit, Is.Not.Null, "the loose bomb never became an active one");
+            Assert.That(lit.FuseTicks, Is.EqualTo(Settings.LooseBombFuseTicks));
+            Assert.That(
+                lit.FuseTicks,
+                Is.LessThan(Settings.FuseTicks),
+                "the short fuse is what makes the distinction worth keeping");
+        }
+
+        [Test]
+        public void ABombAPlayerDropsKeepsTheSettingsFuse()
+        {
+            MatchState state = OpenMatch(new GridPos(1, 1));
+
+            Run(state, 1, PlayerInput.Dropping());
+
+            Assert.That(state.Bombs, Is.Not.Empty, "nothing was dropped");
+            Assert.That(state.Bombs[0].FuseTicks, Is.EqualTo(Settings.FuseTicks));
+        }
+
+        [Test]
+        public void TheFuseATickAfterDroppingIsStillNearlyTheWholeFuse()
+        {
+            // Guards the fraction the view draws and warns on. Reading FuseRemaining
+            // against the wrong total is invisible until it is a bomb that burns for a
+            // different length of time.
+            MatchState state = OpenMatch(new GridPos(1, 1));
+
+            Run(state, 2, PlayerInput.Dropping());
+
+            ActiveBomb bomb = state.Bombs[0];
+            Assert.That(bomb.FuseRemaining, Is.LessThan(bomb.FuseTicks));
+            Assert.That(bomb.FuseRemaining / (float)bomb.FuseTicks, Is.GreaterThan(0.9f));
+        }
+
+        [Test]
         public void TheArenaIsSeededWithBombsAndKeepsToppingUp()
         {
             MatchState state = MatchFactory.Create(ArenaSettings.Default, Settings, 2, 4242u);
