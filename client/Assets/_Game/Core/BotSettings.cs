@@ -29,9 +29,19 @@ namespace Blastlands.Core
         // line of sight, a hard one keeps hunting the place you were.
         public int MemoryTicks { get; }
 
+        // The lookahead here is deliberately longer than it looks like it should be, and
+        // that is the whole of #186. Raising it makes this bot worse, not better: it
+        // reads more tiles as dangerous and flees more often, and with nine ticks between
+        // decisions and two ticks of slack it commits to those flights on information
+        // that has already gone stale. Normal, deciding every four ticks with twice the
+        // slack, survives the same reading.
+        //
+        // Measured over 60 seeds of solo survival: 22 ticks scored 42 of 60 against
+        // Normal's 43, which is the whole complaint. Everything from 28 to 40 lands
+        // between 34 and 36, so 35 is the middle of a plateau rather than a lucky point.
         public static BotSettings Easy
         {
-            get { return new BotSettings(9, 22, 2, 30); }
+            get { return new BotSettings(9, 35, 2, 30); }
         }
 
         public static BotSettings Normal

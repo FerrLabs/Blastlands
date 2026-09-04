@@ -242,6 +242,50 @@ namespace Blastlands.Core.Tests
             Assert.That(deaths, Is.GreaterThanOrEqualTo(24), "the bots have gone back to ignoring each other");
         }
 
+        [Test]
+        public void TheThreeSkillLevelsAreActuallyDifferent()
+        {
+            // The guard #186 was missing. Easy and Normal had drifted level on solo
+            // survival, which is the one measure the difficulty knobs are tuned against:
+            // two of the three settings a player can pick did the same thing.
+            //
+            // Sixty seeds rather than the forty the Hard ratchet uses, because this
+            // compares three figures instead of pinning one and the gaps have to clear
+            // the noise. Measured 34, 43 and 58, so gaps of nine and fifteen; the bars
+            // sit at five and eight.
+            //
+            // Deliberately a gap and not a set of absolute figures. What each level
+            // should score is a design call that will move; that they must not collapse
+            // into each other is not.
+            int easy = SurvivesOver(BotSettings.Easy, 60);
+            int normal = SurvivesOver(BotSettings.Normal, 60);
+            int hard = SurvivesOver(BotSettings.Hard, 60);
+
+            Assert.That(
+                normal - easy,
+                Is.GreaterThanOrEqualTo(5),
+                $"Easy and Normal have converged again (easy {easy}, normal {normal})");
+
+            Assert.That(
+                hard - normal,
+                Is.GreaterThanOrEqualTo(8),
+                $"Normal and Hard have converged (normal {normal}, hard {hard})");
+        }
+
+        private static int SurvivesOver(BotSettings level, uint seeds)
+        {
+            int survived = 0;
+            for (uint seed = 1; seed <= seeds; seed++)
+            {
+                if (SurvivesAlone(seed, level, 3000))
+                {
+                    survived++;
+                }
+            }
+
+            return survived;
+        }
+
         private static bool SurvivesAlone(uint seed, BotSettings level, int ticks)
         {
             MatchState state = MatchFactory.Create(ArenaSettings.Default, Settings, 1, seed);
