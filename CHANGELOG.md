@@ -4,6 +4,19 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.5] - 2026-09-05
+
+### Features
+
+- feat(client): decide whether a build may play before it tries to (#202)
+- feat(client): derive each round's seed so one number replays a series (#200)
+- feat(client): show the series score on the HUD (#196)
+- feat(client): play a series of rounds and keep the score (#195)
+
+### Bug Fixes
+
+- fix(client): separate the Easy and Normal bot skill levels (#198)
+
 ## [26.9.4] - 2026-09-04
 
 ### Features
