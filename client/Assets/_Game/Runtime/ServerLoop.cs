@@ -17,6 +17,9 @@ namespace Blastlands.Runtime
         private PlayerInput[] inputs;
         private TickPacer pacer;
         private LobbyReporter lobby;
+        private MatchTransport transport;
+        private string ending;
+        private int endingCode;
         private int ticksLeft;
 
         public void Run(MatchState matchState, ServerOptions options)
@@ -36,6 +39,17 @@ namespace Blastlands.Runtime
             Application.targetFrameRate = state.Settings.TicksPerSecond;
             QualitySettings.vSyncCount = 0;
 
+            // Listening before the first tick, so a client that connects the moment the
+            // lobby hands out the endpoint is not refused while the process finishes
+            // waking up. A match whose transport never came up still runs and still
+            // reports: every seat sends nothing, the match times out, and the reason
+            // reaches the lobby instead of the port being stranded by a hard exit.
+            transport = gameObject.AddComponent<MatchTransport>();
+            if (!transport.StartServer((ushort)options.ListenPort, state.Players.Count))
+            {
+                transport = null;
+            }
+
             // Started before the first tick, not after the last. The lobby is already
             // counting from the moment it allocated this match, so an instance that
             // waited until it had something to report would be reaped on its way up.
@@ -47,6 +61,17 @@ namespace Blastlands.Runtime
 
         private void Update()
         {
+            // The frame after the one that decided it. Everything queued on the way out,
+            // the result message included, gets a network update to leave on before the
+            // socket closes and the process quits.
+            if (ending != null)
+            {
+                string reason = ending;
+                ending = null;
+                Finish(reason, endingCode);
+                return;
+            }
+
             if (state == null)
             {
                 return;
@@ -56,15 +81,40 @@ namespace Blastlands.Runtime
 
             for (int i = 0; i < ticks; i++)
             {
-                // Every seat sends nothing until #14 wires clients up. An untouched
-                // PlayerInput is a player standing still, which is what an unconnected
-                // seat should look like.
-                MatchSim.Tick(state, inputs);
+                // Asked for before the tick rather than after it: MatchSim advances the
+                // counter on its way out, so state.Tick here is the tick about to be
+                // played and the one the client stamped its input with.
+                //
+                // A seat nobody is connected to, or one whose packet has not arrived,
+                // comes back as a player standing still or as whatever they last sent.
+                // Either is a match that keeps running, which is the point.
+                MatchSim.Tick(state, transport != null ? transport.InputsFor(state.Tick) : inputs);
                 ticksLeft--;
+
+                // After the tick, so what goes out is the state the inputs produced
+                // rather than the one they were about to change.
+                if (transport != null)
+                {
+                    transport.Broadcast(state);
+                }
 
                 if (state.Outcome != RoundOutcome.Running)
                 {
-                    Finish($"match {state.Outcome} after {state.Tick} ticks", ServerBootstrap.Ok);
+                    // Sent reliably and on its own, rather than trusted to the outcome
+                    // byte of an unreliable snapshot. That snapshot is the only one that
+                    // ever carries the result, and unreliable delivery is exactly what
+                    // you do not want for a message that is sent once.
+                    //
+                    // Torn down a frame later rather than here: NGO flushes its send
+                    // queue on a later network update, so shutting the socket inside the
+                    // tick that produced the result can take that result with it.
+                    if (transport != null)
+                    {
+                        transport.AnnounceResult(state);
+                    }
+
+                    ending = $"match {state.Outcome} after {state.Tick} ticks";
+                    endingCode = ServerBootstrap.Ok;
                     return;
                 }
 
@@ -72,7 +122,8 @@ namespace Blastlands.Runtime
                 {
                     // Non-zero: a match that ran out the clock without resolving is an
                     // instance that has to be looked at, not one that finished.
-                    Finish($"match ran {MaxMatchSeconds}s without resolving", ServerBootstrap.FailedToStart);
+                    ending = $"match ran {MaxMatchSeconds}s without resolving";
+                    endingCode = ServerBootstrap.FailedToStart;
                     return;
                 }
             }
@@ -85,6 +136,12 @@ namespace Blastlands.Runtime
         {
             state = null;
             Debug.Log("Blastlands server: " + reason);
+
+            if (transport != null)
+            {
+                transport.Stop();
+                transport = null;
+            }
 
             if (lobby == null)
             {

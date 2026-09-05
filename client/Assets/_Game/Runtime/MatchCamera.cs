@@ -64,6 +64,13 @@ namespace Blastlands.Runtime
 
         private int localSeats = 1;
 
+        // Which seat the first viewport belongs to. Zero for a local match, where the
+        // seats a machine owns start at the beginning. On a networked client it is the
+        // seat the server gave this connection: without it a client seated at 2 drives
+        // player 2 and watches player 0, which is not a camera bug on screen so much as a
+        // game that does not respond.
+        private int firstSeat;
+
         public CameraMode Mode
         {
             get { return mode; }
@@ -89,13 +96,13 @@ namespace Blastlands.Runtime
 
             if (mode == CameraMode.Split)
             {
-                into.Add(index);
+                into.Add(firstSeat + index);
                 return;
             }
 
             if (mode == CameraMode.Follow)
             {
-                into.Add(0);
+                into.Add(firstSeat);
                 return;
             }
 
@@ -107,8 +114,14 @@ namespace Blastlands.Runtime
 
         public void Bind(MatchState matchState, int seats)
         {
+            Bind(matchState, seats, 0);
+        }
+
+        public void Bind(MatchState matchState, int seats, int seatOfFirstViewport)
+        {
             state = matchState;
             localSeats = seats < 1 ? 1 : seats;
+            firstSeat = seatOfFirstViewport < 0 ? 0 : seatOfFirstViewport;
             lastAspect = 0f;
             MeasureGround();
             Rebuild();
@@ -354,7 +367,7 @@ namespace Blastlands.Runtime
 
         private PlayerState PlayerFor(int index)
         {
-            int which = mode == CameraMode.Split ? index : 0;
+            int which = firstSeat + (mode == CameraMode.Split ? index : 0);
             return which < state.Players.Count ? state.Players[which] : null;
         }
 

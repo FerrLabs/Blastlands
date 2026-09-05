@@ -129,6 +129,30 @@ namespace Blastlands.Core
             return coastDistance[(tile.Y * Arena.Width) + tile.X];
         }
 
+        // Internal rather than public, and grouped here rather than spread among the
+        // methods the simulation uses. A snapshot arriving from the server replaces the
+        // whole of the dynamic state at once, which no rule of the game ever does: these
+        // are for Core.Net and would be a foot-gun anywhere else, so the assembly
+        // boundary is what keeps them out of the runtime's reach.
+        internal void ClearForSnapshot()
+        {
+            bombs.Clear();
+            flames.Clear();
+            powerUps.Clear();
+            looseBombs.Clear();
+            regrowingWalls.Clear();
+        }
+
+        internal void AddPowerUpFromSnapshot(PowerUp powerUp)
+        {
+            powerUps.Add(powerUp);
+        }
+
+        internal void AddRegrowthFromSnapshot(WallRegrowth regrowth)
+        {
+            regrowingWalls.Add(regrowth);
+        }
+
         public IReadOnlyList<PlayerState> Players
         {
             get { return players; }
