@@ -235,6 +235,15 @@ namespace Blastlands.Runtime
                 return;
             }
 
+            // Nobody to tell. NGO logs "clientIds is empty" for a broadcast with no
+            // recipients, and this runs thirty times a second, so an idle instance waiting
+            // for its players fills a log at thirty lines a second until somebody joins.
+            // Seen doing exactly that in a container.
+            if (network.ConnectedClientsIds.Count == 0)
+            {
+                return;
+            }
+
             int size = SnapshotCodec.Write(state, outgoing);
             if (size <= 0)
             {

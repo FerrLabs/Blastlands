@@ -106,9 +106,14 @@ namespace Blastlands.Runtime
                 return;
             }
 
+            // The seats this machine owns, which start at firstSeat and not at zero. This
+            // is the branch MatchFog reads, and in Classic Blinded that list is the whole
+            // of what a client is allowed to see: left at zero, a client seated anywhere
+            // else is shown player zero's vision, with an opponent beside them hidden and
+            // no way to tell by looking that the wrong eyes are being used.
             for (int i = 0; i < localSeats; i++)
             {
-                into.Add(i);
+                into.Add(firstSeat + i);
             }
         }
 

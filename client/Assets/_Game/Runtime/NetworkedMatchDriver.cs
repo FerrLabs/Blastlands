@@ -49,6 +49,11 @@ namespace Blastlands.Runtime
         private TickPacer pacer;
         private int nextTick = -1;
         private bool bound;
+        private bool complained;
+        private float waited;
+
+        // Long enough that a slow connect is not called a fault.
+        private const float SecondsBeforeComplaining = 8f;
 
         public MatchState State
         {
@@ -129,8 +134,19 @@ namespace Blastlands.Runtime
 
         private void Update()
         {
-            if (state == null || transport == null || !bound)
+            if (state == null || transport == null)
             {
+                return;
+            }
+
+            // Drawn even before the seat lands, so a client waiting on one shows the
+            // board rather than an empty screen. A server with every seat taken
+            // disconnects the caller, and the only line explaining that is on the other
+            // machine, so a black window here is the whole of what the player is told.
+            if (!bound)
+            {
+                Render();
+                Complain();
                 return;
             }
 
@@ -167,6 +183,24 @@ namespace Blastlands.Runtime
             }
 
             Render();
+        }
+
+        // Said once, after long enough that a slow connection has had its chance. The
+        // cases that reach it are a full match and a server too old to send a seat at
+        // all, and both look identical from here: connected, and nothing happening.
+        private void Complain()
+        {
+            waited += Time.deltaTime;
+
+            if (waited < SecondsBeforeComplaining || complained)
+            {
+                return;
+            }
+
+            complained = true;
+            Debug.LogError(
+                "Blastlands: connected but never seated. The match is either full or the server is older "
+                + "than the seat message. Nothing will move until a seat arrives.");
         }
 
         private void Render()
