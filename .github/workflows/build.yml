@@ -113,3 +113,72 @@ jobs:
         with:
           name: ${{ matrix.name }}
           path: build
+
+  # Wrapped around the server this workflow already built, rather than built again in a
+  # workflow of its own. A second job pulling the same 10 GB editor to run the same build
+  # would ship an image whose binary is not the one published beside it, and the two
+  # would drift the first time one of them changed a pin.
+  #
+  # Deliberately not the reusable-docker-build workflow the lobby uses: that one checks
+  # out the repository and builds from it, and what goes in this image is an artifact
+  # rather than anything in the tree. A reusable workflow is a job, so there is nothing
+  # to hand it.
+  image:
+    name: Server image
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          lfs: false
+
+      # The build job uploads `path: build`, so StandaloneLinux64/ is already at the root
+      # of the artifact and lands where the Dockerfile expects it.
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v5
+        with:
+          name: Linux dedicated server
+          path: image
+
+      # A context of its own rather than client/, which is the whole Unity project.
+      # Assets and Library are gigabytes and there is no .dockerignore, so building from
+      # there would hand all of it to the daemon to copy one directory out of it.
+      - name: Assemble the build context
+        run: |
+          set -euo pipefail
+          cp client/Dockerfile image/Dockerfile
+
+          # The executable bit does not survive an artifact: upload-artifact does not
+          # carry it, so without this the entrypoint is a permission denied that only
+          # appears when somebody runs the image.
+          chmod +x image/StandaloneLinux64/Blastlands
+          ls -la image/StandaloneLinux64 | head
+
+      - name: Resolve the tag
+        id: tag
+        env:
+          EVENT: ${{ github.event_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          if [ "${EVENT}" = "release" ]; then
+            echo "value=${RELEASE_TAG#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=sha-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: image
+          file: image/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/ferrlabs/blastlands/server:${{ steps.tag.outputs.value }}
+            ghcr.io/ferrlabs/blastlands/server:sha-${{ github.sha }}
