@@ -4,6 +4,16 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.6] - 2026-09-06
+
+### Features
+
+- feat(build): publie le client et son manifeste a chaque release (#206)
+
+### Bug Fixes
+
+- fix(client): give every camera branch the seat, and say why nothing moves (#201)
+
 ## [26.9.5] - 2026-09-05
 
 ### Features
