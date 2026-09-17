@@ -5,7 +5,7 @@
 # Named for the project it comes out of. server/Dockerfile is the lobby, which is the Rust
 # service; this is the Unity dedicated server, which is built from client/ because the
 # client and the server are the same project by design.
-FROM ubuntu:24.04
+FROM ubuntu:26.04
 
 # ca-certificates because the instance calls the lobby over HTTPS in production, and
 # without them every heartbeat and the final release fail on the certificate rather than
