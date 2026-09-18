@@ -5,20 +5,20 @@ use std::time::Duration;
 
 use thiserror::Error;
 
-use crate::release::ReleaseInfo;
 use crate::version::ClientVersion;
 
 const BIND: &str = "BLASTLANDS_BIND";
 const GAME_SERVER_HOST: &str = "BLASTLANDS_GAME_SERVER_HOST";
 const PORT_RANGE: &str = "BLASTLANDS_PORT_RANGE";
 const INSTANCE_TOKEN: &str = "BLASTLANDS_INSTANCE_TOKEN";
-const CLIENT_LATEST: &str = "BLASTLANDS_CLIENT_LATEST";
 const CLIENT_MINIMUM: &str = "BLASTLANDS_CLIENT_MINIMUM";
-const CLIENT_URL: &str = "BLASTLANDS_CLIENT_URL";
-const CLIENT_SHA256: &str = "BLASTLANDS_CLIENT_SHA256";
+const PUBLIC_URL: &str = "BLASTLANDS_PUBLIC_URL";
+const GITHUB_TOKEN: &str = "BLASTLANDS_GITHUB_TOKEN";
+const RELEASE_POLL_SECONDS: &str = "BLASTLANDS_RELEASE_POLL_SECONDS";
 
 const DEFAULT_BIND: &str = "0.0.0.0:8080";
 const DEFAULT_PORT_RANGE: &str = "7000-7099";
+const DEFAULT_RELEASE_POLL: Duration = Duration::from_secs(300);
 
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum ConfigError {
@@ -44,8 +44,16 @@ pub struct Config {
     pub game_server_host: String,
     pub port_range: RangeInclusive<u16>,
     pub instance_token: String,
-    pub release: ReleaseInfo,
+    pub release: ReleaseSource,
     pub limits: Limits,
+}
+
+#[derive(Debug, Clone)]
+pub struct ReleaseSource {
+    pub minimum: ClientVersion,
+    pub public_url: String,
+    pub github_token: String,
+    pub poll_every: Duration,
 }
 
 /// What one address may do, and how long a match may go unattended.
@@ -97,15 +105,12 @@ impl Config {
         let instance_token = non_empty(INSTANCE_TOKEN)?;
         let port_range = parse_port_range(&required_or(PORT_RANGE, DEFAULT_PORT_RANGE))?;
 
-        let latest = parse_version(CLIENT_LATEST, &non_empty(CLIENT_LATEST)?)?;
-        let minimum = parse_version(CLIENT_MINIMUM, &non_empty(CLIENT_MINIMUM)?)?;
-
-        if minimum > latest {
-            return Err(ConfigError::Invalid {
-                name: CLIENT_MINIMUM,
-                reason: format!("minimum {minimum} is newer than latest {latest}"),
-            });
-        }
+        let release = ReleaseSource {
+            minimum: parse_version(CLIENT_MINIMUM, &non_empty(CLIENT_MINIMUM)?)?,
+            public_url: parse_public_url(&non_empty(PUBLIC_URL)?)?,
+            github_token: non_empty(GITHUB_TOKEN)?,
+            poll_every: seconds(RELEASE_POLL_SECONDS, DEFAULT_RELEASE_POLL)?,
+        };
 
         let defaults = Limits::default();
         let limits = Limits {
@@ -128,14 +133,22 @@ impl Config {
             port_range,
             instance_token,
             limits,
-            release: ReleaseInfo {
-                latest,
-                minimum,
-                download_url: non_empty(CLIENT_URL)?,
-                sha256: non_empty(CLIENT_SHA256)?,
-            },
+            release,
         })
     }
+}
+
+fn parse_public_url(raw: &str) -> Result<String, ConfigError> {
+    let url = raw.trim_end_matches('/');
+
+    if !url.starts_with("https://") || url.len() == "https://".len() {
+        return Err(ConfigError::Invalid {
+            name: PUBLIC_URL,
+            reason: format!("{raw} is not an https:// URL, and clients refuse any other"),
+        });
+    }
+
+    Ok(url.to_owned())
 }
 
 fn number<T>(name: &'static str, fallback: T) -> Result<T, ConfigError>
@@ -259,5 +272,25 @@ mod tests {
     #[test]
     fn rejects_a_port_above_the_u16_range() {
         assert!(parse_port_range("7000-70000").is_err());
+    }
+
+    #[test]
+    fn a_public_url_loses_its_trailing_slash() {
+        assert_eq!(
+            parse_public_url("https://api.blastlands.ferrlabs.com/"),
+            Ok("https://api.blastlands.ferrlabs.com".to_owned())
+        );
+    }
+
+    #[test]
+    fn a_public_url_must_be_https() {
+        for raw in [
+            "http://api.blastlands.ferrlabs.com",
+            "api.blastlands.ferrlabs.com",
+            "https://",
+            "https:///",
+        ] {
+            assert!(parse_public_url(raw).is_err(), "{raw} should be rejected");
+        }
     }
 }

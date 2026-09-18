@@ -4,17 +4,20 @@ use std::time::Instant;
 
 use axum::extract::{ConnectInfo, Path, State};
 use axum::http::{HeaderMap, StatusCode};
+use axum::response::Redirect;
 use axum::routing::{delete, get, post};
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
 use tower_http::trace::TraceLayer;
 
 use crate::auth::require_instance_token;
+use crate::download::DownloadLinks;
 use crate::error::LobbyError;
 use crate::matches::{CreateMatch, GameServerEndpoint, JoinTicket, Match, MatchDirectory, MatchId};
 use crate::names::DisplayName;
-use crate::release::ReleaseInfo;
+use crate::release::{ReleaseInfo, Releases};
 use crate::throttle::RateLimiter;
+use crate::version::ClientVersion;
 
 /// How the address a request came from is decided.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -44,7 +47,8 @@ pub enum ClientAddress {
 pub struct AppState {
     pub directory: Arc<MatchDirectory>,
     pub instance_token: Arc<str>,
-    pub release: Arc<ReleaseInfo>,
+    pub release: Arc<Releases>,
+    pub downloads: Arc<DownloadLinks>,
     pub creates: Arc<RateLimiter>,
     pub joins: Arc<RateLimiter>,
     pub matches_per_address: usize,
@@ -151,6 +155,7 @@ pub fn app(state: AppState) -> Router {
     Router::new()
         .route("/healthz", get(health))
         .route("/v1/version", get(version))
+        .route("/v1/client/{version}/download", get(download_client))
         .route("/v1/matches", get(list_matches).post(create_match))
         .route("/v1/matches/{id}/join", post(join_match))
         .route("/v1/matches/{id}/start", post(start_match))
@@ -166,8 +171,30 @@ async fn health() -> StatusCode {
 
 // Deliberately ungated: a client too old to be allowed in still has to be able to
 // ask what it should upgrade to.
-async fn version(State(state): State<AppState>) -> Json<ReleaseInfo> {
-    Json((*state.release).clone())
+async fn version(State(state): State<AppState>) -> Result<Json<ReleaseInfo>, LobbyError> {
+    state
+        .release
+        .current()
+        .map(Json)
+        .ok_or(LobbyError::ReleaseUnknown)
+}
+
+async fn download_client(
+    State(state): State<AppState>,
+    Path(version): Path<String>,
+) -> Result<Redirect, LobbyError> {
+    let asset_url = state.release.asset_for(version.parse::<ClientVersion>()?)?;
+
+    let location = state
+        .downloads
+        .location(&asset_url)
+        .await
+        .map_err(|error| {
+            tracing::warn!(%error, %version, "could not obtain a download link from GitHub");
+            LobbyError::DownloadUnavailable
+        })?;
+
+    Ok(Redirect::temporary(&location))
 }
 
 async fn list_matches(State(state): State<AppState>) -> Json<Vec<MatchSummary>> {
@@ -274,6 +301,8 @@ mod tests {
     use tower::ServiceExt;
 
     use super::*;
+    use crate::download::LINK_LIFETIME;
+    use crate::github::{Github, PublishedClient};
     use crate::ports::PortPool;
 
     use crate::release::VERSION_HEADER;
@@ -281,13 +310,45 @@ mod tests {
     const TOKEN: &str = "instance-token";
     const CURRENT: &str = "26.9.0";
 
-    fn release() -> ReleaseInfo {
-        ReleaseInfo {
-            latest: "26.9.0".parse().unwrap(),
-            minimum: "26.8.0".parse().unwrap(),
-            download_url: "https://example.test/blastlands.zip".to_owned(),
-            sha256: "abc123".to_owned(),
-        }
+    fn unpublished() -> Arc<Releases> {
+        Arc::new(Releases::new(
+            "26.8.0".parse().unwrap(),
+            "https://api.blastlands.test".to_owned(),
+        ))
+    }
+
+    fn release() -> Arc<Releases> {
+        let releases = unpublished();
+        releases.publish(PublishedClient {
+            version: CURRENT.parse().unwrap(),
+            asset_url: "https://api.github.com/assets/1".to_owned(),
+            sha256: "ab".repeat(32),
+        });
+        releases
+    }
+
+    fn downloads() -> Arc<DownloadLinks> {
+        let github = Github::new("github-token".to_owned()).expect("client builds");
+        Arc::new(DownloadLinks::new(Arc::new(github), LINK_LIFETIME))
+    }
+
+    fn router_with(release: Arc<Releases>) -> Router {
+        app(AppState {
+            directory: Arc::new(MatchDirectory::new(
+                "game.blastlands.test".to_owned(),
+                PortPool::new(7000..=7001),
+            )),
+            instance_token: Arc::from(TOKEN),
+            release,
+            downloads: downloads(),
+            // Limits off by default in these tests: they are about routing and payloads,
+            // and a limiter counting their requests would make them order-dependent.
+            // The tests that are about the limits turn them on themselves.
+            creates: Arc::new(RateLimiter::new(0, Duration::from_secs(60))),
+            joins: Arc::new(RateLimiter::new(0, Duration::from_secs(60))),
+            matches_per_address: 0,
+            address_source: ClientAddress::Peer,
+        })
     }
 
     use std::time::Duration;
@@ -300,7 +361,8 @@ mod tests {
                 PortPool::new(7000..=7010),
             )),
             instance_token: Arc::from(TOKEN),
-            release: Arc::new(release()),
+            release: release(),
+            downloads: downloads(),
             creates: Arc::new(RateLimiter::new(creates, Duration::from_secs(60))),
             joins: Arc::new(RateLimiter::new(0, Duration::from_secs(60))),
             matches_per_address: 0,
@@ -329,7 +391,8 @@ mod tests {
                 PortPool::new(7000..=7010),
             )),
             instance_token: Arc::from(TOKEN),
-            release: Arc::new(release()),
+            release: release(),
+            downloads: downloads(),
             creates: Arc::new(RateLimiter::new(creates, Duration::from_secs(60))),
             joins: Arc::new(RateLimiter::new(0, Duration::from_secs(60))),
             matches_per_address: per_address,
@@ -338,21 +401,7 @@ mod tests {
     }
 
     fn router() -> Router {
-        app(AppState {
-            directory: Arc::new(MatchDirectory::new(
-                "game.blastlands.test".to_owned(),
-                PortPool::new(7000..=7001),
-            )),
-            instance_token: Arc::from(TOKEN),
-            release: Arc::new(release()),
-            // Limits off by default in these tests: they are about routing and payloads,
-            // and a limiter counting their requests would make them order-dependent.
-            // The tests that are about the limits turn them on themselves.
-            creates: Arc::new(RateLimiter::new(0, Duration::from_secs(60))),
-            joins: Arc::new(RateLimiter::new(0, Duration::from_secs(60))),
-            matches_per_address: 0,
-            address_source: ClientAddress::Peer,
-        })
+        router_with(release())
     }
 
     fn post_json(uri: &str, body: Value) -> Request<Body> {
@@ -413,7 +462,60 @@ mod tests {
         let body = body_json(response).await;
         assert_eq!(body["latest"], "26.9.0");
         assert_eq!(body["minimum"], "26.8.0");
-        assert_eq!(body["download_url"], "https://example.test/blastlands.zip");
+        assert_eq!(
+            body["download_url"],
+            "https://api.blastlands.test/v1/client/26.9.0/download"
+        );
+        assert_eq!(body["sha256"], "ab".repeat(32));
+    }
+
+    fn get_request(uri: &str) -> Request<Body> {
+        Request::builder()
+            .uri(uri)
+            .body(Body::empty())
+            .expect("request should build")
+    }
+
+    #[tokio::test]
+    async fn the_version_endpoint_is_unavailable_until_a_release_is_read() {
+        let response = router_with(unpublished())
+            .oneshot(get_request("/v1/version"))
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+        assert_eq!(body_json(response).await["code"], "release_unknown");
+    }
+
+    #[tokio::test]
+    async fn only_the_published_client_can_be_downloaded() {
+        let response = router()
+            .oneshot(get_request("/v1/client/26.8.5/download"))
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        assert_eq!(body_json(response).await["code"], "release_not_found");
+    }
+
+    #[tokio::test]
+    async fn a_download_before_any_release_is_read_is_unavailable() {
+        let response = router_with(unpublished())
+            .oneshot(get_request("/v1/client/26.9.0/download"))
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+    }
+
+    #[tokio::test]
+    async fn a_malformed_download_version_is_refused() {
+        let response = router()
+            .oneshot(get_request("/v1/client/latest/download"))
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
     }
 
     #[tokio::test]

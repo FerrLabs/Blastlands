@@ -5,15 +5,16 @@ members = ["crates/lobby"]
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.82"
+rust-version = "1.85"
 publish = false
 
 [workspace.dependencies]
 axum = "0.8"
+reqwest = { version = "0.13", default-features = false, features = ["json", "rustls"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
-tokio = { version = "1", features = ["macros", "net", "rt-multi-thread", "signal"] }
+tokio = { version = "1", features = ["macros", "net", "rt-multi-thread", "signal", "sync"] }
 tower = "0.5"
 tower-http = { version = "0.7", features = ["trace"] }
 tracing = "0.1"

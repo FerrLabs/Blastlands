@@ -116,19 +116,8 @@ jobs:
           name: ${{ matrix.name }}
           path: build
 
-  # Attache le client Windows à la release et publie ce qu'il faut pour le
-  # servir.
-  #
-  # Sans ce job, le client ne vivait que dans un artefact de workflow : il
-  # expire, son URL est éphémère et demande une authentification. Les trois
-  # valeurs que le lobby exige — version, URL, empreinte — n'avaient donc aucune
-  # source, et la seule façon de les fournir était de les saisir à la main à
-  # chaque version.
-  #
-  # C'est précisément ce qu'il ne faut pas faire d'une empreinte : le jour où
-  # elle cesse de décrire le binaire publié, TOUS les clients se voient refuser
-  # la mise à jour, sans que rien n'explique pourquoi. La calculer ici, sur le
-  # fichier qu'on vient d'attacher, rend cette dérive impossible.
+  # Attache le client Windows à la release. Le lobby lit ensuite la release
+  # elle-même : sa version, cet asset et l'empreinte que GitHub calcule dessus.
   publish-client:
     name: Publish client
     needs: build
@@ -149,7 +138,7 @@ jobs:
           name: Windows client
           path: client-build
 
-      - name: Package, hash and attach
+      - name: Package and attach
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.event.release.tag_name }}
@@ -159,78 +148,14 @@ jobs:
           # l'artefact : `unity-builder` écrit dans `build/<targetPlatform>/`,
           # et `upload-artifact` publie `build`, donc le téléchargement porte un
           # niveau `StandaloneWindows64/`. Le job `image` plus bas l'exploite de
-          # la même façon (`chmod +x image/StandaloneLinux64/Blastlands`).
+          # la même façon (`chmod +x image/StandaloneLinux64/Blastlands.x86_64`).
           #
           # Sans ce niveau supplémentaire, l'archive contiendrait un dossier au
-          # lieu du jeu, et le `sha256` figerait cette disposition dans la
-          # release.
+          # lieu du jeu.
           ARCHIVE="Blastlands-${TAG}-windows.zip"
-          (cd client-build/StandaloneWindows64 && zip -qr "../../${ARCHIVE}" .)
-
-          # L'empreinte est calculée sur le fichier EXACT qui part chez GitHub,
-          # après compression, et non sur les sources ou le dossier.
-          SHA=$(sha256sum "${ARCHIVE}" | cut -d' ' -f1)
-          echo "sha256=${SHA}" >> "$GITHUB_OUTPUT"
-          echo "archive=${ARCHIVE}" >> "$GITHUB_OUTPUT"
+          (cd client-build/StandaloneWindows64 && zip -qr "../../${ARCHIVE}" . -x '*_BurstDebugInformation_DoNotShip/*')
 
           gh release upload "${TAG}" "${ARCHIVE}" --clobber --repo "${GITHUB_REPOSITORY}"
-        id: package
-
-      # Les trois valeurs que le lobby lit, écrites là où il les lira. Les
-      # produire ici plutôt que de les saisir garantit qu'elles décrivent
-      # l'artefact que ce même job vient de publier.
-      - name: Publish the client manifest to FerrVault
-        env:
-          FERRVAULT_TOKEN: ${{ secrets.FERRVAULT_BLASTLANDS_TOKEN }}
-          FERRVAULT_URL: ${{ vars.FERRVAULT_URL }}
-          TAG: ${{ github.event.release.tag_name }}
-          SHA: ${{ steps.package.outputs.sha256 }}
-          ARCHIVE: ${{ steps.package.outputs.archive }}
-        run: |
-          set -euo pipefail
-          # Le lobby attend une version en trois parties, sans le `v` du tag.
-          VERSION="${TAG#v}"
-          URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/${ARCHIVE}"
-
-          # Le chemin porte l'environnement : `default` est celui que la
-          # création d'un vault pose, et le seul que ce produit utilise.
-          BASE="${FERRVAULT_URL}/vaults/blastlands/environments/default/secrets"
-
-          # `PUT` d'abord, `POST` en repli : le premier met à jour un secret
-          # existant et échoue s'il n'existe pas, le second le crée. Tenter la
-          # mise à jour en premier évite qu'une création concurrente fasse
-          # échouer la publication.
-          put() {
-            local auth="Authorization: Bearer ${FERRVAULT_TOKEN}"
-            if curl -sS -f -X PUT "${BASE}/$1" \
-                 -H "$auth" -H 'Content-Type: application/json' \
-                 --data "$(jq -n --arg v "$2" '{value: $v}')" > /dev/null 2>&1; then
-              return 0
-            fi
-            curl -sS -f -X POST "${BASE}" \
-              -H "$auth" -H 'Content-Type: application/json' \
-              --data "$(jq -n --arg n "$1" --arg v "$2" '{name: $n, value: $v}')" > /dev/null
-          }
-
-          # L'ORDRE compte, et `LATEST` vient en dernier.
-          #
-          # Avec `set -e`, un échec sur l'une des écritures laisse les
-          # précédentes en place. Publier `LATEST` d'abord puis échouer sur
-          # l'empreinte laisserait le vault annoncer la nouvelle version, avec
-          # sa nouvelle URL, et l'ANCIENNE empreinte : la dérive exacte que ce
-          # job existe pour rendre impossible.
-          #
-          # En dernier, `LATEST` devient le déclencheur : un échec partiel
-          # laisse le manifeste sur la version précédente, cohérent avec
-          # lui-même.
-          put BLASTLANDS_CLIENT_SHA256  "${SHA}"
-          put BLASTLANDS_CLIENT_URL     "${URL}"
-          put BLASTLANDS_CLIENT_LATEST  "${VERSION}"
-
-          # `BLASTLANDS_CLIENT_MINIMUM` n'est PAS touché : relever le plancher
-          # de compatibilité coupe les joueurs qui n'ont pas encore mis à jour,
-          # ce qui est une décision, pas une conséquence d'un build.
-          echo "Manifeste publié : ${VERSION}"
 
   # Wrapped around the server this workflow already built, rather than built again in a
   # workflow of its own. A second job pulling the same 10 GB editor to run the same build

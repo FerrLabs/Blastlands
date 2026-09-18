@@ -43,14 +43,24 @@ pub enum LobbyError {
         client: ClientVersion,
         minimum: ClientVersion,
     },
+
+    #[error("the lobby has not read a published client release yet")]
+    ReleaseUnknown,
+
+    #[error("that client release is not the one currently published")]
+    ReleaseNotFound,
+
+    #[error("the client download could not be obtained, try again shortly")]
+    DownloadUnavailable,
 }
 
 impl LobbyError {
     fn status(&self) -> StatusCode {
         match self {
-            Self::MatchNotFound => StatusCode::NOT_FOUND,
+            Self::MatchNotFound | Self::ReleaseNotFound => StatusCode::NOT_FOUND,
             Self::MatchFull | Self::MatchAlreadyStarted => StatusCode::CONFLICT,
-            Self::NoCapacity => StatusCode::SERVICE_UNAVAILABLE,
+            Self::NoCapacity | Self::ReleaseUnknown => StatusCode::SERVICE_UNAVAILABLE,
+            Self::DownloadUnavailable => StatusCode::BAD_GATEWAY,
             Self::Unauthorized => StatusCode::UNAUTHORIZED,
             Self::RateLimited | Self::TooManyMatches { .. } => StatusCode::TOO_MANY_REQUESTS,
             Self::InvalidName(_) | Self::InvalidPlayerCount { .. } | Self::InvalidVersion(_) => {
@@ -75,6 +85,9 @@ impl LobbyError {
             Self::InvalidPlayerCount { .. } => "invalid_player_count",
             Self::InvalidVersion(_) => "invalid_version",
             Self::ClientTooOld { .. } => "client_too_old",
+            Self::ReleaseUnknown => "release_unknown",
+            Self::ReleaseNotFound => "release_not_found",
+            Self::DownloadUnavailable => "download_unavailable",
         }
     }
 }

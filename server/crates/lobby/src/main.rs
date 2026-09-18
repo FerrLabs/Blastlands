@@ -1,10 +1,13 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use blastlands_lobby::config::{Config, Limits};
+use blastlands_lobby::download::{DownloadLinks, LINK_LIFETIME};
+use blastlands_lobby::github::Github;
 use blastlands_lobby::matches::{Lifetimes, MatchDirectory, ReapReason};
 use blastlands_lobby::ports::PortPool;
+use blastlands_lobby::release::Releases;
 use blastlands_lobby::routes::{app, AppState, ClientAddress};
 use blastlands_lobby::throttle::RateLimiter;
 use tokio::net::TcpListener;
@@ -30,10 +33,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let creates = Arc::new(RateLimiter::new(limits.creates_per_window, limits.window));
     let joins = Arc::new(RateLimiter::new(limits.joins_per_window, limits.window));
 
+    let github = Arc::new(Github::new(config.release.github_token.clone())?);
+    let releases = Arc::new(Releases::new(
+        config.release.minimum,
+        config.release.public_url.clone(),
+    ));
+
     let state = AppState {
         directory: Arc::clone(&directory),
         instance_token: Arc::from(config.instance_token.as_str()),
-        release: Arc::new(config.release.clone()),
+        release: Arc::clone(&releases),
+        downloads: Arc::new(DownloadLinks::new(Arc::clone(&github), LINK_LIFETIME)),
         creates: Arc::clone(&creates),
         joins: Arc::clone(&joins),
         matches_per_address: limits.matches_per_address,
@@ -51,10 +61,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         limits,
     ));
 
+    tokio::spawn(follow_releases(github, releases, config.release.poll_every));
+
     let listener = TcpListener::bind(config.bind).await?;
     tracing::info!(
         address = %config.bind,
-        latest = %config.release.latest,
         minimum = %config.release.minimum,
         creates_per_window = limits.creates_per_window,
         joins_per_window = limits.joins_per_window,
@@ -110,6 +121,33 @@ async fn sweep(
 
         creates.prune(now);
         joins.prune(now);
+    }
+}
+
+async fn follow_releases(github: Arc<Github>, releases: Arc<Releases>, poll_every: Duration) {
+    let mut ticker = tokio::time::interval(poll_every);
+    loop {
+        ticker.tick().await;
+
+        match github.newest_client().await {
+            Ok(Some(client)) => {
+                let version = client.version;
+                if releases.publish(client) {
+                    tracing::info!(latest = %version, "client release published");
+                    if version < releases.minimum() {
+                        tracing::warn!(
+                            latest = %version,
+                            minimum = %releases.minimum(),
+                            "the newest client release is below the minimum, so no client can play"
+                        );
+                    }
+                }
+            }
+            Ok(None) => tracing::warn!(
+                "no GitHub release carries a Windows client archive with a sha256 digest"
+            ),
+            Err(error) => tracing::warn!(%error, "could not read the client releases from GitHub"),
+        }
     }
 }
 

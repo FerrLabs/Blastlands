@@ -138,7 +138,44 @@ quietly wrong. Refusing that client up front is the whole point.
 
 ```json
 { "latest": "26.9.0", "minimum": "26.8.0",
-  "download_url": "https://…/blastlands-26.9.0.zip", "sha256": "…" }
+  "download_url": "https://api.blastlands.ferrlabs.com/v1/client/26.9.0/download", "sha256": "…" }
+```
+
+**`latest` comes from GitHub, not from configuration.** Every `BLASTLANDS_RELEASE_POLL_SECONDS`
+(300 by default) the lobby lists the repository's releases with `BLASTLANDS_GITHUB_TOKEN` and
+keeps the highest version, drafts and prereleases excluded, that carries
+`Blastlands-v<version>-windows.zip`. `sha256` is the digest GitHub computes on that asset.
+FerrFlow cuts the release before `build.yml` attaches the archive, so for the hour in between
+the lobby keeps announcing the previous build rather than one nobody can download.
+
+Until the first read succeeds, `/v1/version` answers **503** `release_unknown`, which the client
+treats like an unreachable lobby.
+
+**The repository is private**, so a player cannot fetch the asset directly.
+`GET /v1/client/<version>/download` asks GitHub for the asset with the lobby's token and
+answers **307** to the short-lived signed URL GitHub hands back. That link is reused for 60
+seconds, well inside the roughly 40 minutes GitHub signs it for, so the API calls stay at about
+one a minute however many players update at once: every call spends the same hourly quota as
+the release poll, and a download per call would let a release-day crowd exhaust it. The version is in the path on
+purpose: a client that read 26.9.0 and its hash gets a 404 rather than 26.9.1 if a release
+lands in between, instead of a download that fails its hash check for no visible reason.
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant L as Lobby
+    participant G as GitHub
+    loop every poll interval
+        L->>G: GET /repos/FerrLabs/Blastlands/releases
+        G-->>L: tags, assets, sha256 digests
+    end
+    C->>L: GET /v1/version
+    L-->>C: latest, minimum, download_url, sha256
+    C->>L: GET /v1/client/{latest}/download
+    L->>G: GET asset (Accept: octet-stream)
+    G-->>L: 302 signed URL
+    L-->>C: 307 signed URL
+    C->>G: download, then check sha256
 ```
 
 Every client sends `x-blastlands-version` on match create and join. Below `minimum` the lobby
@@ -153,8 +190,9 @@ Two deliberate asymmetries:
 - A client **newer** than `latest` is allowed in. A developer build must not be locked out by
   its own lobby.
 
-`minimum` moves only when the wire format or the simulation rules change. Bumping `latest`
-alone offers an update; bumping `minimum` forces one.
+`minimum` moves only when the wire format or the simulation rules change, which is a decision
+rather than a consequence of a build, so it stays `BLASTLANDS_CLIENT_MINIMUM` in the lobby's
+configuration. A new release alone offers an update; bumping `minimum` forces one.
 
 **Applying the update** is the client's half and is not built yet (see the tracking issue).
 The mechanic worth writing down: on Windows a running executable cannot replace itself. The
