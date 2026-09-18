@@ -271,7 +271,7 @@ jobs:
           # The executable bit does not survive an artifact: upload-artifact does not
           # carry it, so without this the entrypoint is a permission denied that only
           # appears when somebody runs the image.
-          chmod +x image/StandaloneLinux64/Blastlands
+          chmod +x image/StandaloneLinux64/Blastlands.x86_64
           ls -la image/StandaloneLinux64 | head
 
       - name: Resolve the tag

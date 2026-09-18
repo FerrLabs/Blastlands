@@ -21,7 +21,7 @@ COPY StandaloneLinux64/ /app/
 
 # Burst ships its debug symbols in a directory that says in its own name not to ship them.
 RUN rm -rf /app/*_BurstDebugInformation_DoNotShip \
-    && chmod +x /app/Blastlands
+    && chmod +x /app/Blastlands.x86_64
 
 USER blastlands
 
@@ -31,4 +31,4 @@ USER blastlands
 # -logfile - puts Unity's log on stdout where a supervisor can read it. Without it the
 # player writes to a file inside the container and a crashed instance takes its own
 # explanation with it.
-ENTRYPOINT ["/app/Blastlands", "-batchmode", "-nographics", "-logfile", "-"]
+ENTRYPOINT ["/app/Blastlands.x86_64", "-batchmode", "-nographics", "-logfile", "-"]
