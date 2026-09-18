@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.18] - 2026-09-18
+
+### Features
+
+- feat(client): ask the lobby which build a player should be running (#207)
+
 ## [26.9.6] - 2026-09-06
 
 ### Features
