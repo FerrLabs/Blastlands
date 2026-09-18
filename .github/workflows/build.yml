@@ -11,7 +11,7 @@ permissions:
 jobs:
   licence:
     name: Licence
-    runs-on: ferrlabs-k8s
+    runs-on: ${{ github.event.repository.private && 'ferrlabs-k8s-light' || 'ubuntu-latest' }}
     outputs:
       available: ${{ steps.check.outputs.available }}
     steps:
@@ -30,7 +30,7 @@ jobs:
     name: ${{ matrix.name }}
     needs: licence
     if: needs.licence.outputs.available == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.repository.private && 'ferrlabs-k8s-docker' || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
@@ -47,7 +47,8 @@ jobs:
     steps:
       # The unityci/editor image is around 10 GB and the hosted runner does not have
       # the headroom out of the box: the pull fails with "no space left on device".
-      - name: Free disk space for the Unity image
+      - if: runner.environment == 'github-hosted'
+        name: Free disk space for the Unity image
         run: |
           sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup \
                       /opt/hostedtoolcache/CodeQL /usr/local/share/boost
@@ -100,6 +101,7 @@ jobs:
 
       - uses: game-ci/unity-builder@adaf7cd8f42fd48fbbf2d4f5f67ca30d87f819f1 # v5
         env:
+          HOME: ${{ runner.temp }}/game-ci-home
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
@@ -133,7 +135,7 @@ jobs:
     # Uniquement sur une vraie release : un `workflow_dispatch` construit pour
     # vérifier, il ne publie pas.
     if: github.event_name == 'release'
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.repository.private && 'ferrlabs-k8s' || 'ubuntu-latest' }}
     permissions:
       # `write` ici et non en tête du fichier : au niveau du workflow, la
       # permission irait aussi à `build`, qui tire une image Unity de 10 Go et
@@ -242,7 +244,7 @@ jobs:
   image:
     name: Server image
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.repository.private && 'ferrlabs-k8s-docker' || 'ubuntu-latest' }}
     permissions:
       contents: read
       packages: write

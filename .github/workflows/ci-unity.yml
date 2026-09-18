@@ -1,9 +1,9 @@
 name: CI Unity
 
-# Unity jobs run on GitHub-hosted runners: game-ci needs to pull and run the
-# ~10 GB unityci/editor container, which the ARC k8s runners cannot do.
-# They are skipped entirely until the Unity licence secrets are configured —
-# the simulation core is covered without a licence by the CI workflow.
+# game-ci runs the ~10 GB unityci/editor container, so in a private repository these
+# jobs go to ferrlabs-k8s-docker, the only FerrLabs runners with a Docker daemon.
+# The editor does not start until the Unity licence secrets are configured; the
+# simulation core is covered without a licence by the CI workflow.
 
 # The path filter that used to live on these triggers is now a step in the gate job
 # below. A workflow skipped by a trigger-level `paths:` never reports its checks at
@@ -24,28 +24,6 @@ permissions:
   pull-requests: read
 
 jobs:
-  # On a hosted runner rather than ours, though it does nothing but read a secret.
-  # The whole workflow waits on this job, so on ours it queues behind everything else
-  # in the organisation: this run sat eleven minutes behind a busy pool before the
-  # editor could even be asked to start. A check that gates merges should not inherit
-  # that queue. See #175.
-  licence:
-    name: Licence
-    runs-on: ubuntu-latest
-    outputs:
-      available: ${{ steps.check.outputs.available }}
-    steps:
-      - id: check
-        env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-        run: |
-          if [ -n "${UNITY_LICENSE}" ]; then
-            echo 'available=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'available=false' >> "$GITHUB_OUTPUT"
-            echo '::notice::UNITY_LICENSE is not configured, so the Unity tests are skipped. Set UNITY_LICENSE, UNITY_EMAIL and UNITY_PASSWORD to enable them.'
-          fi
-
   # Every step below is conditional rather than the job itself, so this reports a
   # conclusion on every pull request instead of being skipped. A skipped job is
   # accepted by a ruleset in most cases, but "always succeeds" needs no reading of the
@@ -53,14 +31,12 @@ jobs:
   # seconds against the nine minutes the editor takes when there is.
   tests:
     name: Unity tests
-    needs: licence
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.repository.private && 'ferrlabs-k8s-docker' || 'ubuntu-latest' }}
     steps:
       # Which files changed, asked of the API rather than read from a checkout: the
       # answer is a list of names, and cloning the repository to get it would cost more
-      # than the question is worth. Run here rather than in the licence job because gh
-      # is a given on a GitHub-hosted runner and not on ours. A dispatch has nothing to
-      # compare against, so it always runs.
+      # than the question is worth. A dispatch has nothing to compare against, so it
+      # always runs.
       - name: Decide whether the editor has to start
         env:
           GH_TOKEN: ${{ github.token }}
@@ -69,7 +45,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           BEFORE: ${{ github.event.before }}
           AFTER: ${{ github.sha }}
-          LICENSED: ${{ needs.licence.outputs.available }}
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
         run: |
           set -euo pipefail
 
@@ -94,8 +70,9 @@ jobs:
               ;;
           esac
 
-          if [ "$LICENSED" != 'true' ]; then
+          if [ -z "$UNITY_LICENSE" ]; then
             echo 'RUN=false' >> "$GITHUB_ENV"
+            echo '::notice::UNITY_LICENSE is not configured, so the Unity tests are skipped. Set UNITY_LICENSE, UNITY_EMAIL and UNITY_PASSWORD to enable them.'
           # A here-string rather than a pipe into grep. With pipefail set, `grep -q`
           # exiting at its first match kills the still-writing echo with SIGPIPE, the
           # pipeline reports 141, and the branch is skipped: a client change big enough
@@ -111,7 +88,7 @@ jobs:
       # The unityci/editor image is around 10 GB and the hosted runner does not have
       # the headroom out of the box: the pull fails with "no space left on device".
       # None of these toolchains are used by the Unity job.
-      - if: env.RUN == 'true'
+      - if: env.RUN == 'true' && runner.environment == 'github-hosted'
         name: Free disk space for the Unity image
         run: |
           sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup \
@@ -169,6 +146,7 @@ jobs:
         uses: game-ci/unity-test-runner@32e57712352b500e17974b245a6dce9e11a73213 # v4
         id: tests
         env:
+          HOME: ${{ runner.temp }}/game-ci-home
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
