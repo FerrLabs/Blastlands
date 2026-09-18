@@ -24,6 +24,17 @@ namespace Blastlands.Runtime
         [SerializeField] private string baseUrl = "http://127.0.0.1:8080";
         [SerializeField] private float timeoutSeconds = 5f;
 
+        // The lobby writes both versions as strings rather than numbers, so they arrive
+        // as text and are parsed by GameVersion rather than by JsonUtility.
+        [Serializable]
+        private sealed class ReleaseDto
+        {
+            public string latest;
+            public string minimum;
+            public string download_url;
+            public string sha256;
+        }
+
         [Serializable]
         private sealed class MatchSummaryDto
         {
@@ -45,6 +56,49 @@ namespace Blastlands.Runtime
         {
             public string code;
             public string message;
+        }
+
+        // Asked before anything else, because the answer decides whether the rest is
+        // worth asking. A build below the published minimum desyncs the simulation
+        // quietly rather than failing loudly, so it is turned away here rather than
+        // halfway into somebody's match.
+        public IEnumerator Version(Action<LobbyResult<ClientRelease>> done)
+        {
+            using (UnityWebRequest request = Get("/v1/version"))
+            {
+                yield return request.SendWebRequest();
+
+                LobbyFailure failure;
+                if (!Succeeded(request, out failure))
+                {
+                    done(LobbyResult<ClientRelease>.Failed(failure));
+                    yield break;
+                }
+
+                ReleaseDto dto;
+                try
+                {
+                    dto = JsonUtility.FromJson<ReleaseDto>(request.downloadHandler.text);
+                }
+                catch (ArgumentException)
+                {
+                    dto = null;
+                }
+
+                // Both versions required, not just a non-null object. Any 200 carrying
+                // valid JSON parses into a DTO with every field null, so a captive portal
+                // or a misrouted proxy would be reported as a successful version check
+                // and the gate would then say nothing at all: the one case where a log
+                // would tell you the answer was junk is the case that would stay silent.
+                if (dto == null || string.IsNullOrEmpty(dto.latest) || string.IsNullOrEmpty(dto.minimum))
+                {
+                    done(LobbyResult<ClientRelease>.Failed(LobbyFailure.Unreadable));
+                    yield break;
+                }
+
+                done(LobbyResult<ClientRelease>.Success(
+                    new ClientRelease(dto.latest, dto.minimum, dto.download_url, dto.sha256)));
+            }
         }
 
         public IEnumerator List(Action<LobbyResult<IReadOnlyList<MatchListing>>> done)
