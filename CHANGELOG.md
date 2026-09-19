@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.20] - 2026-09-19
+
+### Features
+
+- feat(client): update a Windows build below the minimum from the lobby's release (#234)
+
 ## [26.9.19] - 2026-09-19
 
 ### Features
