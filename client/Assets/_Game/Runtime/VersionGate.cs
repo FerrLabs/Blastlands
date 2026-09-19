@@ -13,6 +13,13 @@ namespace Blastlands.Runtime
     public sealed class VersionGate : MonoBehaviour
     {
         [SerializeField] private LobbyClient lobby;
+        [SerializeField] private ClientUpdater updater;
+
+        public void Use(LobbyClient lobbyClient, ClientUpdater clientUpdater)
+        {
+            lobby = lobbyClient;
+            updater = clientUpdater;
+        }
 
         public UpdateVerdict Verdict { get; private set; } = UpdateVerdict.Unknown;
 
@@ -68,6 +75,11 @@ namespace Blastlands.Runtime
 
                 Report();
             });
+
+            if (Verdict == UpdateVerdict.MustUpdate && Release.CanBeFetched && updater != null)
+            {
+                yield return updater.Apply(Release);
+            }
         }
 
         private void Report()

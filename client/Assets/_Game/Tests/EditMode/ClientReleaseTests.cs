@@ -7,6 +7,8 @@ namespace Blastlands.Core.Tests
     // answer is complete enough to act on.
     public class ClientReleaseTests
     {
+        private const string Sha = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
+
         private static ClientRelease Release(string url, string sha)
         {
             return new ClientRelease("26.9.6", "26.8.0", url, sha);
@@ -15,7 +17,7 @@ namespace Blastlands.Core.Tests
         [Test]
         public void AReleaseWithSomewhereToFetchAndSomethingToCheckIsUsable()
         {
-            Assert.That(Release("https://example.test/b.zip", "abc").CanBeFetched, Is.True);
+            Assert.That(Release("https://example.test/b.zip", Sha).CanBeFetched, Is.True);
         }
 
         [Test]
@@ -24,8 +26,8 @@ namespace Blastlands.Core.Tests
             // Real, not hypothetical: the release publishes the archive and its hash
             // together, so there is a window between a version being cut and those being
             // written where the lobby knows a build is out of date and not where it is.
-            Assert.That(Release(null, "abc").CanBeFetched, Is.False);
-            Assert.That(Release("", "abc").CanBeFetched, Is.False);
+            Assert.That(Release(null, Sha).CanBeFetched, Is.False);
+            Assert.That(Release("", Sha).CanBeFetched, Is.False);
         }
 
         [Test]
@@ -39,25 +41,33 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
+        public void AHashThatIsNotASha256IsNotFetchable()
+        {
+            Assert.That(Release("https://example.test/b.zip", "abc").CanBeFetched, Is.False);
+            Assert.That(Release("https://example.test/b.zip", Sha.ToUpperInvariant()).CanBeFetched, Is.False);
+            Assert.That(Release("https://example.test/b.zip", Sha + "0").CanBeFetched, Is.False);
+        }
+
+        [Test]
         public void APlainHttpDownloadIsRefused()
         {
             // The hash and the URL arrive over the same connection, so anybody able to
             // rewrite one can rewrite the other. Requiring TLS is what makes the hash
             // worth checking rather than a formality.
-            Assert.That(Release("http://example.test/b.zip", "abc").CanBeFetched, Is.False);
-            Assert.That(Release("ftp://example.test/b.zip", "abc").CanBeFetched, Is.False);
-            Assert.That(Release("example.test/b.zip", "abc").CanBeFetched, Is.False);
+            Assert.That(Release("http://example.test/b.zip", Sha).CanBeFetched, Is.False);
+            Assert.That(Release("ftp://example.test/b.zip", Sha).CanBeFetched, Is.False);
+            Assert.That(Release("example.test/b.zip", Sha).CanBeFetched, Is.False);
 
             // Schemes are case-insensitive per RFC 3986, so this is a real URL and
             // refusing it would refuse a perfectly good release.
-            Assert.That(Release("HTTPS://example.test/b.zip", "abc").CanBeFetched, Is.True);
+            Assert.That(Release("HTTPS://example.test/b.zip", Sha).CanBeFetched, Is.True);
         }
 
         [Test]
         public void TheVersionsAreCarriedThroughUntouched()
         {
             // Parsed by GameVersion rather than here, so this only has to not lose them.
-            ClientRelease release = Release("https://example.test/b.zip", "abc");
+            ClientRelease release = Release("https://example.test/b.zip", Sha);
 
             Assert.That(release.Latest, Is.EqualTo("26.9.6"));
             Assert.That(release.Minimum, Is.EqualTo("26.8.0"));

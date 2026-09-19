@@ -194,12 +194,40 @@ Two deliberate asymmetries:
 rather than a consequence of a build, so it stays `BLASTLANDS_CLIENT_MINIMUM` in the lobby's
 configuration. A new release alone offers an update; bumping `minimum` forces one.
 
-**Applying the update** is the client's half and is not built yet (see the tracking issue).
-The mechanic worth writing down: on Windows a running executable cannot replace itself. The
-download therefore lands in a temporary directory, is verified against the published SHA-256,
-and a small updater process is launched that waits for the game to exit, swaps the files, and
-relaunches. Verifying the hash before swapping is not optional — an update path that installs
-whatever it downloaded is a remote code execution vector.
+**Applying the update.** `ClientStartup` asks the lobby on every launch of a player build,
+against `https://api.blastlands.ferrlabs.com` unless `--lobby <url>` says otherwise. Below
+`minimum`, a Windows player updates itself; between `minimum` and `latest` the update is only
+logged until the client has screens to offer it (#19). Other platforms never self-update: the
+release publishes a Windows archive only.
+
+On Windows a running executable cannot replace itself, so `ClientUpdater`:
+
+1. downloads the archive to the temporary cache directory, never over the install;
+2. checks it against the published SHA-256 and stops on a mismatch. Installing whatever was
+   downloaded would be a remote code execution vector, so this is not optional;
+3. extracts it into a sibling of the install, `<install>.update-<version>`, refusing any entry
+   that is absolute or climbs out with `..`;
+4. writes a PowerShell script, starts it and quits.
+
+The script waits for the game to exit, renames the install to `<install>.previous`, renames the
+staged build into its place and relaunches. If the new build cannot be moved in, the previous
+one is moved back and relaunched, so a failed swap never leaves nothing to run. The previous
+build is kept until the next update replaces it.
+
+```mermaid
+sequenceDiagram
+    participant G as Game (old)
+    participant L as Lobby
+    participant S as Swap script
+    G->>L: GET /v1/version
+    L-->>G: latest, minimum, download_url, sha256
+    G->>L: GET /v1/client/{latest}/download (307 to GitHub)
+    G->>G: verify sha256, extract to <install>.update-<latest>
+    G->>S: start, then quit
+    S->>S: wait for the game to exit
+    S->>S: <install> to <install>.previous, staged to <install>
+    S->>G: relaunch (new build, or the previous one if the move failed)
+```
 
 ## Deployment
 

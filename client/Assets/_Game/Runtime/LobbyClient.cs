@@ -24,6 +24,11 @@ namespace Blastlands.Runtime
         [SerializeField] private string baseUrl = "http://127.0.0.1:8080";
         [SerializeField] private float timeoutSeconds = 5f;
 
+        public void Use(string lobbyUrl)
+        {
+            baseUrl = lobbyUrl;
+        }
+
         // The lobby writes both versions as strings rather than numbers, so they arrive
         // as text and are parsed by GameVersion rather than by JsonUtility.
         [Serializable]

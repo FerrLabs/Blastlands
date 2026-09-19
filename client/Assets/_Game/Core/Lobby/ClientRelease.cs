@@ -40,7 +40,7 @@ namespace Blastlands.Core.Lobby
             get
             {
                 return !string.IsNullOrEmpty(DownloadUrl)
-                    && !string.IsNullOrEmpty(Sha256)
+                    && Blastlands.Core.Update.Digest.IsSha256(Sha256)
                     && DownloadUrl.StartsWith("https://", System.StringComparison.OrdinalIgnoreCase);
             }
         }
