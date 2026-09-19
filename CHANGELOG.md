@@ -4,6 +4,16 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.19] - 2026-09-19
+
+### Features
+
+- feat(lobby): take the latest client release from GitHub and serve its download (#227)
+
+### Bug Fixes
+
+- fix(server): run the Linux binary under the name game-ci gives it (#229)
+
 ## [26.9.18] - 2026-09-18
 
 ### Features
