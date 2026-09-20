@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.26] - 2026-09-20
+
+### Features
+
+- feat(lobby): tell an instance which match its port is serving (#237)
+
 ## [26.9.20] - 2026-09-19
 
 ### Features
