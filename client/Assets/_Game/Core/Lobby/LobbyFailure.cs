@@ -34,6 +34,10 @@ namespace Blastlands.Core.Lobby
         // one rather than wait.
         TooManyMatches = 13,
 
+        // Start was refused because the lobby has not filled enough seats. The one
+        // refusal the host fixes by waiting rather than by re-reading the listing.
+        NotEnoughPlayers = 14,
+
         // The lobby refused with a code this build has never heard of, which happens
         // when the server is ahead of the client.
         Unknown = 11
@@ -67,6 +71,8 @@ namespace Blastlands.Core.Lobby
                     return LobbyFailure.RateLimited;
                 case "too_many_matches":
                     return LobbyFailure.TooManyMatches;
+                case "not_enough_players":
+                    return LobbyFailure.NotEnoughPlayers;
                 default:
                     return LobbyFailure.Unknown;
             }

@@ -149,5 +149,9 @@ Packages/packages-lock.json linguist-generated
 *.skel.bytes            lfs
 # Exceptions for .asset files such as lightning pre-baking
 LightingData.asset     binary
+# Scripts that run inside a Linux image. A CRLF checkout leaves a carriage return on
+# the shebang line, and the container then fails with "no such file or directory"
+# naming an interpreter that is plainly there.
+*.sh                    text eol=lf
 client/Assets/Plugins/Roslyn/*.dll !text !filter !merge !diff
 client/Assets/TextMesh[[:space:]]Pro/Fonts/*.ttf !text !filter !merge !diff

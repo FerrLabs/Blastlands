@@ -17,6 +17,9 @@ pub enum LobbyError {
     #[error("match has already started")]
     MatchAlreadyStarted,
 
+    #[error("a match needs at least {min} players to start, {joined} joined")]
+    NotEnoughPlayers { min: u8, joined: usize },
+
     #[error("no game server capacity available")]
     NoCapacity,
 
@@ -58,7 +61,9 @@ impl LobbyError {
     fn status(&self) -> StatusCode {
         match self {
             Self::MatchNotFound | Self::ReleaseNotFound => StatusCode::NOT_FOUND,
-            Self::MatchFull | Self::MatchAlreadyStarted => StatusCode::CONFLICT,
+            Self::MatchFull | Self::MatchAlreadyStarted | Self::NotEnoughPlayers { .. } => {
+                StatusCode::CONFLICT
+            }
             Self::NoCapacity | Self::ReleaseUnknown => StatusCode::SERVICE_UNAVAILABLE,
             Self::DownloadUnavailable => StatusCode::BAD_GATEWAY,
             Self::Unauthorized => StatusCode::UNAUTHORIZED,
@@ -77,6 +82,7 @@ impl LobbyError {
             Self::MatchNotFound => "match_not_found",
             Self::MatchFull => "match_full",
             Self::MatchAlreadyStarted => "match_already_started",
+            Self::NotEnoughPlayers { .. } => "not_enough_players",
             Self::NoCapacity => "no_capacity",
             Self::Unauthorized => "unauthorized",
             Self::RateLimited => "rate_limited",

@@ -22,6 +22,8 @@ namespace Blastlands.Core.Tests
             Assert.That(LobbyFailures.FromCode("unauthorized"), Is.EqualTo(LobbyFailure.Unauthorized));
             Assert.That(LobbyFailures.FromCode("rate_limited"), Is.EqualTo(LobbyFailure.RateLimited));
             Assert.That(LobbyFailures.FromCode("too_many_matches"), Is.EqualTo(LobbyFailure.TooManyMatches));
+            Assert.That(
+                LobbyFailures.FromCode("not_enough_players"), Is.EqualTo(LobbyFailure.NotEnoughPlayers));
         }
 
         [Test]

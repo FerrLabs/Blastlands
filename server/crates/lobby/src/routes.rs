@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use axum::extract::{ConnectInfo, Path, State};
 use axum::http::{HeaderMap, StatusCode};
-use axum::response::Redirect;
+use axum::response::{IntoResponse, Redirect, Response};
 use axum::routing::{delete, get, post};
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
@@ -159,6 +159,7 @@ pub fn app(state: AppState) -> Router {
         .route("/v1/matches", get(list_matches).post(create_match))
         .route("/v1/matches/{id}/join", post(join_match))
         .route("/v1/matches/{id}/start", post(start_match))
+        .route("/internal/instances/{port}", get(instance_assignment))
         .route("/internal/matches/{id}", delete(finish_match))
         .route("/internal/matches/{id}/heartbeat", post(heartbeat_match))
         .layer(TraceLayer::new_for_http())
@@ -268,8 +269,27 @@ async fn start_match(
     Path(id): Path<MatchId>,
     Json(request): Json<StartRequest>,
 ) -> Result<StatusCode, LobbyError> {
-    state.directory.start(id, request.ticket)?;
+    state.directory.start(id, request.ticket, Instant::now())?;
     Ok(StatusCode::NO_CONTENT)
+}
+
+// What an instance asks for on boot. It knows its own port and nothing else: the match
+// it should run is whatever the lobby put on that port, so this is the only thing
+// between a pod on a fixed port and the match it serves.
+//
+// 204 rather than 404 while nothing is assigned, because an idle instance polling an
+// empty slot is the normal state, not a mistake to log.
+async fn instance_assignment(
+    State(state): State<AppState>,
+    Path(port): Path<u16>,
+    headers: HeaderMap,
+) -> Result<Response, LobbyError> {
+    require_instance_token(&headers, &state.instance_token)?;
+
+    Ok(match state.directory.assignment(port) {
+        Some(assignment) => Json(assignment).into_response(),
+        None => StatusCode::NO_CONTENT.into_response(),
+    })
 }
 
 async fn heartbeat_match(
@@ -430,6 +450,14 @@ mod tests {
         serde_json::from_slice(&bytes).expect("body should be json")
     }
 
+    fn instance_get(uri: &str) -> Request<Body> {
+        Request::builder()
+            .uri(uri)
+            .header(header::AUTHORIZATION, format!("Bearer {TOKEN}"))
+            .body(Body::empty())
+            .expect("request should build")
+    }
+
     async fn create_match_on(router: &Router, name: &str) -> Value {
         let response = router
             .clone()
@@ -442,6 +470,21 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::CREATED);
         body_json(response).await
+    }
+
+    /// The lobby refuses to start a match below `MIN_PLAYERS`, so a test that wants a
+    /// running one has to seat a guest next to the host first.
+    async fn join_match_on(router: &Router, id: &str, player: &str) {
+        let response = router
+            .clone()
+            .oneshot(post_json(
+                &format!("/v1/matches/{id}/join"),
+                json!({ "player": player }),
+            ))
+            .await
+            .expect("request should be handled");
+
+        assert_eq!(response.status(), StatusCode::OK);
     }
 
     #[tokio::test]
@@ -709,6 +752,26 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn starting_a_match_nobody_joined_is_a_conflict() {
+        let router = router();
+        let created = create_match_on(&router, "Friday night").await;
+        let id = created["id"].as_str().expect("an id").to_owned();
+        let ticket = created["ticket"].as_str().expect("a ticket").to_owned();
+
+        let refused = router
+            .clone()
+            .oneshot(post_json(
+                &format!("/v1/matches/{id}/start"),
+                json!({ "ticket": ticket }),
+            ))
+            .await
+            .expect("request should be handled");
+
+        assert_eq!(refused.status(), StatusCode::CONFLICT);
+        assert_eq!(body_json(refused).await["code"], "not_enough_players");
+    }
+
+    #[tokio::test]
     async fn starting_without_a_ticket_at_all_is_refused() {
         let router = router();
         let created = create_match_on(&router, "Alice game").await;
@@ -729,6 +792,7 @@ mod tests {
         let created = create_match_on(&router, "Friday night").await;
         let id = created["id"].as_str().expect("an id").to_owned();
         let ticket = created["ticket"].as_str().expect("a ticket").to_owned();
+        join_match_on(&router, &id, "Sam").await;
 
         let started = router
             .clone()
@@ -881,6 +945,72 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::TOO_MANY_REQUESTS);
         assert_eq!(body_json(response).await["code"], "too_many_matches");
+    }
+
+    #[tokio::test]
+    async fn an_assignment_needs_the_instance_token() {
+        let response = router()
+            .oneshot(
+                Request::builder()
+                    .uri("/internal/instances/7000")
+                    .body(Body::empty())
+                    .expect("request should build"),
+            )
+            .await
+            .expect("request should be handled");
+
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn an_idle_port_answers_no_content() {
+        let response = router()
+            .oneshot(instance_get("/internal/instances/7000"))
+            .await
+            .expect("request should be handled");
+
+        assert_eq!(response.status(), StatusCode::NO_CONTENT);
+    }
+
+    #[tokio::test]
+    async fn a_started_match_is_handed_to_the_instance_on_its_port() {
+        let router = router();
+        let created = create_match_on(&router, "Night raid").await;
+        let id = created["id"].as_str().expect("an id").to_owned();
+        let ticket = created["ticket"].as_str().expect("a ticket").to_owned();
+        let port = created["endpoint"]["port"].as_u64().expect("a port");
+        join_match_on(&router, &id, "Sam").await;
+
+        // Nothing to serve until the host says go.
+        let idle = router
+            .clone()
+            .oneshot(instance_get(&format!("/internal/instances/{port}")))
+            .await
+            .expect("request should be handled");
+        assert_eq!(idle.status(), StatusCode::NO_CONTENT);
+
+        let started = router
+            .clone()
+            .oneshot(post_json(
+                &format!("/v1/matches/{id}/start"),
+                json!({ "ticket": ticket }),
+            ))
+            .await
+            .expect("request should be handled");
+        assert_eq!(started.status(), StatusCode::NO_CONTENT);
+
+        let assigned = router
+            .oneshot(instance_get(&format!("/internal/instances/{port}")))
+            .await
+            .expect("request should be handled");
+
+        assert_eq!(assigned.status(), StatusCode::OK);
+        let body = body_json(assigned).await;
+        assert_eq!(body["match_id"], id);
+        assert_eq!(
+            body["players"], 2,
+            "the arena is built for the players who joined, not for the seats the host opened"
+        );
     }
 
     #[tokio::test]

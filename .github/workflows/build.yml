@@ -192,6 +192,7 @@ jobs:
         run: |
           set -euo pipefail
           cp client/Dockerfile image/Dockerfile
+          cp client/entrypoint.sh image/entrypoint.sh
 
           # The executable bit does not survive an artifact: upload-artifact does not
           # carry it, so without this the entrypoint is a permission denied that only

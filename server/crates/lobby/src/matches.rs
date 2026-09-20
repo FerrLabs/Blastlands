@@ -92,6 +92,13 @@ pub struct Reaped {
     pub reason: ReapReason,
 }
 
+/// Handed to the instance that owns a port so it can start the match it was given.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Assignment {
+    pub match_id: MatchId,
+    pub players: u8,
+}
+
 #[derive(Debug)]
 pub struct Admitted {
     pub endpoint: GameServerEndpoint,
@@ -222,7 +229,7 @@ impl MatchDirectory {
     /// a stranger could walk that list and start every open match in it, which takes each
     /// one out of the listing and refuses everybody still trying to join, one unauthorised
     /// request per match.
-    pub fn start(&self, id: MatchId, ticket: JoinTicket) -> Result<(), LobbyError> {
+    pub fn start(&self, id: MatchId, ticket: JoinTicket, now: Instant) -> Result<(), LobbyError> {
         let mut state = self.write();
         let entry = state
             .matches
@@ -239,8 +246,42 @@ impl MatchDirectory {
             return Err(LobbyError::MatchAlreadyStarted);
         }
 
+        // The instance builds its arena from the joined count, so starting below the
+        // minimum would hand it a degenerate match rather than a short one.
+        if entry.players.len() < usize::from(MIN_PLAYERS) {
+            return Err(LobbyError::NotEnoughPlayers {
+                min: MIN_PLAYERS,
+                joined: entry.players.len(),
+            });
+        }
+
         entry.state = MatchState::InProgress;
+
+        // `last_seen` still holds the creation time, and the reaper measures the silence
+        // of a running match from it. Without this, a lobby that sat in the list longer
+        // than `silent` is reaped the instant it starts, before the instance picking it
+        // up has had a chance to say anything.
+        entry.last_seen = now;
         Ok(())
+    }
+
+    /// What the instance owning `port` should run, once there is something to run.
+    ///
+    /// Only a started match answers. Before that there is nobody to play against, and an
+    /// instance booted early would spend its grace window waiting on an empty arena.
+    pub fn assignment(&self, port: u16) -> Option<Assignment> {
+        self.read()
+            .matches
+            .values()
+            .find(|entry| entry.endpoint.port == port && entry.state == MatchState::InProgress)
+            .map(|entry| Assignment {
+                match_id: entry.id,
+                // The seats that matter are the ones that will connect: `join` refuses a
+                // started match, so this vec no longer moves. Handing over `max_players`
+                // would build seats nobody plays, which stand still, can be killed, and
+                // count towards the outcome.
+                players: u8::try_from(entry.players.len()).unwrap_or(entry.max_players),
+            })
     }
 
     /// Records that the instance running a match is still alive.
@@ -486,13 +527,20 @@ mod tests {
         assert!(directory.open_matches().is_empty());
     }
 
+    /// `start` refuses a lobby below `MIN_PLAYERS`, so every test that wants a running
+    /// match needs a guest in it. The host holds the first seat.
+    fn seat_a_guest(directory: &MatchDirectory, id: MatchId) {
+        directory.join(id, name("Alex")).expect("a seat is free");
+    }
+
     #[test]
     fn a_started_match_leaves_the_lobby_list_and_refuses_joins() {
         let directory = directory();
         let entry = create(&directory, 4);
+        seat_a_guest(&directory, entry.id);
 
         directory
-            .start(entry.id, entry.host_ticket)
+            .start(entry.id, entry.host_ticket, Instant::now())
             .expect("start should succeed");
 
         assert!(directory.open_matches().is_empty());
@@ -506,12 +554,57 @@ mod tests {
     fn starting_a_match_twice_is_rejected() {
         let directory = directory();
         let entry = create(&directory, 4);
+        seat_a_guest(&directory, entry.id);
 
-        directory.start(entry.id, entry.host_ticket).unwrap();
+        directory
+            .start(entry.id, entry.host_ticket, Instant::now())
+            .unwrap();
 
         assert_eq!(
-            directory.start(entry.id, entry.host_ticket).err(),
+            directory
+                .start(entry.id, entry.host_ticket, Instant::now())
+                .err(),
             Some(LobbyError::MatchAlreadyStarted)
+        );
+    }
+
+    #[test]
+    fn a_host_cannot_start_a_match_nobody_joined() {
+        let directory = directory();
+        let entry = create(&directory, 4);
+
+        assert_eq!(
+            directory
+                .start(entry.id, entry.host_ticket, Instant::now())
+                .err(),
+            Some(LobbyError::NotEnoughPlayers {
+                min: MIN_PLAYERS,
+                joined: 1
+            })
+        );
+        assert_eq!(directory.assignment(entry.endpoint.port), None);
+    }
+
+    #[test]
+    fn a_started_match_arms_only_the_seats_that_joined() {
+        let directory = directory();
+        let entry = create(&directory, 4);
+        seat_a_guest(&directory, entry.id);
+        directory
+            .join(entry.id, name("Sam"))
+            .expect("a third seat is free");
+
+        directory
+            .start(entry.id, entry.host_ticket, Instant::now())
+            .expect("start should succeed");
+
+        assert_eq!(
+            directory.assignment(entry.endpoint.port),
+            Some(Assignment {
+                match_id: entry.id,
+                players: 3,
+            }),
+            "the fourth seat nobody took would stand in the arena and count towards the outcome"
         );
     }
 
@@ -536,7 +629,9 @@ mod tests {
             Some(LobbyError::MatchNotFound)
         );
         assert_eq!(
-            directory.start(unknown, stranger_ticket()).err(),
+            directory
+                .start(unknown, stranger_ticket(), Instant::now())
+                .err(),
             Some(LobbyError::MatchNotFound)
         );
         assert_eq!(
@@ -630,7 +725,10 @@ mod tests {
         let directory = MatchDirectory::new("game.test".to_owned(), PortPool::new(7000..=7000));
         let start = Instant::now();
         let (id, ticket) = made(&directory, caller(1), start);
-        directory.start(id, ticket).expect("start should succeed");
+        seat_a_guest(&directory, id);
+        directory
+            .start(id, ticket, start)
+            .expect("start should succeed");
 
         let reaped = directory.reap(start + Duration::from_secs(31), lifetimes());
 
@@ -640,11 +738,92 @@ mod tests {
     }
 
     #[test]
+    fn a_port_has_no_assignment_until_its_match_starts() {
+        let directory = MatchDirectory::new("game.test".to_owned(), PortPool::new(7000..=7000));
+        let start = Instant::now();
+        let (id, ticket) = made(&directory, caller(1), start);
+        seat_a_guest(&directory, id);
+
+        assert_eq!(directory.assignment(7000), None);
+
+        directory
+            .start(id, ticket, start)
+            .expect("start should succeed");
+
+        assert_eq!(
+            directory.assignment(7000),
+            Some(Assignment {
+                match_id: id,
+                players: 2,
+            }),
+            "the instance builds one seat per joined player, not one per seat the host opened"
+        );
+    }
+
+    #[test]
+    fn a_port_nobody_was_given_has_no_assignment() {
+        let directory = MatchDirectory::new("game.test".to_owned(), PortPool::new(7000..=7001));
+        let start = Instant::now();
+        let (id, ticket) = made(&directory, caller(1), start);
+        seat_a_guest(&directory, id);
+        directory
+            .start(id, ticket, start)
+            .expect("start should succeed");
+
+        assert_eq!(directory.assignment(7001), None);
+        assert_eq!(directory.assignment(9999), None);
+    }
+
+    #[test]
+    fn a_finished_match_releases_its_assignment() {
+        let directory = MatchDirectory::new("game.test".to_owned(), PortPool::new(7000..=7000));
+        let start = Instant::now();
+        let (id, ticket) = made(&directory, caller(1), start);
+        seat_a_guest(&directory, id);
+        directory
+            .start(id, ticket, start)
+            .expect("start should succeed");
+        directory.finish(id).expect("finish should succeed");
+
+        assert_eq!(directory.assignment(7000), None);
+    }
+
+    #[test]
+    fn starting_late_still_leaves_the_instance_its_grace_window() {
+        let directory = MatchDirectory::new("game.test".to_owned(), PortPool::new(7000..=7000));
+        let start = Instant::now();
+        let (id, ticket) = made(&directory, caller(1), start);
+        seat_a_guest(&directory, id);
+
+        // Longer than `silent`, which is what a lobby that waited for players looks
+        // like. Measured from creation it is already over; measured from the start it
+        // has not begun.
+        let started_at = start + Duration::from_secs(120);
+        directory
+            .start(id, ticket, started_at)
+            .expect("start should succeed");
+
+        assert!(directory.reap(started_at, lifetimes()).is_empty());
+        assert!(directory
+            .reap(started_at + Duration::from_secs(29), lifetimes())
+            .is_empty());
+        assert_eq!(
+            directory
+                .reap(started_at + Duration::from_secs(31), lifetimes())
+                .len(),
+            1
+        );
+    }
+
+    #[test]
     fn a_heartbeat_keeps_a_running_match_alive() {
         let directory = MatchDirectory::new("game.test".to_owned(), PortPool::new(7000..=7001));
         let start = Instant::now();
         let (id, ticket) = made(&directory, caller(1), start);
-        directory.start(id, ticket).expect("start should succeed");
+        seat_a_guest(&directory, id);
+        directory
+            .start(id, ticket, start)
+            .expect("start should succeed");
 
         directory
             .heartbeat(id, start + Duration::from_secs(25))

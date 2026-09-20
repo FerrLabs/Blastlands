@@ -235,8 +235,10 @@ Single VPS to start. Both images run under Docker on the same host:
 
 - `ghcr.io/ferrlabs/blastlands/lobby` — one container, behind TLS, public HTTP. Built and
   published by `docker.yml`.
-- A game server image. Planned, not built: `docker.yml` publishes only the lobby, and
-  nothing turns the Linux dedicated server artifact from `build.yml` into an image.
+- `ghcr.io/ferrlabs/blastlands/server` — the Unity dedicated server. Built by the
+  `Server image` job in `build.yml`, which wraps the Linux artifact of the same run
+  rather than rebuilding it, so the image and the client published beside it come out
+  of one build.
 
 **The lobby allocates a port, not an instance.** This section used to say allocation starts
 as "the lobby runs a container and tracks the port". It does not, and never did. What
@@ -246,12 +248,39 @@ listening on. The crate has no process spawning and no container client at all: 
 dependency list is axum, serde, thiserror, tokio, tower-http, tracing and uuid, and the only
 `spawn` in it is the tokio task that reaps silent matches.
 
-So the seam is not "the allocation seam is the only thing that changes". The seam does not
-exist yet, on either side of the port. What does exist is everything either side of it: the
-lobby hands out the number and waits, and an instance started on that number reports in and
-releases when it is done. Starting one is the missing piece, and #169 holds the decision
-between a warm pool of instances on fixed ports, the lobby learning to create Kubernetes
-Jobs, and Agones.
+**A warm pool, and the instance asks which match it has.** Instances are not created per
+match. N of them run permanently, one per port of the range, and each owns its port for
+good. What changes from one match to the next is which match that port is serving, so the
+instance is the one that asks:
+
+```
+GET /internal/instances/{port}   Authorization: Bearer <BLASTLANDS_INSTANCE_TOKEN>
+  204  nothing assigned yet, ask again
+  200  {"match_id": "...", "players": 3}
+```
+
+Only a started match answers. Before the host presses start there is nobody to play
+against, and an instance booted early would spend its grace window on an empty arena.
+
+The image's entrypoint is that loop rather than the player: it polls, and on an answer
+runs the binary with `--match` and `--players`. The port, the lobby URL and the token
+stay in the environment, which is where the binary already reads them from and, for the
+token, keeps it out of the process table.
+
+The binary runs as a child rather than replacing the script, so a finished match returns
+to the loop instead of ending the container. `restartPolicy: Always` would restart it,
+but through kubelet's backoff, which reaches five minutes after a few short matches and
+leaves the lobby handing out a port nobody is listening on. A crash, meaning any non-zero
+exit, does end the container: that is the case where the backoff is what you want. One
+match per process either way, which is what the one-process-one-match design in
+`ServerBootstrap` requires.
+
+The supervisor also refuses a match it has just finished. Seeing the same id again means
+the release never landed, and replaying it would run a finished game on a loop; stalling
+instead lets the lobby's reaper free the port.
+
+This is why the lobby needs no Kubernetes client and no RBAC: it decides which port serves
+what, and says so when asked.
 
 Worth keeping in mind whichever way that goes: the client already treats the game server
 endpoint as opaque, so it is the only part of this that needs no changes.

@@ -217,5 +217,31 @@ namespace Blastlands.Core.Tests
             Assert.That(options.LobbyUrl, Is.EqualTo("http://x"));
             Assert.That(options.ListenPort, Is.EqualTo(7777));
         }
+
+        [Test]
+        public void TheSplitTheImageEntrypointUsesIsAccepted()
+        {
+            // What a pod on a fixed port actually passes: the port, the lobby and the
+            // token are the host's configuration and stay in the environment, where the
+            // token is also out of the process table. Only the two that change from one
+            // match to the next arrive as arguments.
+            Assert.That(
+                ServerOptions.TryRead(
+                    new[] { "--match", "abc123", "--players", "3" },
+                    Environment(
+                        ServerOptions.PortVariable, "7001",
+                        ServerOptions.LobbyVariable, "https://api.blastlands.ferrlabs.com",
+                        ServerOptions.TokenVariable, "shared-secret"),
+                    out ServerOptions options,
+                    out string error),
+                Is.True,
+                error);
+
+            Assert.That(options.ListenPort, Is.EqualTo(7001));
+            Assert.That(options.MatchId, Is.EqualTo("abc123"));
+            Assert.That(options.ExpectedPlayers, Is.EqualTo(3));
+            Assert.That(options.LobbyUrl, Is.EqualTo("https://api.blastlands.ferrlabs.com"));
+            Assert.That(options.InstanceToken, Is.EqualTo("shared-secret"));
+        }
     }
 }

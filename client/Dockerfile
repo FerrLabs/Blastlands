@@ -11,24 +11,28 @@ FROM ubuntu:26.04
 # without them every heartbeat and the final release fail on the certificate rather than
 # on anything to do with the match.
 RUN apt-get update \
-    && apt-get install --yes --no-install-recommends ca-certificates \
+    && apt-get install --yes --no-install-recommends ca-certificates curl jq \
     && rm -rf /var/lib/apt/lists/*
 
 RUN useradd --system --create-home --uid 10001 blastlands
 
 WORKDIR /app
 COPY StandaloneLinux64/ /app/
+COPY entrypoint.sh /app/entrypoint.sh
 
 # Burst ships its debug symbols in a directory that says in its own name not to ship them.
 RUN rm -rf /app/*_BurstDebugInformation_DoNotShip \
-    && chmod +x /app/Blastlands.x86_64
+    && chmod +x /app/Blastlands.x86_64 /app/entrypoint.sh
 
 USER blastlands
 
-# No port is exposed. The lobby decides which one this instance listens on and passes it in,
-# so a number baked in here would be a second answer that is wrong most of the time.
+# No port is exposed. The port this instance owns comes from BLASTLANDS_PORT, which is
+# what the lobby allocated, so a number baked in here would be a second answer that is
+# wrong most of the time.
 #
-# -logfile - puts Unity's log on stdout where a supervisor can read it. Without it the
-# player writes to a file inside the container and a crashed instance takes its own
-# explanation with it.
-ENTRYPOINT ["/app/Blastlands.x86_64", "-batchmode", "-nographics", "-logfile", "-"]
+# The entrypoint is the supervisor rather than the player: a pod on a fixed port starts
+# before there is a match to run, asks the lobby which one it was given, and only then
+# runs the binary, which cannot start without a match id. The player runs as a child, so
+# a finished match returns to the poll loop and the pod keeps the port it owns, while a
+# non-zero exit ends the container and leaves the restart to the orchestrator.
+ENTRYPOINT ["/app/entrypoint.sh"]
