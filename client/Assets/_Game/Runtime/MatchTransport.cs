@@ -74,6 +74,14 @@ namespace Blastlands.Runtime
 
         public int Seat { get; private set; } = SeatTable.NoSeat;
 
+        // How many seats are actually occupied, for the server's wait before kickoff.
+        // Read off the table rather than off NGO's connection list, because a connection
+        // turned away for want of a seat is still connected for a moment.
+        public int Occupied
+        {
+            get { return seats == null ? 0 : seats.Occupied; }
+        }
+
         public int LastSnapshotTick
         {
             get { return lastSnapshotTick; }

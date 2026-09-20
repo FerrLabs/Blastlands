@@ -1,5 +1,6 @@
 #if UNITY_SERVER
 using Blastlands.Core;
+using Blastlands.Core.Net;
 using UnityEngine;
 
 namespace Blastlands.Runtime
@@ -21,6 +22,8 @@ namespace Blastlands.Runtime
         private string ending;
         private int endingCode;
         private int ticksLeft;
+        private bool started;
+        private float waited;
 
         public void Run(MatchState matchState, ServerOptions options)
         {
@@ -28,9 +31,11 @@ namespace Blastlands.Runtime
             inputs = new PlayerInput[state.Players.Count];
             pacer = new TickPacer(state.Settings.TicksPerSecond, MaxCatchUpTicks);
 
-            // A ceiling on the whole match, not a per-player timeout, which is #17's
-            // job. Without one an instance whose sudden death is switched off ticks an
-            // idle match until somebody notices the host is busy.
+            // A ceiling on the match, and deliberately not on the wait before it: the
+            // counter only moves once the gate below lets the first tick through. So an
+            // instance holds its port for at most PatienceSeconds + MaxMatchSeconds
+            // rather than MaxMatchSeconds, which is 45s more in the worst case against
+            // the ten minutes this reclaims from a match nobody joined.
             ticksLeft = state.Settings.TicksPerSecond * MaxMatchSeconds;
 
             // The tick rate is the frame rate here. A server with nothing to draw will
@@ -41,9 +46,9 @@ namespace Blastlands.Runtime
 
             // Listening before the first tick, so a client that connects the moment the
             // lobby hands out the endpoint is not refused while the process finishes
-            // waking up. A match whose transport never came up still runs and still
-            // reports: every seat sends nothing, the match times out, and the reason
-            // reaches the lobby instead of the port being stranded by a hard exit.
+            // waking up. A match whose transport never came up never starts: nobody can
+            // reach it, so the gate below gives up once its patience runs out and the
+            // reason reaches the lobby instead of the port being stranded by a hard exit.
             transport = gameObject.AddComponent<MatchTransport>();
             if (!transport.StartServer((ushort)options.ListenPort, state.Players.Count))
             {
@@ -59,6 +64,11 @@ namespace Blastlands.Runtime
 
         private const int MaxMatchSeconds = 600;
 
+        // How long an instance waits for its seats to fill before it decides nobody
+        // else is coming. Long enough for a slow load and a download of the arena,
+        // short enough that a match nobody joined does not hold its port for minutes.
+        private const float PatienceSeconds = 45f;
+
         private void Update()
         {
             // The frame after the one that decided it. Everything queued on the way out,
@@ -73,6 +83,11 @@ namespace Blastlands.Runtime
             }
 
             if (state == null)
+            {
+                return;
+            }
+
+            if (!started && !MayStart())
             {
                 return;
             }
@@ -126,6 +141,46 @@ namespace Blastlands.Runtime
                     endingCode = ServerBootstrap.FailedToStart;
                     return;
                 }
+            }
+        }
+
+        // Whether the match may begin. Ticking an arena whose seats are empty is worse
+        // than waiting: the players who did connect watch a match they cannot win, and
+        // the ones who have not arrived yet find it already under way.
+        private bool MayStart()
+        {
+            waited += Time.deltaTime;
+            int connected = transport != null ? transport.Occupied : 0;
+
+            switch (KickoffDecision.For(state.Players.Count, connected, waited, PatienceSeconds))
+            {
+                case Kickoff.Play:
+                    started = true;
+                    Debug.Log(
+                        $"Blastlands server: starting with {connected} of "
+                        + $"{state.Players.Count} seats after {waited:F1}s");
+                    return true;
+
+                case Kickoff.GiveUp:
+                    // A transport that never came up is not the same story: nobody
+                    // could have joined, and the exit code is the machine-readable half
+                    // of that. Reporting Ok would file a bind failure as a success.
+                    if (transport == null)
+                    {
+                        ending = "the transport never came up, so nobody could join";
+                        endingCode = ServerBootstrap.FailedToStart;
+                        return false;
+                    }
+
+                    // Ok rather than a failure code: an instance nobody joined did its
+                    // job. Treating it as a crash would put the pod into a restart
+                    // backoff for something that is going to happen on a quiet evening.
+                    ending = $"nobody joined within {PatienceSeconds:F0}s, releasing the match";
+                    endingCode = ServerBootstrap.Ok;
+                    return false;
+
+                default:
+                    return false;
             }
         }
 
