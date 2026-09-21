@@ -115,6 +115,7 @@ jobs:
         with:
           name: ${{ matrix.name }}
           path: build
+          retention-days: 1
 
   # Attache le client Windows à la release. Le lobby lit ensuite la release
   # elle-même : sa version, cet asset et l'empreinte que GitHub calcule dessus.
