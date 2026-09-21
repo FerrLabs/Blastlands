@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.29] - 2026-09-21
+
+### Features
+
+- feat(server): wait for the seats to fill before ticking the match (#239)
+
 ## [26.9.28] - 2026-09-20
 
 ### Features
