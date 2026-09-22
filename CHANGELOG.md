@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.48] - 2026-09-22
+
+### Bug Fixes
+
+- fix(client): fade a HUD block while a player is behind it (#276)
+
 ## [26.9.47] - 2026-09-22
 
 ### Features
