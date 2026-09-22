@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.45] - 2026-09-22
+
+### Features
+
+- feat(lobby): report one match and whether it has started (#274)
+
 ## [26.9.44] - 2026-09-22
 
 ### Features
