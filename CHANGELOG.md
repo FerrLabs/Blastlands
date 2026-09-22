@@ -4,6 +4,13 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.33] - 2026-09-22
+
+### Features
+
+- feat(client): grow and pulse the wall regrowth warning as the wall comes back (#251)
+- feat(client): draw a ring in the player's colour under each character (#253)
+
 ## [26.9.29] - 2026-09-21
 
 ### Features
