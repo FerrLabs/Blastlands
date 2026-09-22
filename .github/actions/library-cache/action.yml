@@ -1,0 +1,52 @@
+name: Library cache
+description: Restore or save a directory in the ci-cache bucket of the in-cluster Garage.
+
+inputs:
+  mode:
+    description: restore or save.
+    required: true
+  path:
+    description: Directory to restore into or save.
+    required: true
+  name:
+    description: Entry name. One object per name, overwritten on every save.
+    required: true
+  key:
+    description: Content key. On save, pass the key output of the restore, not a fresh hashFiles.
+    required: true
+  hit:
+    description: The hit output of the matching restore, on save.
+    required: false
+    default: 'false'
+  s3-key:
+    description: Garage access key id.
+    required: true
+  s3-secret:
+    description: Garage secret access key.
+    required: true
+
+outputs:
+  hit:
+    description: Whether the restore matched the key exactly.
+    value: ${{ steps.cache.outputs.hit }}
+  key:
+    description: The key the restore computed, before the job changed any file it hashes.
+    value: ${{ steps.cache.outputs.key }}
+
+runs:
+  using: composite
+  steps:
+    - id: cache
+      shell: bash
+      env:
+        MODE: ${{ inputs.mode }}
+        CACHE_PATH: ${{ inputs.path }}
+        CACHE_NAME: ${{ inputs.name }}
+        CACHE_KEY: ${{ inputs.key }}
+        CACHE_HIT: ${{ inputs.hit }}
+        CACHE_ENDPOINT: sccache-s3.github-runner.svc.cluster.local:3900
+        CACHE_BUCKET: ci-cache
+        CACHE_REGION: ferrlabs
+        S3_KEY: ${{ inputs.s3-key }}
+        S3_SECRET: ${{ inputs.s3-secret }}
+      run: '"${GITHUB_ACTION_PATH}/cache.sh" "${MODE}"'

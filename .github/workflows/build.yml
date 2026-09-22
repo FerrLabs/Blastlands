@@ -88,13 +88,26 @@ jobs:
           git lfs pull
           echo "materialised $(git lfs ls-files | wc -l) LFS files"
 
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      - if: runner.environment == 'github-hosted'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: client/Library
           key: Library-${{ matrix.targetPlatform }}-${{ hashFiles('client/Assets/**', 'client/Packages/**', 'client/ProjectSettings/**') }}
           restore-keys: |
             Library-${{ matrix.targetPlatform }}-
             Library-
+
+      - if: runner.environment == 'self-hosted'
+        id: library
+        continue-on-error: true
+        uses: ./.github/actions/library-cache
+        with:
+          mode: restore
+          path: client/Library
+          name: Library-${{ matrix.targetPlatform }}
+          key: ${{ hashFiles('client/Assets/**', 'client/Packages/**', 'client/ProjectSettings/**') }}
+          s3-key: ${{ secrets.SCCACHE_S3_KEY }}
+          s3-secret: ${{ secrets.SCCACHE_S3_SECRET }}
 
       - uses: game-ci/unity-builder@eb1b9fba120c6e62c9fb7a7a81d6c107ce004c45 # v6
         env:
@@ -107,6 +120,18 @@ jobs:
           targetPlatform: ${{ matrix.targetPlatform }}
           customParameters: ${{ matrix.customParameters }}
           buildName: Blastlands
+
+      - if: runner.environment == 'self-hosted'
+        continue-on-error: true
+        uses: ./.github/actions/library-cache
+        with:
+          mode: save
+          path: client/Library
+          name: Library-${{ matrix.targetPlatform }}
+          key: ${{ steps.library.outputs.key }}
+          hit: ${{ steps.library.outputs.hit }}
+          s3-key: ${{ secrets.SCCACHE_S3_KEY }}
+          s3-secret: ${{ secrets.SCCACHE_S3_SECRET }}
 
       # A relay between the jobs of this run, not an archive: the Windows client ends up
       # on the release and the server in GHCR. Kept the default 90 days, the builds of

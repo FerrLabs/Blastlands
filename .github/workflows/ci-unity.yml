@@ -134,13 +134,25 @@ jobs:
           git lfs pull
           echo "materialised $(git lfs ls-files | wc -l) LFS files"
 
-      - if: env.RUN == 'true'
+      - if: env.RUN == 'true' && runner.environment == 'github-hosted'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: client/Library
           key: Library-${{ hashFiles('client/Assets/**', 'client/Packages/**', 'client/ProjectSettings/**') }}
           restore-keys: |
             Library-
+
+      - if: env.RUN == 'true' && runner.environment == 'self-hosted'
+        id: library
+        continue-on-error: true
+        uses: ./.github/actions/library-cache
+        with:
+          mode: restore
+          path: client/Library
+          name: Library-tests
+          key: ${{ hashFiles('client/Assets/**', 'client/Packages/**', 'client/ProjectSettings/**') }}
+          s3-key: ${{ secrets.SCCACHE_S3_KEY }}
+          s3-secret: ${{ secrets.SCCACHE_S3_SECRET }}
 
       - if: env.RUN == 'true'
         uses: game-ci/unity-test-runner@32e57712352b500e17974b245a6dce9e11a73213 # v4
@@ -167,6 +179,18 @@ jobs:
           testMode: editmode
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           checkName: Unity test results
+
+      - if: env.RUN == 'true' && runner.environment == 'self-hosted'
+        continue-on-error: true
+        uses: ./.github/actions/library-cache
+        with:
+          mode: save
+          path: client/Library
+          name: Library-tests
+          key: ${{ steps.library.outputs.key }}
+          hit: ${{ steps.library.outputs.hit }}
+          s3-key: ${{ secrets.SCCACHE_S3_KEY }}
+          s3-secret: ${{ secrets.SCCACHE_S3_SECRET }}
 
       # ServerLoop.cs and everything else under `#if UNITY_SERVER` is invisible to the
       # run above: the editor compiles for its own platform, where that symbol is never
