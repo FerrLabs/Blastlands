@@ -51,6 +51,37 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
+        public void WithoutAHumanCountEverySeatIsWaitedFor()
+        {
+            Assert.That(ServerOptions.TryRead(Complete, NoEnvironment, out ServerOptions options, out string error), Is.True, error);
+
+            Assert.That(options.ExpectedHumans, Is.EqualTo(options.ExpectedPlayers));
+        }
+
+        [Test]
+        public void TheHumanCountIsReadBesideTheSeats()
+        {
+            var arguments = new List<string>(Complete) { ServerOptions.HumansFlag, "2" };
+
+            Assert.That(ServerOptions.TryRead(arguments, NoEnvironment, out ServerOptions options, out string error), Is.True, error);
+
+            Assert.That(options.ExpectedPlayers, Is.EqualTo(4));
+            Assert.That(options.ExpectedHumans, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void MoreHumansThanSeatsOrNoneAtAllIsRefused()
+        {
+            foreach (string humans in new[] { "5", "0", "two" })
+            {
+                var arguments = new List<string>(Complete) { ServerOptions.HumansFlag, humans };
+
+                Assert.That(ServerOptions.TryRead(arguments, NoEnvironment, out _, out string error), Is.False, humans);
+                Assert.That(error, Does.Contain(ServerOptions.HumansFlag));
+            }
+        }
+
+        [Test]
         public void TheEnvironmentAnswersWhateverTheArgumentsDoNot()
         {
             string[] arguments = { "--port", "7777" };

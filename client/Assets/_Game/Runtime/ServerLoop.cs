@@ -20,6 +20,7 @@ namespace Blastlands.Runtime
         private LobbyReporter lobby;
         private MatchTransport transport;
         private StandIns standIns;
+        private int humans;
         private string ending;
         private int endingCode;
         private int ticksLeft;
@@ -31,6 +32,7 @@ namespace Blastlands.Runtime
             state = matchState;
             inputs = new PlayerInput[state.Players.Count];
             standIns = new StandIns(state.Players.Count, BotSettings.Normal);
+            humans = options.ExpectedHumans;
             pacer = new TickPacer(state.Settings.TicksPerSecond, MaxCatchUpTicks);
 
             // A ceiling on the match, and deliberately not on the wait before it: the
@@ -162,13 +164,13 @@ namespace Blastlands.Runtime
             waited += Time.deltaTime;
             int connected = transport != null ? transport.Occupied : 0;
 
-            switch (KickoffDecision.For(state.Players.Count, connected, waited, PatienceSeconds))
+            switch (KickoffDecision.For(humans, connected, waited, PatienceSeconds))
             {
                 case Kickoff.Play:
                     started = true;
                     Debug.Log(
-                        $"Blastlands server: starting with {connected} of "
-                        + $"{state.Players.Count} seats after {waited:F1}s");
+                        $"Blastlands server: starting with {connected} of {humans} players and "
+                        + $"{state.Players.Count - connected} bots after {waited:F1}s");
                     return true;
 
                 case Kickoff.GiveUp:

@@ -17,12 +17,14 @@ namespace Blastlands.Core
         public const string PortFlag = "--port";
         public const string MatchFlag = "--match";
         public const string PlayersFlag = "--players";
+        public const string HumansFlag = "--humans";
         public const string LobbyFlag = "--lobby";
         public const string TokenFlag = "--token";
 
         public const string PortVariable = "BLASTLANDS_PORT";
         public const string MatchVariable = "BLASTLANDS_MATCH";
         public const string PlayersVariable = "BLASTLANDS_PLAYERS";
+        public const string HumansVariable = "BLASTLANDS_HUMANS";
         public const string LobbyVariable = "BLASTLANDS_LOBBY";
 
         // The same name the lobby reads it under, because it is the same secret. Two
@@ -30,11 +32,12 @@ namespace Blastlands.Core
         public const string TokenVariable = "BLASTLANDS_INSTANCE_TOKEN";
 
         public ServerOptions(
-            int listenPort, string matchId, int expectedPlayers, string lobbyUrl, string instanceToken)
+            int listenPort, string matchId, int expectedPlayers, int expectedHumans, string lobbyUrl, string instanceToken)
         {
             ListenPort = listenPort;
             MatchId = matchId;
             ExpectedPlayers = expectedPlayers;
+            ExpectedHumans = expectedHumans;
             LobbyUrl = lobbyUrl;
             InstanceToken = instanceToken;
         }
@@ -44,6 +47,8 @@ namespace Blastlands.Core
         public string MatchId { get; }
 
         public int ExpectedPlayers { get; }
+
+        public int ExpectedHumans { get; }
 
         public string LobbyUrl { get; }
 
@@ -70,6 +75,7 @@ namespace Blastlands.Core
             string rawPort = Read(arguments, environment, PortFlag, PortVariable);
             string rawMatch = Read(arguments, environment, MatchFlag, MatchVariable);
             string rawPlayers = Read(arguments, environment, PlayersFlag, PlayersVariable);
+            string rawHumans = Read(arguments, environment, HumansFlag, HumansVariable);
             string rawLobby = Read(arguments, environment, LobbyFlag, LobbyVariable);
             string rawToken = Read(arguments, environment, TokenFlag, TokenVariable);
 
@@ -88,6 +94,11 @@ namespace Blastlands.Core
                 return false;
             }
 
+            if (!TryHumans(rawHumans, players, out int humans, out error))
+            {
+                return false;
+            }
+
             if (!TryLobby(rawLobby, out string lobby, out error))
             {
                 return false;
@@ -98,7 +109,7 @@ namespace Blastlands.Core
                 return false;
             }
 
-            options = new ServerOptions(port, matchId, players, lobby, token);
+            options = new ServerOptions(port, matchId, players, humans, lobby, token);
             error = null;
             return true;
         }
@@ -138,6 +149,29 @@ namespace Blastlands.Core
             if (players < 1)
             {
                 error = $"{PlayersFlag} must be at least 1, not {players}.";
+                return false;
+            }
+
+            return true;
+        }
+
+        private static bool TryHumans(string raw, int players, out int humans, out string error)
+        {
+            if (string.IsNullOrEmpty(raw))
+            {
+                humans = players;
+                error = null;
+                return true;
+            }
+
+            if (!TryNumber(raw, HumansFlag, HumansVariable, out humans, out error))
+            {
+                return false;
+            }
+
+            if (humans < 1 || humans > players)
+            {
+                error = $"{HumansFlag} must be between 1 and {PlayersFlag} ({players}), not {humans}.";
                 return false;
             }
 

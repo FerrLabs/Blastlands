@@ -1062,9 +1062,10 @@ mod tests {
         assert_eq!(assigned.status(), StatusCode::OK);
         let body = body_json(assigned).await;
         assert_eq!(body["match_id"], id);
+        assert_eq!(body["players"], 4, "every seat the host opened is built");
         assert_eq!(
-            body["players"], 2,
-            "the arena is built for the players who joined, not for the seats the host opened"
+            body["humans"], 2,
+            "only the players who joined are waited for"
         );
     }
 

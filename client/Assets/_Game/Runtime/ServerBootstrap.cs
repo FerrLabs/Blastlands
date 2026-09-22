@@ -46,7 +46,7 @@ namespace Blastlands.Runtime
             // first thing anybody reads off a failed instance.
             Debug.Log(
                 $"Blastlands server: match {options.MatchId}, port {options.ListenPort}, "
-                + $"{options.ExpectedPlayers} players, lobby {options.LobbyUrl}");
+                + $"{options.ExpectedPlayers} seats for {options.ExpectedHumans} players, lobby {options.LobbyUrl}");
 
             MatchState state;
             try

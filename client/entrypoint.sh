@@ -52,6 +52,7 @@ while true; do
     200)
       match="$(jq -er '.match_id' <"${body}")"
       players="$(jq -er '.players' <"${body}")"
+      humans="$(jq -er '.humans // .players' <"${body}")"
 
       if [ "${match}" = "${finished_match}" ]; then
         echo "blastlands: ${match} is still assigned after it ended, not replaying it" >&2
@@ -59,9 +60,9 @@ while true; do
         continue
       fi
 
-      echo "blastlands: taking match ${match} for ${players} players" >&2
+      echo "blastlands: taking match ${match}, ${players} seats for ${humans} players" >&2
       /app/Blastlands.x86_64 -batchmode -nographics -logfile - \
-        --match "${match}" --players "${players}" &
+        --match "${match}" --players "${players}" --humans "${humans}" &
       server_pid="$!"
       code=0
       wait "${server_pid}" || code="$?"

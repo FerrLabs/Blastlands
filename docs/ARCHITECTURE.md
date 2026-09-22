@@ -284,14 +284,18 @@ instance is the one that asks:
 ```
 GET /internal/instances/{port}   Authorization: Bearer <BLASTLANDS_INSTANCE_TOKEN>
   204  nothing assigned yet, ask again
-  200  {"match_id": "...", "players": 3}
+  200  {"match_id": "...", "players": 4, "humans": 3}
 ```
 
 Only a started match answers. Before the host presses start there is nobody to play
 against, and an instance booted early would spend its grace window on an empty arena.
 
+`players` is every seat the host opened and `humans` how many joined. The instance builds
+all of them, waits for the humans only, and a bot plays any seat nobody is connected to:
+the ones nobody took, and a player's seat for as long as they are disconnected.
+
 The image's entrypoint is that loop rather than the player: it polls, and on an answer
-runs the binary with `--match` and `--players`. The port, the lobby URL and the token
+runs the binary with `--match`, `--players` and `--humans`. The port, the lobby URL and the token
 stay in the environment, which is where the binary already reads them from and, for the
 token, keeps it out of the process table.
 

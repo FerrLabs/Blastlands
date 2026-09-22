@@ -106,6 +106,7 @@ pub struct Reaped {
 pub struct Assignment {
     pub match_id: MatchId,
     pub players: u8,
+    pub humans: u8,
 }
 
 #[derive(Debug)]
@@ -283,11 +284,11 @@ impl MatchDirectory {
             .find(|entry| entry.endpoint.port == port && entry.state == MatchState::InProgress)
             .map(|entry| Assignment {
                 match_id: entry.id,
-                // The seats that matter are the ones that will connect: `join` refuses a
-                // started match, so this vec no longer moves. Handing over `max_players`
-                // would build seats nobody plays, which stand still, can be killed, and
-                // count towards the outcome.
-                players: u8::try_from(entry.players.len()).unwrap_or(entry.max_players),
+                // Every seat the host opened, and how many of them will connect: `join`
+                // refuses a started match, so this vec no longer moves. The instance waits
+                // for the humans only and hands the other seats to bots.
+                players: entry.max_players,
+                humans: u8::try_from(entry.players.len()).unwrap_or(entry.max_players),
             })
     }
 
@@ -583,7 +584,7 @@ mod tests {
     }
 
     #[test]
-    fn a_started_match_arms_only_the_seats_that_joined() {
+    fn a_started_match_builds_every_seat_and_counts_the_humans() {
         let directory = directory();
         let entry = create(&directory, 4);
         seat_a_guest(&directory, entry.id);
@@ -599,9 +600,10 @@ mod tests {
             directory.assignment(entry.endpoint.port),
             Some(Assignment {
                 match_id: entry.id,
-                players: 3,
+                players: 4,
+                humans: 3,
             }),
-            "the fourth seat nobody took would stand in the arena and count towards the outcome"
+            "the fourth seat nobody took is built and left to a bot, and not waited for"
         );
     }
 
@@ -790,9 +792,10 @@ mod tests {
             directory.assignment(7000),
             Some(Assignment {
                 match_id: id,
-                players: 2,
+                players: 4,
+                humans: 2,
             }),
-            "the instance builds one seat per joined player, not one per seat the host opened"
+            "the instance builds every seat the host opened and waits for the joined players only"
         );
     }
 
