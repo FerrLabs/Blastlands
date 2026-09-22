@@ -76,7 +76,7 @@ namespace Blastlands.Runtime
                 Report();
             });
 
-            if (Verdict == UpdateVerdict.MustUpdate && Release.CanBeFetched && updater != null)
+            if (Verdict == UpdateVerdict.MustUpdate && updater != null)
             {
                 yield return updater.Apply(Release);
             }

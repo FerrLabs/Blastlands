@@ -4,6 +4,24 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.60] - 2026-09-22
+
+### Features
+
+- feat(client): tell the player when the build is out of date (#15)
+
+## [26.9.59] - 2026-09-22
+
+### Features
+
+- feat(lobby): hold a lobby session and hand the match to the client (#11)
+
+## [26.9.58] - 2026-09-22
+
+### Features
+
+- feat(audio): place match cues by where they happened on the board (#14)
+
 ## [26.9.56] - 2026-09-22
 
 ### Features

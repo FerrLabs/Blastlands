@@ -230,6 +230,15 @@ A blast shakes each view by how close it lands and how big it is. Shake is a com
 sickness trigger, so `--no-shake` on the command line turns it off until a settings screen
 can offer it.
 
+Sound is placed the same way whenever a single viewport is listening. A cue is panned
+towards the side of the view it came from and reaches its widest a screen width off centre,
+so what you can see stays roughly in front of you and what you cannot is what the stereo
+field is spent on. Past the edge of the view it fades with distance, down to a fifth of its
+volume rather than to silence, because a blast across the board is still information. That
+is what makes a fuse burning down just off screen tellable from one on the far side of the
+arena. Split-screen drops back to a flat mix: four people watching four parts of the board
+share one pair of speakers, and a cue placed for one of them is placed wrong for the rest.
+
 ## Movement
 
 Positions are continuous. A player is a body about 0.7 of a tile across that slides along

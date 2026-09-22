@@ -18,37 +18,39 @@ namespace Blastlands.Runtime
     {
         private const string DataSuffix = "_Data";
 
-        public bool Updating { get; private set; }
+        public UpdateStage Stage { get; private set; } = UpdateStage.Idle;
+
+        public string Failure { get; private set; }
 
         public IEnumerator Apply(ClientRelease release)
         {
-            if (Updating)
+            if (Stage == UpdateStage.Running)
             {
                 yield break;
             }
 
-            if (!Application.isEditor && Application.platform == RuntimePlatform.WindowsPlayer)
+            if (Application.isEditor || Application.platform != RuntimePlatform.WindowsPlayer)
             {
-                Updating = true;
-                yield return Install(release);
-                Updating = false;
-            }
-            else
-            {
+                Stage = UpdateStage.Unsupported;
                 Debug.Log("Blastlands: this build cannot update itself; only a Windows player can.");
+                yield break;
             }
+
+            yield return Install(release);
         }
 
         private IEnumerator Install(ClientRelease release)
         {
             if (!release.CanBeFetched || !GameVersion.TryParse(release.Latest, out GameVersion version))
             {
+                Stage = UpdateStage.Unpublished;
                 Debug.LogWarning("Blastlands: the lobby did not describe a release this build can fetch.");
                 yield break;
             }
 
             if (!GameVersion.TryParse(Application.version, out GameVersion current) || version <= current)
             {
+                Stage = UpdateStage.Unpublished;
                 Debug.LogWarning(
                     "Blastlands: the lobby offers " + release.Latest + " and this build is "
                     + Application.version + ", so there is nothing newer to install.");
@@ -63,6 +65,7 @@ namespace Blastlands.Runtime
             var layout = new UpdateLayout(install, version);
             string archive = Path.Combine(Application.temporaryCachePath, "Blastlands-" + version + ".zip");
 
+            Stage = UpdateStage.Running;
             Debug.Log("Blastlands: downloading " + version + ".");
             using (UnityWebRequest request = UnityWebRequest.Get(release.DownloadUrl))
             {
@@ -71,12 +74,12 @@ namespace Blastlands.Runtime
 
                 if (request.result != UnityWebRequest.Result.Success)
                 {
-                    Debug.LogWarning("Blastlands: the update could not be downloaded: " + request.error);
+                    Fail("the update could not be downloaded, " + request.error);
                     yield break;
                 }
             }
 
-            Task<string> staging = Task.Run(() => Stage(archive, release.Sha256, layout, executable));
+            Task<string> staging = Task.Run(() => Unpack(archive, release.Sha256, layout, executable));
             while (!staging.IsCompleted)
             {
                 yield return null;
@@ -85,7 +88,7 @@ namespace Blastlands.Runtime
             string failure = staging.IsFaulted ? staging.Exception.GetBaseException().Message : staging.Result;
             if (failure != null)
             {
-                Debug.LogWarning("Blastlands: the update was not installed: " + failure);
+                Fail(failure);
                 yield break;
             }
 
@@ -108,7 +111,14 @@ namespace Blastlands.Runtime
             Application.Quit();
         }
 
-        private static string Stage(string archive, string sha256, UpdateLayout layout, string executable)
+        private void Fail(string reason)
+        {
+            Stage = UpdateStage.Failed;
+            Failure = reason;
+            Debug.LogWarning("Blastlands: the update was not installed: " + reason);
+        }
+
+        private static string Unpack(string archive, string sha256, UpdateLayout layout, string executable)
         {
             try
             {

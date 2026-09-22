@@ -260,9 +260,20 @@ configuration. A new release alone offers an update; bumping `minimum` forces on
 
 **Applying the update.** `ClientStartup` asks the lobby on every launch of a player build,
 against `https://api.blastlands.ferrlabs.com` unless `--lobby <url>` says otherwise. Below
-`minimum`, a Windows player updates itself; between `minimum` and `latest` the update is only
-logged until the client has screens to offer it (#19). Other platforms never self-update: the
-release publishes a Windows archive only.
+`minimum`, a Windows player updates itself; between `minimum` and `latest` the update is
+offered and the player takes it with `F5`. Other platforms never self-update: the release
+publishes a Windows archive only.
+
+**What the player is told.** `UpdateBanner` draws the verdict on an overlay of its own, so a
+build that cannot join a match says so on screen instead of only in the log. Below `minimum`
+the banner dims the game behind it; between `minimum` and `latest` it sits at the top and the
+game carries on underneath. The text comes from `UpdateNotice`, which turns the verdict and the
+updater's `UpdateStage` into a headline and a line of detail and is tested without Unity. The
+ways an update does not simply run are kept apart because the player can act on each
+differently: nothing published yet means wait, a platform that cannot replace itself means
+install by hand, and a failure names its reason, a SHA-256 mismatch included. The overlay is
+deliberately plain. The lobby screens in #7 own the real chrome, and the notice is theirs to
+restyle.
 
 On Windows a running executable cannot replace itself, so `ClientUpdater`:
 
@@ -295,7 +306,11 @@ sequenceDiagram
 
 ## Deployment
 
-Single VPS to start. Both images run under Docker on the same host:
+Both images run on the FerrLabs Kubernetes cluster, from `products/blastlands/` in
+[FerrLabs/Infra](https://github.com/FerrLabs/Infra): the lobby as a Deployment behind
+Traefik, the instances as a StatefulSet whose UDP ports are NodePort Services. This
+section used to say "single VPS, both images under Docker on the same host", which was
+the plan and never what shipped.
 
 - `ghcr.io/ferrlabs/blastlands/lobby` — one container, behind TLS, public HTTP. Built and
   published by `docker.yml`.

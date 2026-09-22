@@ -156,12 +156,32 @@ namespace Blastlands.Runtime
                     continue;
                 }
 
-                Vector3 watching = view.transform.position + (view.transform.forward * 40f);
+                Vector3 watching = Watching(view);
                 float distance = Vector2.Distance(
                     new Vector2(at.x, at.z), new Vector2(watching.x, watching.z));
 
                 shakes[i].Felt(CameraShake.StrengthOf(distance, flameTiles, CameraShake.ReachTiles));
             }
+        }
+
+        public bool SingleViewportIsListening(out Vector3 at, out float halfWidth)
+        {
+            at = Vector3.zero;
+            halfWidth = 0f;
+
+            if (views.Count != 1 || views[0] == null)
+            {
+                return false;
+            }
+
+            at = Watching(views[0]);
+            halfWidth = views[0].orthographicSize * views[0].aspect;
+            return true;
+        }
+
+        private static Vector3 Watching(Camera view)
+        {
+            return view.transform.position + (view.transform.forward * 40f);
         }
 
         public void Use(CameraMode next)
