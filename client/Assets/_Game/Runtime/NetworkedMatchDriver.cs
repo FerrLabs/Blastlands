@@ -14,7 +14,7 @@ namespace Blastlands.Runtime
     // state it renders is written entirely by snapshots, which is what makes editing it
     // pointless rather than difficult.
     //
-    // Where it stops short is the join. There is no lobby screen yet (#19), so the
+    // Where it stops short is the join. There is no lobby screen yet (#7), so the
     // endpoint and the shape of the match are serialized here instead of being learned
     // from the lobby, and the arena has to be told the same size the server built. That
     // is a development harness, not the finished flow.

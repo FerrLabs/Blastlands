@@ -261,7 +261,7 @@ configuration. A new release alone offers an update; bumping `minimum` forces on
 **Applying the update.** `ClientStartup` asks the lobby on every launch of a player build,
 against `https://api.blastlands.ferrlabs.com` unless `--lobby <url>` says otherwise. Below
 `minimum`, a Windows player updates itself; between `minimum` and `latest` the update is only
-logged until the client has screens to offer it (#19). Other platforms never self-update: the
+logged until the client has screens to offer it (#7). Other platforms never self-update: the
 release publishes a Windows archive only.
 
 On Windows a running executable cannot replace itself, so `ClientUpdater`:
@@ -295,7 +295,11 @@ sequenceDiagram
 
 ## Deployment
 
-Single VPS to start. Both images run under Docker on the same host:
+Both images run on the FerrLabs Kubernetes cluster, from `products/blastlands/` in
+[FerrLabs/Infra](https://github.com/FerrLabs/Infra): the lobby as a Deployment behind
+Traefik, the instances as a StatefulSet whose UDP ports are NodePort Services. This
+section used to say "single VPS, both images under Docker on the same host", which was
+the plan and never what shipped.
 
 - `ghcr.io/ferrlabs/blastlands/lobby` — one container, behind TLS, public HTTP. Built and
   published by `docker.yml`.
