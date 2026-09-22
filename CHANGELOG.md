@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.42] - 2026-09-22
+
+### Bug Fixes
+
+- fix(client): create the telegraph property block on first use (#273)
+
 ## [26.9.41] - 2026-09-22
 
 ### Features
