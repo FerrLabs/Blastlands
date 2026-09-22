@@ -1,5 +1,6 @@
 using System;
 using Blastlands.Core;
+using Blastlands.Core.Lobby;
 using Blastlands.Core.Net;
 using UnityEngine;
 using PlayerInput = Blastlands.Core.PlayerInput;
@@ -77,6 +78,17 @@ namespace Blastlands.Runtime
 
         private void Start()
         {
+            // The lobby leaves an invite when it hands the match over. The serialized
+            // fields are what is left for a scene opened by hand against a server
+            // started by hand, which is how this is tested without a lobby running.
+            if (MatchHandoff.Waiting)
+            {
+                MatchInvite invite = MatchHandoff.Take();
+                host = invite.Host;
+                port = invite.Port;
+                ticket = invite.Ticket;
+            }
+
             devices = new PlayerDevices(1);
 
             transport = gameObject.AddComponent<MatchTransport>();
