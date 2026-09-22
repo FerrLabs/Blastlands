@@ -13,7 +13,7 @@ on:
 jobs:
   version:
     name: Resolve version
-    runs-on: ferrlabs-k8s
+    runs-on: ${{ github.event.repository.private && 'ferrlabs-k8s' || 'ubuntu-latest' }}
     permissions:
       contents: read
     outputs:
