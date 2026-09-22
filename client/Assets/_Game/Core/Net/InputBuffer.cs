@@ -47,6 +47,33 @@ namespace Blastlands.Core.Net
             get { return slots.Length; }
         }
 
+        public const int SilenceBeforeStandIn = 90;
+        public const int SteadyBeforeHandBack = 15;
+        public const int SteadyWindow = 20;
+
+        private readonly bool[] recent = new bool[SteadyWindow];
+        private int recentAt;
+        private int heardRecently;
+        private int ticksSinceHeard;
+
+        public bool Answering { get; private set; } = true;
+
+        private void Remember(bool heard)
+        {
+            if (recent[recentAt])
+            {
+                heardRecently--;
+            }
+
+            recent[recentAt] = heard;
+            if (heard)
+            {
+                heardRecently++;
+            }
+
+            recentAt = (recentAt + 1) % SteadyWindow;
+        }
+
         // Refused rather than stored when it answers a tick already played or one too far
         // ahead to be honest. Neither is an error worth reporting: the first is a packet
         // that lost a race it was always going to lose, and the second is a client that
@@ -75,7 +102,21 @@ namespace Blastlands.Core.Net
             {
                 last = slots[slot];
                 slotTicks[slot] = Empty;
+                ticksSinceHeard = 0;
+                Remember(true);
+                if (!Answering && heardRecently >= SteadyBeforeHandBack)
+                {
+                    Answering = true;
+                }
+
                 return last;
+            }
+
+            ticksSinceHeard++;
+            Remember(false);
+            if (Answering && ticksSinceHeard >= SilenceBeforeStandIn)
+            {
+                Answering = false;
             }
 
             // A repeat keeps the direction and drops the buttons. MatchSim reads all

@@ -257,6 +257,13 @@ namespace Blastlands.Runtime
             Stop();
         }
 
+        public bool IsSeated(int seat)
+        {
+            return seats != null
+                && seats.TryOccupant(seat, out _)
+                && buffers[seat].Answering;
+        }
+
         // Server. The inputs for one tick, one per seat, with an empty seat standing
         // still and a seat whose packet has not arrived repeating what it last sent.
         public PlayerInput[] InputsFor(int tick)

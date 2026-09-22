@@ -108,6 +108,72 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
+        public void ASeatStopsAnsweringOnlyAfterAFewSecondsOfSilence()
+        {
+            var inputs = new InputBuffer();
+            int tick = 1;
+
+            for (; tick < InputBuffer.SilenceBeforeStandIn; tick++)
+            {
+                inputs.Take(tick);
+                Assert.That(inputs.Answering, Is.True, $"handed over after {tick} silent ticks");
+            }
+
+            inputs.Take(tick);
+            Assert.That(inputs.Answering, Is.False);
+        }
+
+        [Test]
+        public void ASeatAnswersAgainOnlyOnceItsInputsAreSteady()
+        {
+            InputBuffer inputs = Silenced(out int tick);
+
+            for (int i = 0; i < 60; i++, tick++)
+            {
+                if (i % 20 < 10)
+                {
+                    inputs.Offer(tick, PlayerInput.None);
+                }
+
+                inputs.Take(tick);
+                Assert.That(inputs.Answering, Is.False, $"half the inputs missing handed the seat back at {i}");
+            }
+        }
+
+        [Test]
+        public void OrdinaryLossDoesNotKeepTheBotDriving()
+        {
+            InputBuffer inputs = Silenced(out int tick);
+
+            int taken = 0;
+            while (!inputs.Answering && taken < 60)
+            {
+                if (taken % 7 != 3)
+                {
+                    inputs.Offer(tick, PlayerInput.None);
+                }
+
+                inputs.Take(tick++);
+                taken++;
+            }
+
+            Assert.That(inputs.Answering, Is.True, "one input in seven lost kept the bot driving");
+            Assert.That(taken, Is.LessThanOrEqualTo(InputBuffer.SteadyWindow));
+        }
+
+        private static InputBuffer Silenced(out int tick)
+        {
+            var inputs = new InputBuffer();
+            for (tick = 1; tick <= InputBuffer.SilenceBeforeStandIn; tick++)
+            {
+                inputs.Take(tick);
+            }
+
+            Assert.That(inputs.Answering, Is.False);
+            return inputs;
+        }
+
+        [Test]
         public void AMissingInputRepeatsTheLastOneRatherThanStopping()
         {
             // The rule the whole buffer exists for. Stalling a tick would hand every

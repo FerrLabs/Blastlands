@@ -19,6 +19,7 @@ namespace Blastlands.Runtime
         private TickPacer pacer;
         private LobbyReporter lobby;
         private MatchTransport transport;
+        private StandIns standIns;
         private string ending;
         private int endingCode;
         private int ticksLeft;
@@ -29,6 +30,7 @@ namespace Blastlands.Runtime
         {
             state = matchState;
             inputs = new PlayerInput[state.Players.Count];
+            standIns = new StandIns(state.Players.Count, BotSettings.Normal);
             pacer = new TickPacer(state.Settings.TicksPerSecond, MaxCatchUpTicks);
 
             // A ceiling on the match, and deliberately not on the wait before it: the
@@ -100,10 +102,18 @@ namespace Blastlands.Runtime
                 // counter on its way out, so state.Tick here is the tick about to be
                 // played and the one the client stamped its input with.
                 //
-                // A seat nobody is connected to, or one whose packet has not arrived,
-                // comes back as a player standing still or as whatever they last sent.
-                // Either is a match that keeps running, which is the point.
-                MatchSim.Tick(state, transport != null ? transport.InputsFor(state.Tick) : inputs);
+                // A seat whose packet has not arrived comes back as whatever it last
+                // sent, and a seat nobody is connected to is played by a bot until its
+                // player reconnects. Either is a match that keeps running, which is the
+                // point.
+                PlayerInput[] tickInputs = inputs;
+                if (transport != null)
+                {
+                    tickInputs = transport.InputsFor(state.Tick);
+                    standIns.Fill(state, tickInputs, transport.IsSeated);
+                }
+
+                MatchSim.Tick(state, tickInputs);
                 ticksLeft--;
 
                 // After the tick, so what goes out is the state the inputs produced
