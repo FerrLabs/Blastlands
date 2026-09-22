@@ -311,6 +311,14 @@ against, and an instance booted early would spend its grace window on an empty a
 all of them, waits for the humans only, and a bot plays any seat nobody is connected to:
 the ones nobody took, and a player's seat for as long as they are disconnected.
 
+A client is told that shape rather than configured with it. The seat message that admits
+a connection carries the seat, the board's width and height and the player count, and the
+client builds its match from those, once, before it renders anything. It has no board
+until then, so a snapshot that overtakes the seat message is dropped rather than applied
+to a board built on a guess. The alternative, both ends carrying the same numbers by hand,
+fails silently: the snapshot refuses a board of a different size rather than writing tiles
+into the wrong rows, so the match looks connected and stands perfectly still.
+
 The image's entrypoint is that loop rather than the player: it polls, and on an answer
 runs the binary with `--match`, `--players` and `--humans`. The port, the lobby URL and the token
 stay in the environment, which is where the binary already reads them from and, for the

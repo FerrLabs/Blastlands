@@ -40,6 +40,8 @@ namespace Blastlands.Core
             Board = board;
         }
 
+        public const int SmallestSide = 5;
+
         public int Width { get; }
 
         public int Height { get; }
@@ -61,6 +63,14 @@ namespace Blastlands.Core
         // Which board to lay out. Named rather than derived from the game mode, because
         // Classic and Classic Blinded share this board and differ only in the rules.
         public BoardKind Board { get; }
+
+        // The same board at another size, for a client told by the server how big the
+        // match it joined is. Everything else about the preset it came from is kept,
+        // because the tiles themselves arrive in the first snapshot.
+        public ArenaSettings Resized(int width, int height)
+        {
+            return new ArenaSettings(width, height, SoftBlockPercent, BushPercent, Island, Board);
+        }
 
         public static ArenaSettings Default
         {
@@ -124,9 +134,10 @@ namespace Blastlands.Core
         // the odd-only rule that board does need is stated where the preset is built.
         private static void RequireLargeEnough(int value, string name)
         {
-            if (value < 5)
+            if (value < SmallestSide)
             {
-                throw new ArgumentOutOfRangeException(name, value, "Arena dimension must be at least 5.");
+                throw new ArgumentOutOfRangeException(
+                    name, value, "Arena dimension must be at least " + SmallestSide + ".");
             }
         }
     }

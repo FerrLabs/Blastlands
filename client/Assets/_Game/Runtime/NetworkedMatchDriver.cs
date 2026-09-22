@@ -1,3 +1,4 @@
+using System;
 using Blastlands.Core;
 using Blastlands.Core.Net;
 using UnityEngine;
@@ -41,12 +42,6 @@ namespace Blastlands.Runtime
         [SerializeField] private int port = 7777;
         [SerializeField] private string ticket = "";
 
-        // Has to match what the server built, because the snapshot refuses a board of a
-        // different size rather than writing tiles into the wrong rows. Until #19 that
-        // agreement is by hand.
-        [SerializeField] private int playerCount = 4;
-        [SerializeField] private int arenaWidth = 15;
-        [SerializeField] private int arenaHeight = 13;
         [SerializeField] private GameMode mode = GameMode.Arena;
 
         private MatchState state;
@@ -80,22 +75,10 @@ namespace Blastlands.Runtime
 
         private void Start()
         {
-            ArenaSettings arenaSettings = mode == GameMode.Arena
-                ? new ArenaSettings(arenaWidth, arenaHeight, 60)
-                : ArenaSettings.Classic;
-
-            // The seed only decides the board this client draws before the first
-            // snapshot lands, and every snapshot carries every tile, so it does not have
-            // to match the server's. The size does.
-            state = MatchFactory.Create(arenaSettings, MatchSettings.For(mode), playerCount, 1u);
-
             devices = new PlayerDevices(1);
-            pacer = new TickPacer(state.Settings.TicksPerSecond, MaxCatchUpTicks);
-            trail = new PlayerTrail(state.Players.Count, TrailLength);
-            clock = new InterpolationClock(InterpolationDelayTicks, InterpolationSnapTicks);
 
             transport = gameObject.AddComponent<MatchTransport>();
-            if (!transport.StartClient(host, (ushort)port, state, ticket))
+            if (!transport.StartClient(host, (ushort)port, ticket))
             {
                 transport = null;
                 return;
@@ -115,8 +98,41 @@ namespace Blastlands.Runtime
         // before then would point the camera at player zero, so a client seated anywhere
         // else would drive one character and watch another, which does not look like a
         // camera fault on screen: it looks like a game that ignores the controller.
-        private void OnSeated(int seat)
+        private void OnSeated(SeatAssignment assignment)
         {
+            int seat = assignment.Seat;
+
+            // Built from what the server said, not from what this client would have
+            // chosen. The seed only decides the board drawn before the first snapshot
+            // lands, and every snapshot carries every tile, so it does not have to match
+            // the server's. The size and the player count do.
+            ArenaSettings arena = (mode == GameMode.Arena ? ArenaSettings.Default : ArenaSettings.Classic)
+                .Resized(assignment.Width, assignment.Height);
+
+            // The codec refuses a player count no board could seat, but a board keeps
+            // fewer spawns than it could when the island swallows one, and only
+            // generating it says so. A server asking for more players than its own board
+            // holds is a server this client cannot follow, so it says which numbers it
+            // was given and stops rather than throwing out of a message handler.
+            try
+            {
+                state = MatchFactory.Create(arena, MatchSettings.For(mode), assignment.Players, 1u);
+            }
+            catch (ArgumentOutOfRangeException error)
+            {
+                Debug.LogError(
+                    "Blastlands client: the server asked for a match this client cannot build, "
+                    + assignment.Players + " players on " + assignment.Width + "x" + assignment.Height
+                    + ". " + error.Message);
+                transport.Stop();
+                return;
+            }
+
+            pacer = new TickPacer(state.Settings.TicksPerSecond, MaxCatchUpTicks);
+            trail = new PlayerTrail(state.Players.Count, TrailLength);
+            clock = new InterpolationClock(InterpolationDelayTicks, InterpolationSnapTicks);
+            transport.Adopt(state);
+
             if (view != null)
             {
                 view.UseTheme(themes != null && themes.Length > 0 ? themes[0] : null);
@@ -153,23 +169,25 @@ namespace Blastlands.Runtime
 
         private void Update()
         {
-            if (state == null || transport == null)
+            if (transport == null)
             {
                 return;
             }
 
-            clock.Advance(Mathf.RoundToInt(Time.deltaTime * state.Settings.TicksPerSecond * InterpolationClock.UnitsPerTick));
-
-            // Drawn even before the seat lands, so a client waiting on one shows the
-            // board rather than an empty screen. A server with every seat taken
-            // disconnects the caller, and the only line explaining that is on the other
-            // machine, so a black window here is the whole of what the player is told.
+            // There is no board before the seat lands, so this draws nothing and exists
+            // for the complaint. A server with every seat taken disconnects the caller,
+            // and the only line explaining that is on the other machine, so a black
+            // window here is the whole of what the player is told.
             if (!bound)
             {
                 Render();
                 Complain();
                 return;
             }
+
+            // After the seat, because it reads the settings of a match that does not
+            // exist before one.
+            clock.Advance(Mathf.RoundToInt(Time.deltaTime * state.Settings.TicksPerSecond * InterpolationClock.UnitsPerTick));
 
             devices.PollPresses();
 

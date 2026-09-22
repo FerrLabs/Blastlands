@@ -80,6 +80,10 @@ namespace Blastlands.Core
             return spawns;
         }
 
+        // How many spawns a board can offer at most. A given board may keep fewer, when
+        // one of them lands somewhere the island does not reach.
+        public const int MostSpawns = 8;
+
         private static IEnumerable<GridPos> NominalSpawns(int width, int height)
         {
             int right = width - 2;

@@ -48,6 +48,7 @@ namespace Blastlands.Runtime
         // readonly field cannot be passed that way. Neither is ever reassigned.
         private byte[] incoming = new byte[SnapshotCodec.MaxSize];
         private byte[] inputBytes = new byte[InputCodec.Size];
+        private byte[] seatBytes = new byte[SeatCodec.Size];
 
         private NetworkManager network;
         private GameObject networkHost;
@@ -59,6 +60,7 @@ namespace Blastlands.Runtime
         private float gateClock;
         private PlayerInput[] applied;
         private MatchState clientState;
+        private MatchState served;
         private int lastSnapshotTick = -1;
         private int fallbacks;
         private bool complained;
@@ -69,7 +71,7 @@ namespace Blastlands.Runtime
         // A snapshot shorter than its own tick field cannot even be looked at.
         private const int TickFieldSize = 4;
 
-        public event Action<int> SeatTaken;
+        public event Action<SeatAssignment> SeatTaken;
         public event Action<int> SeatLost;
         public event Action<RoundOutcome, int> MatchEnded;
         public event Action<MatchState> SnapshotApplied;
@@ -122,8 +124,10 @@ namespace Blastlands.Runtime
             return manager;
         }
 
-        public bool StartServer(ushort port, int expectedPlayers, GameTicketVerifier ticketVerifier)
+        public bool StartServer(ushort port, MatchState state, GameTicketVerifier ticketVerifier)
         {
+            int expectedPlayers = state.Players.Count;
+            served = state;
             tickets = ticketVerifier;
             ticketOf.Clear();
             seats = new SeatTable(expectedPlayers);
@@ -158,9 +162,8 @@ namespace Blastlands.Runtime
             return true;
         }
 
-        public bool StartClient(string host, ushort port, MatchState state, string ticket)
+        public bool StartClient(string host, ushort port, string ticket)
         {
-            clientState = state;
             network = Build(host, port);
             network.NetworkConfig.ConnectionApproval = true;
             network.NetworkConfig.ConnectionData = Encoding.UTF8.GetBytes(ticket ?? string.Empty);
@@ -406,15 +409,24 @@ namespace Blastlands.Runtime
 
             // Reliably and once. Losing it would leave that client watching somebody
             // else for the rest of the match with nothing to say why.
-            var writer = new FastBufferWriter(sizeof(int), Unity.Collections.Allocator.Temp);
+            var assignment = new SeatAssignment(
+                seat, served.Arena.Width, served.Arena.Height, served.Players.Count);
+            if (!SeatCodec.TryWrite(seatBytes, assignment))
+            {
+                Debug.LogError("Blastlands server: refusing to announce a seat for a board it cannot describe");
+                network.DisconnectClient(connection);
+                return;
+            }
+
+            var writer = new FastBufferWriter(SeatCodec.Size, Unity.Collections.Allocator.Temp);
             using (writer)
             {
-                writer.WriteValueSafe(seat);
+                writer.WriteBytesSafe(seatBytes, SeatCodec.Size);
                 network.CustomMessagingManager.SendNamedMessage(
                     SeatMessage, connection, writer, NetworkDelivery.ReliableSequenced);
             }
 
-            SeatTaken?.Invoke(seat);
+            SeatTaken?.Invoke(assignment);
         }
 
         private void DropFlooder(int seat)
@@ -560,17 +572,36 @@ namespace Blastlands.Runtime
             }
         }
 
+        // The client has no board until this arrives, so a snapshot that overtakes it is
+        // dropped rather than applied to a board built on a guess. Seating is reliable
+        // and sent once, so the wait is bounded by the connection itself.
         private void OnSeatReceived(ulong sender, FastBufferReader payload)
         {
-            if (payload.Length - payload.Position < sizeof(int))
+            int size = payload.Length - payload.Position;
+            if (size < SeatCodec.Size)
             {
                 return;
             }
 
-            payload.ReadValueSafe(out int seat);
-            Seat = seat;
-            Debug.Log("Blastlands client: seated at " + seat);
-            SeatTaken?.Invoke(seat);
+            payload.ReadBytesSafe(ref seatBytes, SeatCodec.Size);
+            if (!SeatCodec.TryRead(seatBytes, SeatCodec.Size, out SeatAssignment assignment))
+            {
+                Debug.LogError("Blastlands client: the server sent a seat this client cannot make sense of");
+                return;
+            }
+
+            Seat = assignment.Seat;
+            Debug.Log(
+                "Blastlands client: seated at " + assignment.Seat + " on a " + assignment.Width + "x"
+                + assignment.Height + " board of " + assignment.Players + " players");
+            SeatTaken?.Invoke(assignment);
+        }
+
+        // Handed the state the client builds once it has been told what to build. Until
+        // then snapshots have nowhere to go.
+        public void Adopt(MatchState state)
+        {
+            clientState = state;
         }
 
         private void OnResultReceived(ulong sender, FastBufferReader payload)
