@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.51] - 2026-09-22
+
+### Bug Fixes
+
+- fix(netcode): tell the client the board the server built (#289)
+
 ## [26.9.50] - 2026-09-22
 
 ### Features
