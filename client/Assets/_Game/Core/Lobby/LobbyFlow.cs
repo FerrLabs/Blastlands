@@ -55,6 +55,7 @@ namespace Blastlands.Core.Lobby
             }
 
             Player = DisplayName.Clean(raw);
+            Clear();
             Move(LobbyScreen.Browse);
             return true;
         }
@@ -74,6 +75,7 @@ namespace Blastlands.Core.Lobby
         {
             Invite = invite;
             HostTicket = hostTicket ?? string.Empty;
+            Clear();
             Move(LobbyScreen.Host);
         }
 
@@ -81,6 +83,7 @@ namespace Blastlands.Core.Lobby
         {
             Invite = invite;
             HostTicket = string.Empty;
+            Clear();
             Move(LobbyScreen.Wait);
         }
 
@@ -123,14 +126,18 @@ namespace Blastlands.Core.Lobby
             // the notice, because retrying from the same screen is the sane answer.
             if (LobbyFailures.MeansTheListingWentStale(failure) && Screen != LobbyScreen.Name)
             {
+                // The invite goes with it. A match that filled up or vanished is not
+                // one to dial, and a screen that hands the invite over on its way into
+                // a match would do exactly that.
+                Forget();
                 Move(LobbyScreen.Browse);
             }
         }
 
         public void Left()
         {
-            Invite = default;
-            HostTicket = string.Empty;
+            Forget();
+            Clear();
             Move(LobbyScreen.Browse);
         }
 
@@ -156,6 +163,12 @@ namespace Blastlands.Core.Lobby
         public void Clear()
         {
             HasNotice = false;
+        }
+
+        private void Forget()
+        {
+            Invite = default;
+            HostTicket = string.Empty;
         }
 
         private void Forget(string matchId)

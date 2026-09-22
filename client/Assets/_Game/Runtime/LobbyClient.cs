@@ -308,36 +308,6 @@ namespace Blastlands.Runtime
             }
         }
 
-        private IEnumerator Send(string path, string body, Action<LobbyResult<MatchListing>> done)
-        {
-            using (UnityWebRequest request = Post(path, body))
-            {
-                yield return request.SendWebRequest();
-
-                LobbyFailure failure;
-                if (!Succeeded(request, out failure))
-                {
-                    done(LobbyResult<MatchListing>.Failed(failure));
-                    yield break;
-                }
-
-                MatchSummaryDto dto = null;
-                try
-                {
-                    dto = JsonUtility.FromJson<MatchSummaryDto>(request.downloadHandler.text);
-                }
-                catch (ArgumentException)
-                {
-                    dto = null;
-                }
-
-                done(dto == null || string.IsNullOrEmpty(dto.id)
-                    ? LobbyResult<MatchListing>.Failed(LobbyFailure.Unreadable)
-                    : LobbyResult<MatchListing>.Success(
-                        new MatchListing(dto.id, dto.name, dto.host, dto.players, dto.max_players)));
-            }
-        }
-
         private UnityWebRequest Get(string path)
         {
             UnityWebRequest request = UnityWebRequest.Get(baseUrl + path);
