@@ -4,6 +4,13 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.50] - 2026-09-22
+
+### Features
+
+- feat(camera): turn screen shake off with --no-shake (#278)
+- feat(bots): mark bot-driven players on the scoreboard (#277)
+
 ## [26.9.48] - 2026-09-22
 
 ### Bug Fixes
