@@ -17,7 +17,11 @@ namespace Blastlands.Runtime
             lobby.Use(ClientOptions.Lobby(Environment.GetCommandLineArgs()));
 
             ClientUpdater updater = host.AddComponent<ClientUpdater>();
-            host.AddComponent<VersionGate>().Use(lobby, updater);
+
+            VersionGate gate = host.AddComponent<VersionGate>();
+            gate.Use(lobby, updater);
+
+            host.AddComponent<UpdateBanner>().Use(gate, updater);
         }
 #endif
     }
