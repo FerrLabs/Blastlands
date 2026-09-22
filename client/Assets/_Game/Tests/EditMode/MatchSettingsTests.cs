@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Reflection;
 using NUnit.Framework;
 
 namespace Blastlands.Core.Tests
@@ -14,12 +16,23 @@ namespace Blastlands.Core.Tests
     {
         private static readonly MatchSettings Settings = MatchSettings.Default;
 
+        // The three the copy is asked to change. Everything else has to come through
+        // untouched, including whatever is added to MatchSettings after this is written.
+        private static readonly HashSet<string> Deliberate = new HashSet<string>
+        {
+            "Rules",
+            "TilesPerLooseBomb",
+            "SuddenDeath",
+        };
+
         [Test]
         public void APlayerIsABodyRatherThanAPoint()
         {
-            // Smaller than half a tile so two bodies pass in a corridor, and not so
-            // small that one stands in the middle of a lane touching neither wall, which
-            // is what the corner assist is there to work against.
+            // Small enough that a body fits through a one-tile gap with room to spare,
+            // which is what walking a corridor needs. Two bodies never pass each other
+            // in one: at any radius above a quarter tile they are wider than the lane,
+            // and the lower bound is what keeps a player a body rather than a dot the
+            // corner assist would have nothing to nudge.
             Assert.That(Settings.PlayerRadius, Is.LessThan(SubPos.UnitsPerTile / 2));
             Assert.That(Settings.PlayerRadius, Is.GreaterThan(SubPos.UnitsPerTile / 4));
         }
@@ -82,14 +95,22 @@ namespace Blastlands.Core.Tests
             Assert.That(Settings.SuddenDeath.Enabled, Is.True);
             Assert.That(changed.SuddenDeath.Enabled, Is.False);
 
-            Assert.That(changed.PlayerRadius, Is.EqualTo(Settings.PlayerRadius));
-            Assert.That(changed.CornerAssist, Is.EqualTo(Settings.CornerAssist));
-            Assert.That(changed.LooseBombFuseTicks, Is.EqualTo(Settings.LooseBombFuseTicks));
-            Assert.That(changed.FuseTicks, Is.EqualTo(Settings.FuseTicks));
-            Assert.That(changed.TicksPerSecond, Is.EqualTo(Settings.TicksPerSecond));
-            Assert.That(changed.BombRespawnTicks, Is.EqualTo(Settings.BombRespawnTicks));
-            Assert.That(changed.MaxFireRange, Is.EqualTo(Settings.MaxFireRange));
-            Assert.That(changed.DashSpeed, Is.EqualTo(Settings.DashSpeed));
+            // Every other property, read off the type rather than listed by hand: a
+            // column of eight covers a third of what the constructor carries, misses a
+            // field added later, and would pass a WallTelegraphTicks = from.WallRetryTicks
+            // as long as neither appeared in the column.
+            foreach (PropertyInfo property in typeof(MatchSettings).GetProperties())
+            {
+                if (Deliberate.Contains(property.Name))
+                {
+                    continue;
+                }
+
+                Assert.That(
+                    property.GetValue(changed),
+                    Is.EqualTo(property.GetValue(Settings)),
+                    property.Name + " did not survive the copy");
+            }
         }
     }
 }
