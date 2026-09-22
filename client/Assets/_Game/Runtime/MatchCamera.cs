@@ -45,7 +45,8 @@ namespace Blastlands.Runtime
 
         // Off switch. Camera shake is a common migraine and motion sickness trigger, so
         // it has to be possible to play without it rather than only to endure it. There
-        // is no settings screen to drive this yet, so for now it is the inspector.
+        // is no settings screen to drive this yet, so for now it is the inspector or
+        // --no-shake on the command line.
         [SerializeField] private bool screenShake = true;
 
         private readonly List<Camera> views = new List<Camera>();
@@ -115,6 +116,11 @@ namespace Blastlands.Runtime
             {
                 into.Add(firstSeat + i);
             }
+        }
+
+        private void Awake()
+        {
+            screenShake = screenShake && ClientOptions.ScreenShake(System.Environment.GetCommandLineArgs());
         }
 
         public void Bind(MatchState matchState, int seats)

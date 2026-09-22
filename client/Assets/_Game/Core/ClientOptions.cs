@@ -7,6 +7,21 @@ namespace Blastlands.Core
     {
         public const string DefaultLobby = "https://api.blastlands.ferrlabs.com";
 
+        public const string NoShakeFlag = "--no-shake";
+
+        public static bool ScreenShake(IReadOnlyList<string> arguments)
+        {
+            for (int i = 0; i < arguments.Count; i++)
+            {
+                if (arguments[i] == NoShakeFlag)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         public static string Lobby(IReadOnlyList<string> arguments)
         {
             for (int i = 0; i < arguments.Count - 1; i++)

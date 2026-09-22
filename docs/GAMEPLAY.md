@@ -226,6 +226,10 @@ player loses track of where the board ends.
 the view is wider than the board before it is close enough to feel like following, so the
 clamp pins it near the centre. The mode works; the arena defeats it.
 
+A blast shakes each view by how close it lands and how big it is. Shake is a common motion
+sickness trigger, so `--no-shake` on the command line turns it off until a settings screen
+can offer it.
+
 ## Movement
 
 Positions are continuous. A player is a body about 0.7 of a tile across that slides along
