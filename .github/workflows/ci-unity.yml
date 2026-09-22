@@ -180,7 +180,7 @@ jobs:
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           checkName: Unity test results
 
-      - if: env.RUN == 'true' && runner.environment == 'self-hosted'
+      - if: env.RUN == 'true' && runner.environment == 'self-hosted' && github.ref == 'refs/heads/main'
         continue-on-error: true
         uses: ./.github/actions/library-cache
         with:
