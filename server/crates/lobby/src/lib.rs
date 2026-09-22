@@ -9,4 +9,5 @@ pub mod ports;
 pub mod release;
 pub mod routes;
 pub mod throttle;
+pub mod tickets;
 pub mod version;

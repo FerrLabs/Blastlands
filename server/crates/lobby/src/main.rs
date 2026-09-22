@@ -10,6 +10,7 @@ use blastlands_lobby::ports::PortPool;
 use blastlands_lobby::release::Releases;
 use blastlands_lobby::routes::{app, AppState, ClientAddress};
 use blastlands_lobby::throttle::RateLimiter;
+use blastlands_lobby::tickets::{TicketSigner, CONNECT_GRACE};
 use tokio::net::TcpListener;
 use tokio::signal;
 use tracing_subscriber::EnvFilter;
@@ -42,6 +43,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let state = AppState {
         directory: Arc::clone(&directory),
         instance_token: Arc::from(config.instance_token.as_str()),
+        tickets: Arc::new(TicketSigner::new(
+            config.tickets.key.clone(),
+            limits.waiting_ttl + CONNECT_GRACE,
+        )),
         release: Arc::clone(&releases),
         downloads: Arc::new(DownloadLinks::new(Arc::clone(&github), LINK_LIFETIME)),
         creates: Arc::clone(&creates),
@@ -97,6 +102,7 @@ async fn sweep(
     let lifetimes = Lifetimes {
         unjoined: limits.unjoined_ttl,
         silent: limits.silent_ttl,
+        waiting: limits.waiting_ttl,
     };
 
     let mut ticker = tokio::time::interval(limits.sweep_every);
@@ -111,6 +117,10 @@ async fn sweep(
                 ReapReason::InstanceWentSilent => tracing::warn!(
                     port = reaped.port,
                     "instance stopped heartbeating, match reaped and port released"
+                ),
+                ReapReason::NeverStarted => tracing::info!(
+                    port = reaped.port,
+                    "match was never started before its deadline, port released"
                 ),
                 ReapReason::NobodyJoined => tracing::info!(
                     port = reaped.port,

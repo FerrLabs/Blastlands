@@ -1,6 +1,6 @@
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use axum::extract::{ConnectInfo, Path, State};
 use axum::http::{HeaderMap, StatusCode};
@@ -13,10 +13,11 @@ use tower_http::trace::TraceLayer;
 use crate::auth::require_instance_token;
 use crate::download::DownloadLinks;
 use crate::error::LobbyError;
-use crate::matches::{CreateMatch, GameServerEndpoint, JoinTicket, Match, MatchDirectory, MatchId};
+use crate::matches::{CreateMatch, GameServerEndpoint, HostTicket, Match, MatchDirectory, MatchId};
 use crate::names::DisplayName;
 use crate::release::{ReleaseInfo, Releases};
 use crate::throttle::RateLimiter;
+use crate::tickets::{GameTicket, TicketSigner};
 use crate::version::ClientVersion;
 
 /// How the address a request came from is decided.
@@ -47,6 +48,7 @@ pub enum ClientAddress {
 pub struct AppState {
     pub directory: Arc<MatchDirectory>,
     pub instance_token: Arc<str>,
+    pub tickets: Arc<TicketSigner>,
     pub release: Arc<Releases>,
     pub downloads: Arc<DownloadLinks>,
     pub creates: Arc<RateLimiter>,
@@ -134,7 +136,7 @@ impl From<&Match> for MatchSummary {
 /// without it anybody could start anybody else's.
 #[derive(Debug, Deserialize)]
 pub struct StartRequest {
-    pub ticket: JoinTicket,
+    pub ticket: HostTicket,
 }
 
 #[derive(Debug, Serialize)]
@@ -142,13 +144,14 @@ pub struct MatchCreated {
     #[serde(flatten)]
     pub summary: MatchSummary,
     pub endpoint: GameServerEndpoint,
-    pub ticket: JoinTicket,
+    pub ticket: HostTicket,
+    pub game_ticket: GameTicket,
 }
 
 #[derive(Debug, Serialize)]
 pub struct JoinAccepted {
     pub endpoint: GameServerEndpoint,
-    pub ticket: JoinTicket,
+    pub ticket: GameTicket,
 }
 
 pub fn app(state: AppState) -> Router {
@@ -236,6 +239,7 @@ async fn create_match(
 
     let created = MatchCreated {
         summary: MatchSummary::from(&entry),
+        game_ticket: state.tickets.issue(entry.id, &entry.host, since_epoch()),
         endpoint: entry.endpoint,
         ticket,
     };
@@ -256,12 +260,19 @@ async fn join_match(
         return Err(LobbyError::RateLimited);
     }
 
-    let admitted = state.directory.join(id, request.player)?;
+    let admitted = state.directory.join(id, request.player.clone())?;
+    let ticket = state.tickets.issue(id, &request.player, since_epoch());
 
     Ok(Json(JoinAccepted {
         endpoint: admitted.endpoint,
-        ticket: admitted.ticket,
+        ticket,
     }))
+}
+
+fn since_epoch() -> Duration {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or(Duration::ZERO)
 }
 
 async fn start_match(
@@ -328,6 +339,12 @@ mod tests {
     use crate::release::VERSION_HEADER;
 
     const TOKEN: &str = "instance-token";
+
+    fn signer() -> TicketSigner {
+        let key = crate::tickets::TicketKey::new(b"route-tests-ticket-key-0123456789".to_vec())
+            .expect("long enough");
+        TicketSigner::new(key, Duration::from_secs(300))
+    }
     const CURRENT: &str = "26.9.0";
 
     fn unpublished() -> Arc<Releases> {
@@ -359,6 +376,7 @@ mod tests {
                 PortPool::new(7000..=7001),
             )),
             instance_token: Arc::from(TOKEN),
+            tickets: Arc::new(signer()),
             release,
             downloads: downloads(),
             // Limits off by default in these tests: they are about routing and payloads,
@@ -381,6 +399,7 @@ mod tests {
                 PortPool::new(7000..=7010),
             )),
             instance_token: Arc::from(TOKEN),
+            tickets: Arc::new(signer()),
             release: release(),
             downloads: downloads(),
             creates: Arc::new(RateLimiter::new(creates, Duration::from_secs(60))),
@@ -411,6 +430,7 @@ mod tests {
                 PortPool::new(7000..=7010),
             )),
             instance_token: Arc::from(TOKEN),
+            tickets: Arc::new(signer()),
             release: release(),
             downloads: downloads(),
             creates: Arc::new(RateLimiter::new(creates, Duration::from_secs(60))),
@@ -589,6 +609,41 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
         assert_eq!(body_json(response).await["code"], "invalid_version");
+    }
+
+    #[tokio::test]
+    async fn joining_hands_back_a_game_ticket_for_that_match_and_player() {
+        let router = router();
+        let created = create_match_on(&router, "Friday night").await;
+        let id = created["id"].as_str().unwrap().to_owned();
+
+        let response = router
+            .clone()
+            .oneshot(post_json(
+                &format!("/v1/matches/{id}/join"),
+                json!({ "player": "Alex" }),
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let ticket = body_json(response).await["ticket"]
+            .as_str()
+            .expect("a ticket")
+            .to_owned();
+        let fields: Vec<&str> = ticket.split('.').collect();
+        assert_eq!(fields.len(), 6);
+        assert_eq!(fields[1], id);
+        assert_eq!(fields[2], "416c6578");
+    }
+
+    #[tokio::test]
+    async fn the_host_gets_a_game_ticket_apart_from_the_key_that_starts_the_match() {
+        let created = create_match_on(&router(), "Friday night").await;
+
+        let game_ticket = created["game_ticket"].as_str().expect("a game ticket");
+        assert!(game_ticket.starts_with(&format!("v1.{}.", created["id"].as_str().unwrap())));
+        assert_ne!(created["ticket"], created["game_ticket"]);
     }
 
     #[tokio::test]

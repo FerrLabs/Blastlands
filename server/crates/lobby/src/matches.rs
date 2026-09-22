@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt;
 use std::net::IpAddr;
 use std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::time::{Duration, Instant};
@@ -17,9 +18,15 @@ pub const MAX_PLAYERS: u8 = 8;
 #[serde(transparent)]
 pub struct MatchId(Uuid);
 
+impl fmt::Display for MatchId {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(formatter)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
-pub struct JoinTicket(Uuid);
+pub struct HostTicket(Uuid);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -51,7 +58,7 @@ pub struct Match {
     pub last_seen: Instant,
     /// The ticket handed to whoever created this match, kept so that starting it can be
     /// proved to come from them. Never serialised: `MatchSummary` is what leaves here.
-    pub host_ticket: JoinTicket,
+    pub host_ticket: HostTicket,
 }
 
 impl Match {
@@ -76,12 +83,14 @@ pub struct Lifetimes {
     pub unjoined: Duration,
     /// How long a running match may go without a heartbeat before it is assumed dead.
     pub silent: Duration,
+    pub waiting: Duration,
 }
 
 /// Why a match was taken away, so the log says something useful rather than "removed".
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReapReason {
     NobodyJoined,
+    NeverStarted,
     InstanceWentSilent,
 }
 
@@ -102,7 +111,6 @@ pub struct Assignment {
 #[derive(Debug)]
 pub struct Admitted {
     pub endpoint: GameServerEndpoint,
-    pub ticket: JoinTicket,
 }
 
 struct DirectoryState {
@@ -131,7 +139,7 @@ impl MatchDirectory {
         request: CreateMatch,
         now: Instant,
         max_per_address: usize,
-    ) -> Result<(Match, JoinTicket), LobbyError> {
+    ) -> Result<(Match, HostTicket), LobbyError> {
         if !(MIN_PLAYERS..=MAX_PLAYERS).contains(&request.max_players) {
             return Err(LobbyError::InvalidPlayerCount {
                 min: MIN_PLAYERS,
@@ -163,7 +171,7 @@ impl MatchDirectory {
         // Generated once and kept, rather than minted fresh on the way out. The copy the
         // host is handed is the only thing that can start this match later, so the lobby
         // has to remember which one it gave away.
-        let host_ticket = JoinTicket(Uuid::new_v4());
+        let host_ticket = HostTicket(Uuid::new_v4());
 
         let entry = Match {
             id: MatchId(Uuid::new_v4()),
@@ -219,7 +227,6 @@ impl MatchDirectory {
 
         Ok(Admitted {
             endpoint: entry.endpoint.clone(),
-            ticket: JoinTicket(Uuid::new_v4()),
         })
     }
 
@@ -229,7 +236,7 @@ impl MatchDirectory {
     /// a stranger could walk that list and start every open match in it, which takes each
     /// one out of the listing and refuses everybody still trying to join, one unauthorised
     /// request per match.
-    pub fn start(&self, id: MatchId, ticket: JoinTicket, now: Instant) -> Result<(), LobbyError> {
+    pub fn start(&self, id: MatchId, ticket: HostTicket, now: Instant) -> Result<(), LobbyError> {
         let mut state = self.write();
         let entry = state
             .matches
@@ -316,9 +323,10 @@ impl MatchDirectory {
                     }
                 }
                 MatchState::WaitingForPlayers => {
-                    if entry.players.len() <= 1
-                        && now.duration_since(entry.created_at) > lifetimes.unjoined
-                    {
+                    let waited = now.duration_since(entry.created_at);
+                    if waited > lifetimes.waiting {
+                        Some(ReapReason::NeverStarted)
+                    } else if entry.players.len() <= 1 && waited > lifetimes.unjoined {
                         Some(ReapReason::NobodyJoined)
                     } else {
                         None
@@ -501,17 +509,6 @@ mod tests {
     }
 
     #[test]
-    fn each_join_gets_a_distinct_ticket() {
-        let directory = directory();
-        let entry = create(&directory, 4);
-
-        let first = directory.join(entry.id, name("Alex")).unwrap().ticket;
-        let second = directory.join(entry.id, name("Sam")).unwrap().ticket;
-
-        assert_ne!(first, second);
-    }
-
-    #[test]
     fn a_full_match_rejects_further_players_and_leaves_the_lobby_list() {
         let directory = directory();
         let entry = create(&directory, 2);
@@ -643,20 +640,21 @@ mod tests {
         Lifetimes {
             unjoined: Duration::from_secs(300),
             silent: Duration::from_secs(30),
+            waiting: Duration::from_secs(900),
         }
     }
 
     // A ticket that belongs to nobody, for the cases where the call is expected to be
     // refused before the ticket is ever looked at.
-    fn stranger_ticket() -> JoinTicket {
-        JoinTicket(Uuid::new_v4())
+    fn stranger_ticket() -> HostTicket {
+        HostTicket(Uuid::new_v4())
     }
 
     fn make(directory: &MatchDirectory, address: IpAddr, now: Instant) -> MatchId {
         made(directory, address, now).0
     }
 
-    fn made(directory: &MatchDirectory, address: IpAddr, now: Instant) -> (MatchId, JoinTicket) {
+    fn made(directory: &MatchDirectory, address: IpAddr, now: Instant) -> (MatchId, HostTicket) {
         let (entry, ticket) = directory
             .create(
                 CreateMatch {
@@ -716,8 +714,46 @@ mod tests {
             .join(id, name("Sam"))
             .expect("join should succeed");
 
-        let long_after = start + Duration::from_secs(3_600);
+        let long_after = start + Duration::from_secs(899);
         assert!(directory.reap(long_after, lifetimes()).is_empty());
+    }
+
+    #[test]
+    fn a_match_never_started_is_reaped_at_its_deadline_even_with_players_in_it() {
+        let directory = MatchDirectory::new("game.test".to_owned(), PortPool::new(7000..=7000));
+        let start = Instant::now();
+        let id = make(&directory, caller(1), start);
+        directory
+            .join(id, name("Sam"))
+            .expect("join should succeed");
+
+        assert!(directory
+            .reap(start + Duration::from_secs(900), lifetimes())
+            .is_empty());
+
+        let reaped = directory.reap(start + Duration::from_secs(901), lifetimes());
+
+        assert_eq!(reaped.len(), 1);
+        assert_eq!(reaped[0].reason, ReapReason::NeverStarted);
+        make(&directory, caller(2), start + Duration::from_secs(902));
+    }
+
+    #[test]
+    fn a_started_match_is_not_held_to_the_waiting_deadline() {
+        let directory = MatchDirectory::new("game.test".to_owned(), PortPool::new(7000..=7000));
+        let start = Instant::now();
+        let (id, ticket) = made(&directory, caller(1), start);
+        seat_a_guest(&directory, id);
+        directory
+            .start(id, ticket, start + Duration::from_secs(890))
+            .expect("start should succeed");
+        directory
+            .heartbeat(id, start + Duration::from_secs(1_000))
+            .expect("heartbeat should succeed");
+
+        assert!(directory
+            .reap(start + Duration::from_secs(1_001), lifetimes())
+            .is_empty());
     }
 
     #[test]

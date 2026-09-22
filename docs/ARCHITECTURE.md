@@ -30,6 +30,27 @@ Responsibilities:
 - `POST /v1/matches/{id}/join` — reserve a slot, return the endpoint and a join ticket.
 - Reap matches whose game server stopped heartbeating.
 
+### Join tickets
+
+The lobby signs a game ticket for every player it admits: the host gets one in
+`game_ticket` when creating the match, a joining player gets one in `ticket`. The `ticket`
+returned by create is something else, the host's key for `POST /v1/matches/{id}/start`.
+
+A game ticket is six dot-separated fields:
+
+```
+v1.<match id>.<player name, hex of its UTF-8>.<expiry, unix seconds>.<nonce>.<HMAC-SHA256, hex>
+```
+
+The HMAC covers the first five fields and uses `BLASTLANDS_TICKET_SECRET` (at least 32
+bytes), which the lobby and every game server instance share.
+
+A ticket is issued when its holder joins but spent when the match starts, so its lifetime
+is tied to the match rather than to the player: a match that has not started within
+`BLASTLANDS_LOBBY_WAITING_TTL_SECONDS` (900 by default) is reaped whoever is in it, and a
+ticket lives that long plus two minutes to connect. Any ticket for a match that can still
+start is therefore still valid when it does.
+
 Match state is in-memory for now. It is intentionally not in Postgres: a match's lifetime
 is minutes, nothing about it is worth surviving a restart, and a restart during a match
 only costs the lobby listing — running matches keep running because clients already hold
