@@ -28,6 +28,8 @@ Responsibilities:
 - `GET /v1/matches` — public list of matches accepting players.
 - `POST /v1/matches` — create a match, allocate a game server instance, return its endpoint.
 - `POST /v1/matches/{id}/join` — reserve a slot, return the endpoint and a join ticket.
+- `GET /v1/matches/{id}` — one match and whether it has started, which is how a player
+  who joined learns the host pressed start: a started match leaves the listing.
 - Reap matches whose game server stopped heartbeating.
 
 ### Join tickets

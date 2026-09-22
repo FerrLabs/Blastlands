@@ -196,6 +196,10 @@ impl MatchDirectory {
         Ok((entry, host_ticket))
     }
 
+    pub fn get(&self, id: MatchId) -> Option<Match> {
+        self.read().matches.get(&id).cloned()
+    }
+
     pub fn open_matches(&self) -> Vec<Match> {
         let mut open: Vec<Match> = self
             .read()

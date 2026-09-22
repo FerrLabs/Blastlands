@@ -13,7 +13,9 @@ use tower_http::trace::TraceLayer;
 use crate::auth::require_instance_token;
 use crate::download::DownloadLinks;
 use crate::error::LobbyError;
-use crate::matches::{CreateMatch, GameServerEndpoint, HostTicket, Match, MatchDirectory, MatchId};
+use crate::matches::{
+    CreateMatch, GameServerEndpoint, HostTicket, Match, MatchDirectory, MatchId, MatchState,
+};
 use crate::names::DisplayName;
 use crate::release::{ReleaseInfo, Releases};
 use crate::throttle::RateLimiter;
@@ -120,6 +122,13 @@ pub struct MatchSummary {
     pub max_players: u8,
 }
 
+#[derive(Debug, Serialize)]
+pub struct MatchStatus {
+    #[serde(flatten)]
+    pub summary: MatchSummary,
+    pub state: MatchState,
+}
+
 impl From<&Match> for MatchSummary {
     fn from(entry: &Match) -> Self {
         Self {
@@ -160,6 +169,7 @@ pub fn app(state: AppState) -> Router {
         .route("/v1/version", get(version))
         .route("/v1/client/{version}/download", get(download_client))
         .route("/v1/matches", get(list_matches).post(create_match))
+        .route("/v1/matches/{id}", get(match_status))
         .route("/v1/matches/{id}/join", post(join_match))
         .route("/v1/matches/{id}/start", post(start_match))
         .route("/internal/instances/{port}", get(instance_assignment))
@@ -199,6 +209,18 @@ async fn download_client(
         })?;
 
     Ok(Redirect::temporary(&location))
+}
+
+async fn match_status(
+    State(state): State<AppState>,
+    Path(id): Path<MatchId>,
+) -> Result<Json<MatchStatus>, LobbyError> {
+    let entry = state.directory.get(id).ok_or(LobbyError::MatchNotFound)?;
+
+    Ok(Json(MatchStatus {
+        summary: MatchSummary::from(&entry),
+        state: entry.state,
+    }))
 }
 
 async fn list_matches(State(state): State<AppState>) -> Json<Vec<MatchSummary>> {
@@ -804,6 +826,70 @@ mod tests {
             .unwrap();
 
         assert_eq!(joined.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn a_waiting_match_reports_who_is_in_it_and_that_it_has_not_started() {
+        let router = router();
+        let created = create_match_on(&router, "Friday night").await;
+        let id = created["id"].as_str().expect("an id").to_owned();
+        join_match_on(&router, &id, "Alex").await;
+
+        let response = router
+            .clone()
+            .oneshot(get_request(&format!("/v1/matches/{id}")))
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = body_json(response).await;
+        assert_eq!(body["state"], "waiting_for_players");
+        assert_eq!(body["players"], 2);
+        assert_eq!(body["max_players"], 4);
+        assert!(
+            body.get("ticket").is_none(),
+            "the host's key must not leak to whoever polls"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_started_match_says_so_even_though_it_left_the_listing() {
+        let router = router();
+        let created = create_match_on(&router, "Friday night").await;
+        let id = created["id"].as_str().expect("an id").to_owned();
+        let ticket = created["ticket"].as_str().expect("a ticket").to_owned();
+        join_match_on(&router, &id, "Alex").await;
+
+        let started = router
+            .clone()
+            .oneshot(post_json(
+                &format!("/v1/matches/{id}/start"),
+                json!({ "ticket": ticket }),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(started.status(), StatusCode::NO_CONTENT);
+
+        let response = router
+            .clone()
+            .oneshot(get_request(&format!("/v1/matches/{id}")))
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(body_json(response).await["state"], "in_progress");
+    }
+
+    #[tokio::test]
+    async fn an_unknown_match_has_no_status() {
+        let response = router()
+            .oneshot(get_request(
+                "/v1/matches/0b7f3f5a-1c2d-4e5f-8a9b-0c1d2e3f4a5b",
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
     }
 
     #[tokio::test]
