@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.40] - 2026-09-22
+
+### Features
+
+- feat(server): let a bot play any seat whose player is not connected (#264)
+
 ## [26.9.38] - 2026-09-22
 
 ### Features
