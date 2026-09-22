@@ -134,6 +134,7 @@ namespace Blastlands.Runtime
             for (int i = humans; i < bots.Length; i++)
             {
                 bots[i] = new BotBrain(i, BotSkills.SettingsFor(botSkill));
+                state.Players[i].IsBot = true;
             }
 
             Debug.Log("Blastlands controls: " + devices.DescribeAssignment()

@@ -61,6 +61,29 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
+        public void WhoIsABotSurvivesTheRoundTripBothWays()
+        {
+            var buffer = new byte[SnapshotCodec.MaxSize];
+            MatchState server = Played(7u, 40);
+            MatchState client = Blank(7u);
+            server.Players[1].IsBot = true;
+            server.Players[3].IsBot = true;
+
+            Assert.That(SnapshotCodec.TryApply(buffer, SnapshotCodec.Write(server, buffer), client), Is.True);
+
+            Assert.That(client.Players[0].IsBot, Is.False);
+            Assert.That(client.Players[1].IsBot, Is.True);
+            Assert.That(client.Players[2].IsBot, Is.False);
+            Assert.That(client.Players[3].IsBot, Is.True);
+
+            server.Players[1].IsBot = false;
+            Assert.That(SnapshotCodec.TryApply(buffer, SnapshotCodec.Write(server, buffer), client), Is.True);
+
+            Assert.That(client.Players[1].IsBot, Is.False, "a player who reconnected still reads as a bot");
+            Assert.That(client.Players[3].IsBot, Is.True);
+        }
+
+        [Test]
         public void ATruncatedSnapshotIsRefusedAtEveryLength()
         {
             // Every cut, not one: a reader that checks its bounds in most places and not
@@ -272,6 +295,7 @@ namespace Blastlands.Core.Tests
 
                 Assert.That(got.Position, Is.EqualTo(sent.Position), $"player {i} position, depth {depth}");
                 Assert.That(got.Alive, Is.EqualTo(sent.Alive), $"player {i} alive, depth {depth}");
+                Assert.That(got.IsBot, Is.EqualTo(sent.IsBot), $"player {i} bot, depth {depth}");
                 Assert.That(got.BombsHeld, Is.EqualTo(sent.BombsHeld), $"player {i} bombs, depth {depth}");
                 Assert.That(got.CarryCapacity, Is.EqualTo(sent.CarryCapacity), $"player {i} capacity, depth {depth}");
                 Assert.That(got.FireRange, Is.EqualTo(sent.FireRange), $"player {i} range, depth {depth}");

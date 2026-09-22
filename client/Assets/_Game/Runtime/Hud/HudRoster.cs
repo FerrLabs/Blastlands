@@ -19,6 +19,7 @@ namespace Blastlands.Runtime
             public TMP_Text[] Values;
             public GameObject Skull;
             public TMP_Text Number;
+            public TMP_Text Name;
             public List<Image> Wins;
         }
 
@@ -50,6 +51,8 @@ namespace Blastlands.Runtime
                     HudPlacement.Write(row.Values[2], (player.SpeedSteps + 1).ToString());
                 }
 
+                HudPlacement.Write(row.Name, NameFor(player));
+
                 if (row.Skull != null)
                 {
                     row.Skull.SetActive(!player.Alive);
@@ -65,6 +68,11 @@ namespace Blastlands.Runtime
 
                 RenderWins(row, series);
             }
+        }
+
+        private static string NameFor(PlayerState player)
+        {
+            return (player.IsBot ? "BOT " : "PLAYER ") + (player.Id + 1);
         }
 
         private static void RenderWins(Row row, MatchSeries series)
@@ -115,7 +123,13 @@ namespace Blastlands.Runtime
                 name.alignment = TextAlignmentOptions.Left;
             }
 
-            var row = new Row { PlayerIndex = playerIndex, Group = root.GetComponent<CanvasGroup>(), Number = number };
+            var row = new Row
+            {
+                PlayerIndex = playerIndex,
+                Group = root.GetComponent<CanvasGroup>(),
+                Number = number,
+                Name = name
+            };
 
             if (withStats)
             {

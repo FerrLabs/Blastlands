@@ -201,6 +201,7 @@ namespace Blastlands.Core.Net
                 writer.Int32(player.Position.X);
                 writer.Int32(player.Position.Y);
                 writer.Bool(player.Alive);
+                writer.Bool(player.IsBot);
                 writer.Int16(player.BombsHeld);
                 writer.Int16(player.CarryCapacity);
                 writer.Int16(player.FireRange);
@@ -232,6 +233,7 @@ namespace Blastlands.Core.Net
                 {
                     Position = new SubPos(reader.Int32(), reader.Int32()),
                     Alive = reader.Bool(),
+                    IsBot = reader.Bool(),
                     BombsHeld = reader.Int16(),
                     CarryCapacity = reader.Int16(),
                     FireRange = reader.Int16(),
@@ -538,6 +540,7 @@ namespace Blastlands.Core.Net
         {
             public SubPos Position;
             public bool Alive;
+            public bool IsBot;
             public int BombsHeld;
             public int CarryCapacity;
             public int FireRange;
@@ -565,6 +568,7 @@ namespace Blastlands.Core.Net
             {
                 player.Position = Position;
                 player.Alive = Alive;
+                player.IsBot = IsBot;
                 player.BombsHeld = BombsHeld;
                 player.CarryCapacity = CarryCapacity;
                 player.FireRange = FireRange;

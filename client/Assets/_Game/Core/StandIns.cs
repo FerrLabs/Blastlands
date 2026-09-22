@@ -18,7 +18,9 @@ namespace Blastlands.Core
             int seats = Math.Min(Math.Min(inputs.Length, bots.Length), state.Players.Count);
             for (int seat = 0; seat < seats; seat++)
             {
-                if (seated(seat) || !state.Players[seat].Alive)
+                PlayerState player = state.Players[seat];
+                player.IsBot = !seated(seat);
+                if (!player.IsBot || !player.Alive)
                 {
                     continue;
                 }

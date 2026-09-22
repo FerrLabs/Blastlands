@@ -21,6 +21,8 @@ namespace Blastlands.Core
 
         public bool Alive { get; set; }
 
+        public bool IsBot { get; set; }
+
         // Spent on placement and never returned. Running out is the normal state of
         // affairs, not an edge case: it is what sends a player back into the open.
         public int BombsHeld { get; set; }

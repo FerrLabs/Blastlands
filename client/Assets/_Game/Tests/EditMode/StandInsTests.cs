@@ -84,6 +84,42 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
+        public void OnlyTheSeatsItPlaysAreMarkedAsBots()
+        {
+            MatchState state = TwoPlayers();
+            var standIns = new StandIns(2, BotSettings.Normal);
+
+            standIns.Fill(state, Idle(), seat => seat == 0);
+
+            Assert.That(state.Players[0].IsBot, Is.False);
+            Assert.That(state.Players[1].IsBot, Is.True);
+        }
+
+        [Test]
+        public void AReconnectedPlayerIsNoLongerMarkedAsABot()
+        {
+            MatchState state = TwoPlayers();
+            var standIns = new StandIns(2, BotSettings.Normal);
+
+            standIns.Fill(state, Idle(), seat => seat == 0);
+            standIns.Fill(state, Idle(), seat => true);
+
+            Assert.That(state.Players[1].IsBot, Is.False);
+        }
+
+        [Test]
+        public void ADeadPlayerWhoLeftStillReadsAsABot()
+        {
+            MatchState state = TwoPlayers();
+            state.Players[1].Alive = false;
+            var standIns = new StandIns(2, BotSettings.Normal);
+
+            standIns.Fill(state, Idle(), seat => seat == 0);
+
+            Assert.That(state.Players[1].IsBot, Is.True);
+        }
+
+        [Test]
         public void ADeadPlayerIsNotDriven()
         {
             MatchState state = TwoPlayers();
