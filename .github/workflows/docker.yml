@@ -47,5 +47,10 @@ jobs:
       context: server
       dockerfile: Dockerfile
       extra-tags: ghcr.io/ferrlabs/blastlands/lobby:sha-${{ github.sha }}
-      runner: ferrlabs-k8s
+      # No `runner:`. Pinning `ferrlabs-k8s` was right while this repository was
+      # private; on a public one the job stays queued for ever, because the ARC scale
+      # sets do not serve public repositories. Left empty, the reusable workflow takes
+      # the FerrLabs pool on a private FerrLabs repository and `ubuntu-latest` anywhere
+      # else, which is what `github.event.repository.private` already decides in every
+      # other job here.
     secrets: inherit
