@@ -125,5 +125,41 @@ namespace Blastlands.Core.Tests
             Assert.That(table.Full, Is.True);
             Assert.That(table.Claim(1), Is.EqualTo(SeatTable.NoSeat));
         }
+        [Test]
+        public void APlayerWhoReconnectsGetsTheirOwnSeatBack()
+        {
+            var table = new SeatTable(3);
+            table.Claim(100, "ticket-a");
+            table.Claim(200, "ticket-b");
+            table.Claim(300, "ticket-c");
+
+            table.Release(100);
+            table.Release(300);
+
+            Assert.That(table.Claim(301, "ticket-c"), Is.EqualTo(2), "took seat 0, somebody else's character");
+            Assert.That(table.Claim(101, "ticket-a"), Is.EqualTo(0));
+        }
+
+        [Test]
+        public void ANewcomerLeavesADroppedPlayersSeatAlone()
+        {
+            var table = new SeatTable(3);
+            table.Claim(100, "ticket-a");
+            table.Release(100);
+
+            Assert.That(table.Claim(200, "ticket-b"), Is.EqualTo(1));
+            Assert.That(table.Claim(101, "ticket-a"), Is.EqualTo(0));
+        }
+
+        [Test]
+        public void WhenOnlyADroppedPlayersSeatIsLeftANewcomerStillGetsIt()
+        {
+            var table = new SeatTable(2);
+            table.Claim(100, "ticket-a");
+            table.Claim(200, "ticket-b");
+            table.Release(100);
+
+            Assert.That(table.Claim(300, "ticket-c"), Is.EqualTo(0));
+        }
     }
 }

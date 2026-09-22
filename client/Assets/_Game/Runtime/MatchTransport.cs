@@ -392,7 +392,7 @@ namespace Blastlands.Runtime
                 return;
             }
 
-            int seat = seats.Claim(connection);
+            int seat = seats.Claim(connection, ticketOf.TryGetValue(connection, out string holder) ? holder : null);
             if (seat == SeatTable.NoSeat)
             {
                 Debug.Log("Blastlands server: turning away a connection, every seat is taken");

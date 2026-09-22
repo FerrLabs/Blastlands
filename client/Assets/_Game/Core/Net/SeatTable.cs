@@ -9,10 +9,10 @@ namespace Blastlands.Core.Net
     // driving one character, and a seat handed to a connection that already had one is a
     // player who loses theirs by reconnecting.
     //
-    // Seats are the simulation's player indices, so seat 0 is state.Players[0]. The
-    // lowest free one is taken rather than the next one along, so a match that lost a
-    // player and gained another does not leave a hole in the middle with everybody
-    // shuffled up.
+    // Seats are the simulation's player indices, so seat 0 is state.Players[0]. A
+    // player reconnecting with the ticket they held gets that seat back; otherwise a
+    // seat nobody has held is preferred, then the lowest free one, so a match that lost
+    // a player does not leave a hole in the middle with everybody shuffled up.
     public sealed class SeatTable
     {
         public const int NoSeat = -1;
@@ -20,6 +20,7 @@ namespace Blastlands.Core.Net
         private readonly Dictionary<ulong, int> byConnection = new Dictionary<ulong, int>();
         private readonly ulong[] occupants;
         private readonly bool[] taken;
+        private readonly string[] holders;
 
         public SeatTable(int seats)
         {
@@ -30,6 +31,7 @@ namespace Blastlands.Core.Net
 
             occupants = new ulong[seats];
             taken = new bool[seats];
+            holders = new string[seats];
         }
 
         public int Seats
@@ -52,22 +54,60 @@ namespace Blastlands.Core.Net
         // it would strand the first as occupied for ever.
         public int Claim(ulong connection)
         {
+            return Claim(connection, null);
+        }
+
+        public int Claim(ulong connection, string holder)
+        {
             if (byConnection.TryGetValue(connection, out int already))
             {
                 return already;
             }
 
+            int seat = holder == null ? NoSeat : FreeSeatHeldBy(holder);
+            if (seat == NoSeat)
+            {
+                seat = FreeSeatHeldBy(null);
+            }
+
+            if (seat == NoSeat)
+            {
+                seat = FreeSeat();
+            }
+
+            if (seat == NoSeat)
+            {
+                return NoSeat;
+            }
+
+            taken[seat] = true;
+            occupants[seat] = connection;
+            holders[seat] = holder;
+            byConnection[connection] = seat;
+            return seat;
+        }
+
+        private int FreeSeatHeldBy(string holder)
+        {
             for (int seat = 0; seat < taken.Length; seat++)
             {
-                if (taken[seat])
+                if (!taken[seat] && holders[seat] == holder)
                 {
-                    continue;
+                    return seat;
                 }
+            }
 
-                taken[seat] = true;
-                occupants[seat] = connection;
-                byConnection[connection] = seat;
-                return seat;
+            return NoSeat;
+        }
+
+        private int FreeSeat()
+        {
+            for (int seat = 0; seat < taken.Length; seat++)
+            {
+                if (!taken[seat])
+                {
+                    return seat;
+                }
             }
 
             return NoSeat;
