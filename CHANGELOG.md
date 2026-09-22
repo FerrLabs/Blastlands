@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.63] - 2026-09-22
+
+### Features
+
+- feat(lobby): draw the lobby screens and hand the match over (#19)
+
 ## [26.9.62] - 2026-09-22
 
 ### Bug Fixes
