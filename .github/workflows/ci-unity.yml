@@ -202,10 +202,12 @@ jobs:
             bash .github/scripts/compile-server.sh client
 
       - if: always() && env.RUN == 'true'
+        continue-on-error: true
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: unity-test-results
           path: ${{ steps.tests.outputs.artifactsPath }}
+          retention-days: 7
 
       - if: env.RUN != 'true'
         name: Say why nothing ran
