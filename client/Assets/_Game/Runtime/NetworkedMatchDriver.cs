@@ -165,6 +165,11 @@ namespace Blastlands.Runtime
                 transport.SeatTaken -= OnSeated;
                 transport.SnapshotApplied -= OnSnapshot;
             }
+
+            if (devices != null)
+            {
+                devices.Dispose();
+            }
         }
 
         private void Update()

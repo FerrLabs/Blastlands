@@ -94,6 +94,14 @@ namespace Blastlands.Runtime
             StartMatch();
         }
 
+        private void OnDestroy()
+        {
+            if (devices != null)
+            {
+                devices.Dispose();
+            }
+        }
+
         // Choosing the seed is not part of the simulation, so system randomness is
         // fine here. Everything downstream of it stays deterministic, which is what
         // lets a match be replayed or shared between clients from this one number.
@@ -124,6 +132,12 @@ namespace Blastlands.Runtime
             roundRecorded = false;
             Debug.Log("Blastlands " + mode + " seed " + activeSeed);
             inputs = new PlayerInput[state.Players.Count];
+            if (devices != null)
+            {
+                devices.Dispose();
+                devices = null;
+            }
+
             devices = new PlayerDevices(state.Players.Count);
             pacer = new TickPacer(state.Settings.TicksPerSecond, MaxCatchUpTicks);
 

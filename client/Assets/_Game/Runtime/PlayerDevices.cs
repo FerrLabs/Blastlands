@@ -1,95 +1,70 @@
+using System;
+using System.Collections.Generic;
 using System.Text;
-using Blastlands.Core;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.DualShock;
+using UnityEngine.InputSystem.Utilities;
+using Object = UnityEngine.Object;
 using PlayerInput = Blastlands.Core.PlayerInput;
 
 namespace Blastlands.Runtime
 {
-    // Maps physical devices onto players. Gamepad i drives player i; the keyboard
-    // also drives player 0, so a solo player can use either without configuring
-    // anything, and a second player only has to plug a pad in.
-    //
-    // Keyboard defaults: move on ZQSD, WASD or the arrows, E to drop a bomb, space to
-    // dash, left click to shove. On a pad: south face to drop, either shoulder to dash,
-    // west face to shove.
-    //
-    // Devices are read directly rather than through an .inputactions asset, so none of
-    // this can be rebound at runtime yet. That migration is #11, and it is the only
-    // honest way to make the bindings changeable: a parallel key table here would be a
-    // second input system to throw away when the asset lands.
-    public sealed class PlayerDevices
+    public sealed class PlayerDevices : IDisposable
     {
-        private readonly bool[] dropLatches;
-        private readonly bool[] dashLatches;
-        private readonly bool[] pushLatches;
+        private const string ControlsResource = "BlastlandsControls";
+
+        private readonly Seat[] seats;
 
         public PlayerDevices(int playerCount)
         {
-            dropLatches = new bool[Mathf.Max(1, playerCount)];
-            dashLatches = new bool[dropLatches.Length];
-            pushLatches = new bool[dropLatches.Length];
+            InputActionAsset controls = Resources.Load<InputActionAsset>(ControlsResource);
+            if (controls == null)
+            {
+                throw new InvalidOperationException("Input actions asset Resources/" + ControlsResource + " is missing");
+            }
+
+            seats = new Seat[Mathf.Max(1, playerCount)];
+            for (int player = 0; player < seats.Length; player++)
+            {
+                seats[player] = new Seat(Object.Instantiate(controls));
+            }
+
+            AssignDevices();
         }
 
         public int PlayerCount
         {
-            get { return dropLatches.Length; }
+            get { return seats.Length; }
         }
 
-        // Polled every frame, not every tick: a bomb press that lands between two
-        // ticks must not be swallowed by the frame it happened on.
         public void PollPresses()
         {
-            for (int player = 0; player < dropLatches.Length; player++)
+            AssignDevices();
+
+            foreach (Seat seat in seats)
             {
-                if (DropPressedThisFrame(player))
-                {
-                    dropLatches[player] = true;
-                }
-
-                if (DashPressedThisFrame(player))
-                {
-                    dashLatches[player] = true;
-                }
-
-                if (PushPressedThisFrame(player))
-                {
-                    pushLatches[player] = true;
-                }
+                seat.Poll();
             }
         }
 
         public PlayerInput Sample(int player)
         {
-            if (player < 0 || player >= dropLatches.Length)
+            if (player < 0 || player >= seats.Length)
             {
                 return PlayerInput.None;
             }
 
-            bool drop = dropLatches[player];
-            bool dash = dashLatches[player];
-            bool push = pushLatches[player];
-            dropLatches[player] = false;
-            dashLatches[player] = false;
-            pushLatches[player] = false;
-
-            int moveX, moveY;
-            MoveFor(player, out moveX, out moveY);
-            return new PlayerInput(moveX, moveY, drop, dash, push);
+            return seats[player].Take();
         }
 
         public bool RerollPressed()
         {
-            Keyboard keyboard = Keyboard.current;
-            if (keyboard != null && keyboard.rKey.wasPressedThisFrame)
-            {
-                return true;
-            }
+            AssignDevices();
 
-            foreach (Gamepad pad in Gamepad.all)
+            foreach (Seat seat in seats)
             {
-                if (pad.startButton.wasPressedThisFrame)
+                if (seat.RerollPressed())
                 {
                     return true;
                 }
@@ -103,7 +78,7 @@ namespace Blastlands.Runtime
             var text = new StringBuilder("player 0: keyboard");
             int pads = Gamepad.all.Count;
 
-            for (int player = 0; player < dropLatches.Length; player++)
+            for (int player = 0; player < seats.Length; player++)
             {
                 if (player < pads)
                 {
@@ -131,161 +106,115 @@ namespace Blastlands.Runtime
             return pad is DualShockGamepad ? InputDeviceKind.PlayStation : InputDeviceKind.Xbox;
         }
 
+        public void Dispose()
+        {
+            foreach (Seat seat in seats)
+            {
+                seat.Dispose();
+            }
+        }
+
         private static Gamepad PadFor(int player)
         {
             return player >= 0 && player < Gamepad.all.Count ? Gamepad.all[player] : null;
         }
 
-        // E on the keyboard, under the same hand that holds a direction, and the south
-        // face button on a pad.
-        private bool DropPressedThisFrame(int player)
+        private void AssignDevices()
         {
-            Gamepad pad = PadFor(player);
-            if (pad != null && pad.buttonSouth.wasPressedThisFrame)
+            for (int player = 0; player < seats.Length; player++)
             {
-                return true;
+                seats[player].Assign(PadFor(player), player == 0);
             }
-
-            if (player != 0)
-            {
-                return false;
-            }
-
-            Keyboard keyboard = Keyboard.current;
-            return keyboard != null && keyboard.eKey.wasPressedThisFrame;
         }
 
-        // Left click, as asked for, and the west face button on a pad. A shove is
-        // always available, so it sits on the button a hand rests on.
-        private bool PushPressedThisFrame(int player)
+        private sealed class Seat : IDisposable
         {
-            Gamepad pad = PadFor(player);
-            if (pad != null && pad.buttonWest.wasPressedThisFrame)
+            private readonly InputActionAsset actions;
+            private readonly InputAction step;
+            private readonly InputAction stick;
+            private readonly InputAction drop;
+            private readonly InputAction dash;
+            private readonly InputAction shove;
+            private readonly InputAction reroll;
+            private readonly PressLatch dropLatch = new PressLatch();
+            private readonly PressLatch dashLatch = new PressLatch();
+            private readonly PressLatch shoveLatch = new PressLatch();
+
+            private bool assigned;
+            private Gamepad pad;
+            private Keyboard keyboard;
+            private Mouse mouse;
+
+            public Seat(InputActionAsset actions)
             {
-                return true;
+                this.actions = actions;
+                step = actions.FindAction("Player/Step", true);
+                stick = actions.FindAction("Player/Stick", true);
+                drop = actions.FindAction("Player/Drop", true);
+                dash = actions.FindAction("Player/Dash", true);
+                shove = actions.FindAction("Player/Shove", true);
+                reroll = actions.FindAction("Player/Reroll", true);
+                actions.Enable();
             }
 
-            if (player != 0)
+            public void Assign(Gamepad newPad, bool withKeyboard)
             {
-                return false;
+                Keyboard newKeyboard = withKeyboard ? Keyboard.current : null;
+                Mouse newMouse = withKeyboard ? Mouse.current : null;
+
+                if (assigned && newPad == pad && newKeyboard == keyboard && newMouse == mouse)
+                {
+                    return;
+                }
+
+                assigned = true;
+                pad = newPad;
+                keyboard = newKeyboard;
+                mouse = newMouse;
+
+                var devices = new List<InputDevice>(3);
+                if (pad != null)
+                {
+                    devices.Add(pad);
+                }
+
+                if (keyboard != null)
+                {
+                    devices.Add(keyboard);
+                }
+
+                if (mouse != null)
+                {
+                    devices.Add(mouse);
+                }
+
+                actions.devices = new ReadOnlyArray<InputDevice>(devices.ToArray());
             }
 
-            Mouse mouse = Mouse.current;
-            return mouse != null && mouse.leftButton.wasPressedThisFrame;
-        }
-
-        // Space on the keyboard, shoulder button on a pad. It has to be reachable
-        // without letting go of a direction, because a dash with no direction is not a
-        // dash, and the thumb is the one finger not already holding one.
-        private bool DashPressedThisFrame(int player)
-        {
-            Gamepad pad = PadFor(player);
-            if (pad != null && (pad.rightShoulder.wasPressedThisFrame || pad.leftShoulder.wasPressedThisFrame))
+            public void Poll()
             {
-                return true;
+                dropLatch.Note(drop.WasPressedThisFrame());
+                dashLatch.Note(dash.WasPressedThisFrame());
+                shoveLatch.Note(shove.WasPressedThisFrame());
             }
 
-            if (player != 0)
+            public bool RerollPressed()
             {
-                return false;
+                return reroll.WasPressedThisFrame();
             }
 
-            Keyboard keyboard = Keyboard.current;
-            return keyboard != null && keyboard.spaceKey.wasPressedThisFrame;
-        }
-
-        // The stick is passed through rather than reduced to one of four directions.
-        // Movement is free now, and a body that can only be pushed along an axis catches
-        // on every corner it meets.
-        private static void MoveFor(int player, out int moveX, out int moveY)
-        {
-            Gamepad pad = PadFor(player);
-            if (pad != null && PadVector(pad, out moveX, out moveY))
+            public PlayerInput Take()
             {
-                return;
+                int moveX, moveY;
+                MoveReader.Resolve(step.ReadValue<Vector2>(), stick.ReadValue<Vector2>(), out moveX, out moveY);
+                return new PlayerInput(moveX, moveY, dropLatch.Take(), dashLatch.Take(), shoveLatch.Take());
             }
 
-            if (player == 0)
+            public void Dispose()
             {
-                FromDirection(KeyboardDirection(), out moveX, out moveY);
-                return;
+                actions.Disable();
+                Object.Destroy(actions);
             }
-
-            moveX = 0;
-            moveY = 0;
-        }
-
-        private static bool PadVector(Gamepad pad, out int moveX, out int moveY)
-        {
-            // The d-pad is unambiguous, so it still wins over the stick when both are
-            // pushed — it simply arrives as a full-strength vector.
-            Direction fromDpad = ToDirection(pad.dpad.ReadValue());
-            if (fromDpad != Direction.None)
-            {
-                FromDirection(fromDpad, out moveX, out moveY);
-                return true;
-            }
-
-            Vector2 stick = pad.leftStick.ReadValue();
-            int x = Mathf.RoundToInt(stick.x * StickReader.Range);
-            int y = Mathf.RoundToInt(-stick.y * StickReader.Range);
-
-            if (StickReader.ToDirection(x, y) == Direction.None)
-            {
-                moveX = 0;
-                moveY = 0;
-                return false;
-            }
-
-            moveX = x;
-            moveY = y;
-            return true;
-        }
-
-        private static void FromDirection(Direction direction, out int moveX, out int moveY)
-        {
-            GridPos delta = Directions.Delta(direction);
-            moveX = delta.X * StickReader.Range;
-            moveY = delta.Y * StickReader.Range;
-        }
-
-        // The grid's Y grows downward while the stick's grows upward, hence the flip.
-        private static Direction ToDirection(Vector2 value)
-        {
-            return StickReader.ToDirection(
-                Mathf.RoundToInt(value.x * StickReader.Range),
-                Mathf.RoundToInt(-value.y * StickReader.Range));
-        }
-
-        private static Direction KeyboardDirection()
-        {
-            Keyboard keyboard = Keyboard.current;
-            if (keyboard == null)
-            {
-                return Direction.None;
-            }
-
-            if (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed)
-            {
-                return Direction.Right;
-            }
-
-            if (keyboard.qKey.isPressed || keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed)
-            {
-                return Direction.Left;
-            }
-
-            if (keyboard.sKey.isPressed || keyboard.downArrowKey.isPressed)
-            {
-                return Direction.Down;
-            }
-
-            if (keyboard.zKey.isPressed || keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed)
-            {
-                return Direction.Up;
-            }
-
-            return Direction.None;
         }
     }
 }
