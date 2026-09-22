@@ -41,6 +41,46 @@ namespace Blastlands.Runtime
         }
 
         [Serializable]
+        private sealed class EndpointDto
+        {
+            public string host;
+            public int port;
+        }
+
+        // What create hands back: the listing, where the game server is, the ticket for
+        // that game server, and the separate ticket that proves who may start it.
+        [Serializable]
+        private sealed class MatchCreatedDto
+        {
+            public string id;
+            public string name;
+            public string host;
+            public int players;
+            public int max_players;
+            public EndpointDto endpoint;
+            public string game_ticket;
+            public string ticket;
+        }
+
+        [Serializable]
+        private sealed class JoinAcceptedDto
+        {
+            public EndpointDto endpoint;
+            public string ticket;
+        }
+
+        [Serializable]
+        private sealed class MatchStatusDto
+        {
+            public string id;
+            public string name;
+            public string host;
+            public int players;
+            public int max_players;
+            public string state;
+        }
+
+        [Serializable]
         private sealed class MatchSummaryDto
         {
             public string id;
@@ -149,18 +189,102 @@ namespace Blastlands.Runtime
             }
         }
 
-        public IEnumerator Create(string name, string host, int maxPlayers, Action<LobbyResult<MatchListing>> done)
+        public IEnumerator Create(string name, string host, int maxPlayers, Action<LobbyResult<MatchHosting>> done)
         {
             string body = "{\"name\":\"" + Escape(name)
                 + "\",\"host\":\"" + Escape(host)
                 + "\",\"max_players\":" + maxPlayers + "}";
 
-            yield return Send("/v1/matches", body, done);
+            using (UnityWebRequest request = Post("/v1/matches", body))
+            {
+                yield return request.SendWebRequest();
+
+                LobbyFailure failure;
+                if (!Succeeded(request, out failure))
+                {
+                    done(LobbyResult<MatchHosting>.Failed(failure));
+                    yield break;
+                }
+
+                MatchCreatedDto dto = Read<MatchCreatedDto>(request);
+                if (dto == null || string.IsNullOrEmpty(dto.id) || dto.endpoint == null)
+                {
+                    done(LobbyResult<MatchHosting>.Failed(LobbyFailure.Unreadable));
+                    yield break;
+                }
+
+                done(LobbyResult<MatchHosting>.Success(new MatchHosting(
+                    new MatchListing(dto.id, dto.name, dto.host, dto.players, dto.max_players),
+                    new MatchInvite(dto.id, dto.endpoint.host, dto.endpoint.port, dto.game_ticket),
+                    dto.ticket)));
+            }
         }
 
-        public IEnumerator Join(string id, string player, Action<LobbyResult<MatchListing>> done)
+        public IEnumerator Join(string id, string player, Action<LobbyResult<MatchInvite>> done)
         {
-            yield return Send("/v1/matches/" + id + "/join", "{\"player\":\"" + Escape(player) + "\"}", done);
+            string body = "{\"player\":\"" + Escape(player) + "\"}";
+
+            using (UnityWebRequest request = Post("/v1/matches/" + id + "/join", body))
+            {
+                yield return request.SendWebRequest();
+
+                LobbyFailure failure;
+                if (!Succeeded(request, out failure))
+                {
+                    done(LobbyResult<MatchInvite>.Failed(failure));
+                    yield break;
+                }
+
+                JoinAcceptedDto dto = Read<JoinAcceptedDto>(request);
+                if (dto == null || dto.endpoint == null)
+                {
+                    done(LobbyResult<MatchInvite>.Failed(LobbyFailure.Unreadable));
+                    yield break;
+                }
+
+                done(LobbyResult<MatchInvite>.Success(
+                    new MatchInvite(id, dto.endpoint.host, dto.endpoint.port, dto.ticket)));
+            }
+        }
+
+        // Polled by everyone waiting on a match they did not create: the host presses
+        // start on their own machine, and this is how the others hear about it.
+        public IEnumerator Status(string id, Action<LobbyResult<MatchProgress>> done)
+        {
+            using (UnityWebRequest request = Get("/v1/matches/" + id))
+            {
+                yield return request.SendWebRequest();
+
+                LobbyFailure failure;
+                if (!Succeeded(request, out failure))
+                {
+                    done(LobbyResult<MatchProgress>.Failed(failure));
+                    yield break;
+                }
+
+                MatchStatusDto dto = Read<MatchStatusDto>(request);
+                if (dto == null || string.IsNullOrEmpty(dto.id))
+                {
+                    done(LobbyResult<MatchProgress>.Failed(LobbyFailure.Unreadable));
+                    yield break;
+                }
+
+                done(LobbyResult<MatchProgress>.Success(new MatchProgress(
+                    new MatchListing(dto.id, dto.name, dto.host, dto.players, dto.max_players),
+                    MatchProgress.Reads(dto.state))));
+            }
+        }
+
+        private static T Read<T>(UnityWebRequest request) where T : class
+        {
+            try
+            {
+                return JsonUtility.FromJson<T>(request.downloadHandler.text);
+            }
+            catch (ArgumentException)
+            {
+                return null;
+            }
         }
 
         // Not Start. Unity reserves that name as a lifecycle message and refuses one
