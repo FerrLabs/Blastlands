@@ -38,7 +38,7 @@ namespace Blastlands.Runtime
         // Particle prefabs carry no useful renderer bounds, so they cannot be measured
         // like meshes. The Synty FX are authored as set dressing and are far too large
         // for a single tile.
-        [SerializeField] private float flameScale = 0.18f;
+        [SerializeField] private float flameScale = 0.55f;
         [SerializeField] private float burstScale = 0.22f;
         [SerializeField] private float flameLifetime = 0.4f;
         [SerializeField] private float burstLifetime = 0.7f;
