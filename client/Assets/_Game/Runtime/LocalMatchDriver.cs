@@ -38,7 +38,7 @@ namespace Blastlands.Runtime
         // found bombs, dash and shove; Classic is the pillar lattice, bombs you own and
         // nothing else; Classic Blinded is that same board played without sight of
         // anyone you have no line to. Serialized here rather than chosen in a lobby
-        // because there is no lobby screen yet, which is #7. See #145.
+        // because there is no lobby screen yet, which is #7.
         [SerializeField] private GameMode mode = GameMode.Arena;
 
         // Best of five. Long enough that one unlucky round does not decide it, short
