@@ -23,6 +23,15 @@ permissions:
   checks: write
   pull-requests: read
 
+# One run per branch. A pull request pushed three times in a minute used to leave three
+# runs queued behind each other on the single Docker runner, and only the last one
+# mattered. A push to main or a dispatch gets a group to itself, so it is never queued
+# behind another run and never cancelled: each one validates a different commit, and a
+# cancelled run would leave that commit untested while main still claims it green.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   # Every step below is conditional rather than the job itself, so this reports a
   # conclusion on every pull request instead of being skipped. A skipped job is
