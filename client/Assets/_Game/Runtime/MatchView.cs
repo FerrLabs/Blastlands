@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Blastlands.Core;
 using Blastlands.Core.Net;
@@ -118,6 +119,7 @@ namespace Blastlands.Runtime
         private PlayerTrail trail;
         private InterpolationClock clock;
         private int ownSeat = -1;
+        private Func<SubPos> predictedOwn;
 
         private MatchState state;
         private Transform root;
@@ -204,11 +206,12 @@ namespace Blastlands.Runtime
             BuildPlayers();
         }
 
-        public void Interpolate(PlayerTrail playerTrail, InterpolationClock serverClock, int seat)
+        public void Interpolate(PlayerTrail playerTrail, InterpolationClock serverClock, int seat, Func<SubPos> ownPosition)
         {
             trail = playerTrail;
             clock = serverClock;
             ownSeat = seat;
+            predictedOwn = ownPosition;
         }
 
         private int TicksPast
@@ -218,6 +221,11 @@ namespace Blastlands.Runtime
 
         private SubPos Placement(int index, PlayerState player)
         {
+            if (index == ownSeat && predictedOwn != null)
+            {
+                return predictedOwn();
+            }
+
             if (trail == null || clock == null || index == ownSeat
                 || !trail.TrySample(index, clock.RenderTime, out SubPos sampled))
             {

@@ -23,10 +23,10 @@ namespace Blastlands.Runtime
 
         // How far ahead of the last tick it has seen a client answers. The packet has to
         // cross the wire and land before the server plays that tick, so answering the
-        // tick it just watched would arrive for one already gone. Two ticks is 66ms at
-        // thirty, which covers a round trip on a local network and is the number to
-        // raise when it does not.
-        private const int LeadTicks = 2;
+        // tick it just watched would arrive for one already gone. Five ticks is 166ms at
+        // thirty, which covers a round trip to a nearby server and is the number to
+        // raise when it does not. Prediction hides it, so a longer lead is not input lag.
+        private const int LeadTicks = 5;
 
         private const int InterpolationDelayTicks = 3;
         private const int InterpolationSnapTicks = 15;
@@ -50,6 +50,8 @@ namespace Blastlands.Runtime
         private TickPacer pacer;
         private PlayerTrail trail;
         private InterpolationClock clock;
+        private ClientPrediction prediction;
+        private readonly CorrectionSmoother smoother = new CorrectionSmoother();
         private int nextTick = -1;
         private bool bound;
         private bool complained;
@@ -92,6 +94,41 @@ namespace Blastlands.Runtime
         {
             trail.Record(applied.Tick, applied.Players);
             clock.Heard(applied.Tick);
+
+            if (prediction == null)
+            {
+                return;
+            }
+
+            SubPos before = prediction.Position;
+            bool wasReady = prediction.Ready;
+            if (!prediction.Reconcile(applied))
+            {
+                return;
+            }
+
+            if (wasReady)
+            {
+                smoother.Corrected(before, prediction.Position);
+            }
+        }
+
+        private static MatchState Blank(MatchState like)
+        {
+            var blank = new MatchState(new Arena(like.Arena.Width, like.Arena.Height), like.Settings, like.Seed);
+            for (int i = 0; i < like.Players.Count; i++)
+            {
+                blank.AddPlayer(like.Players[i].Tile);
+            }
+
+            return blank;
+        }
+
+        private SubPos OwnPosition()
+        {
+            return prediction.Ready
+                ? smoother.Apply(prediction.Position)
+                : state.Players[transport.Seat].Position;
         }
 
         // Bound only once the server has said which player this connection is. Binding
@@ -133,16 +170,22 @@ namespace Blastlands.Runtime
             clock = new InterpolationClock(InterpolationDelayTicks, InterpolationSnapTicks);
             transport.Adopt(state);
 
+            // After Adopt, because the prediction runs on a copy of the board the server
+            // described, and there is no board at all before the seat lands. Nothing has
+            // been applied yet at this point, so there is nothing to reconcile against.
+            prediction = new ClientPrediction(Blank(state), seat);
+            smoother.Clear();
+
             if (view != null)
             {
                 view.UseTheme(themes != null && themes.Length > 0 ? themes[0] : null);
                 view.Bind(state);
-                view.Interpolate(trail, clock, seat);
+                view.Interpolate(trail, clock, seat, OwnPosition);
             }
 
             if (matchCamera != null)
             {
-                matchCamera.Bind(state, 1, seat);
+                matchCamera.Bind(prediction.State, 1, seat);
             }
 
             if (hud != null)
@@ -222,7 +265,10 @@ namespace Blastlands.Runtime
 
             for (int i = 0; i < ticks; i++)
             {
-                transport.SendInput(nextTick, devices.Sample(0));
+                PlayerInput input = devices.Sample(0);
+                transport.SendInput(nextTick, input);
+                prediction.Step(nextTick, input);
+                smoother.Tick();
                 nextTick++;
             }
 

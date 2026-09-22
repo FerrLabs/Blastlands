@@ -119,8 +119,27 @@ a tenth of its speed to stay on the delay and only jumps when it has fallen far 
 Bombs and flames are not delayed. They come from the newest snapshot and are aged by the
 server ticks the clock says have passed since it (`SnapshotAge`), never by local time: a fuse
 keeps counting and a flame goes out on its server tick through a short loss burst, and a
-flame is never shown later than the snapshot that carries it. The local player is drawn from
-the newest snapshot too, not the delayed trail, so what kills you is drawn where you were.
+flame is never shown later than the snapshot that carries it.
+
+**The local player is predicted, not delayed.** `ClientPrediction` keeps a second
+`MatchState` and runs `MatchSim.Tick` on the input the moment it is sent, so pressing right
+moves the character on that frame instead of a round trip later. Every sent input is kept
+until a snapshot acknowledges it. When one lands, the predicted state is overwritten with the
+server's (through `SnapshotCodec`, the copy is free of anything the wire does not carry) and
+the unacknowledged inputs are replayed on top. A tick whose input never reached the server is
+replayed the way the server fills it, movement repeated without the buttons, so the client
+does not invent a bomb the server never saw. Remote seats are replayed as standing still;
+they are drawn from the trail, not from the predicted state, so that guess never shows.
+
+The correction is smoothed rather than snapped. `CorrectionSmoother` keeps the difference the
+replay produced as an offset on the drawn position and works it off by a quarter per tick, so
+the character is still drawn where it was the frame before. A divergence of more than a tile
+is snapped instead, because sliding a player a tile across a board where a tile is the
+difference between alive and dead would be a lie. The camera follows the predicted state, or
+it would trail the player by the latency it exists to hide.
+
+This is only tractable because `Core/` is deterministic and engine-free: the replay is the
+same code the server ran, on the same inputs, and must reach the same position.
 
 ## The simulation core
 
