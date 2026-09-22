@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.43] - 2026-09-22
+
+### Features
+
+- feat(client): tactical match HUD with roster, clock and action prompts (#271)
+
 ## [26.9.42] - 2026-09-22
 
 ### Bug Fixes
