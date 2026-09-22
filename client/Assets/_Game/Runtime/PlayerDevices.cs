@@ -213,7 +213,19 @@ namespace Blastlands.Runtime
             public void Dispose()
             {
                 actions.Disable();
-                Object.Destroy(actions);
+
+                // Destroy is a no-op outside play mode and logs an error, which fails a
+                // test that builds this the way a match does. DestroyImmediate is safe
+                // on this one because every seat is handed an Instantiate clone: on the
+                // asset loaded from Resources it would delete the file from disk.
+                if (Application.isPlaying)
+                {
+                    Object.Destroy(actions);
+                }
+                else
+                {
+                    Object.DestroyImmediate(actions);
+                }
             }
         }
     }
