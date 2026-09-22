@@ -4,6 +4,13 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.37] - 2026-09-22
+
+### Features
+
+- feat(lobby): sign game tickets with an expiry for every admitted player (#260)
+- feat(server): cap input packets per seat and disconnect flooders (#259)
+
 ## [26.9.34] - 2026-09-22
 
 ### Bug Fixes
