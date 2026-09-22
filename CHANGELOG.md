@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.62] - 2026-09-22
+
+### Bug Fixes
+
+- fix(client): release the Unity bundle version alongside VERSION (#18)
+
 ## [26.9.60] - 2026-09-22
 
 ### Features
