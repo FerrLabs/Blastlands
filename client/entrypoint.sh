@@ -3,6 +3,7 @@ set -eu
 
 : "${BLASTLANDS_LOBBY:?is required}"
 : "${BLASTLANDS_INSTANCE_TOKEN:?is required}"
+: "${BLASTLANDS_TICKET_SECRET:?is required}"
 
 if [ -z "${BLASTLANDS_PORT:-}" ]; then
   : "${BLASTLANDS_PORT_BASE:?is required when BLASTLANDS_PORT is not set}"

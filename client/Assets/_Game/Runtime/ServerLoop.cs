@@ -25,7 +25,7 @@ namespace Blastlands.Runtime
         private bool started;
         private float waited;
 
-        public void Run(MatchState matchState, ServerOptions options)
+        public void Run(MatchState matchState, ServerOptions options, GameTicketVerifier tickets)
         {
             state = matchState;
             inputs = new PlayerInput[state.Players.Count];
@@ -50,7 +50,7 @@ namespace Blastlands.Runtime
             // reach it, so the gate below gives up once its patience runs out and the
             // reason reaches the lobby instead of the port being stranded by a hard exit.
             transport = gameObject.AddComponent<MatchTransport>();
-            if (!transport.StartServer((ushort)options.ListenPort, state.Players.Count))
+            if (!transport.StartServer((ushort)options.ListenPort, state.Players.Count, tickets))
             {
                 transport = null;
             }

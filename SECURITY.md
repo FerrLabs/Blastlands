@@ -20,6 +20,7 @@ l'abus du lobby, l'automatisation côté client, et le déni de service.
 | Poser plus de bombes que sa capacité | La capacité est de l'état serveur. Un input « poser une bombe » invalide est ignoré, pas appliqué. |
 | Rejouer / accélérer le temps | Le temps est un compteur de ticks côté serveur. Un client qui tourne trop vite envoie juste des inputs qui seront traités au rythme du serveur. |
 | Save scumming, rollback | Il n'y a pas de save locale qui compte. |
+| Se connecter sans passer par le lobby | Le serveur de jeu n'admet une connexion qu'avec un ticket signé par le lobby (HMAC-SHA256, clé partagée `BLASTLANDS_TICKET_SECRET`), lié à la partie et au joueur, avec une expiration, et utilisable une seule fois. Voir `docs/ARCHITECTURE.md`. |
 | Flood d'inputs | Chaque siège a un budget de paquets (`InputRateGate`) : une rafale d'une seconde passe, un débit soutenu au-delà de deux paquets par tick est refusé, et un siège qui dépasse pendant une seconde entière est déconnecté. Les inputs pour un tick passé ou trop lointain sont refusés par `InputBuffer`. |
 
 C'est la raison pour laquelle le serveur dédié a été choisi plutôt qu'un host-client relay
@@ -63,9 +64,6 @@ Ces points sont réels et suivis comme des issues, pas comme des acquis.
   neuve à chaque requête. Cela suppose **exactement un saut de confiance**. Avec
   plusieurs proxys, ou avec un proxy qui laisse passer tel quel un en-tête fourni par le
   client, même la dernière entrée n'est pas fiable sans retirer un nombre connu de sauts.
-- **Forge de ticket de join.** Le ticket rendu par le lobby doit être signé et à durée de
-  vie courte, sinon on peut se connecter à une instance sans passer par le lobby ou entrer
-  dans une partie pleine.
 - **DoS sur le lobby ou sur une instance.** Un seul VPS = une seule cible. Mitigation :
   limites de connexion, et le fait qu'une instance qui tombe ne fait tomber qu'une partie.
 

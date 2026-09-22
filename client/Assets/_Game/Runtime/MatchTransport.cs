@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Text;
 using Blastlands.Core;
 using Blastlands.Core.Net;
 using Unity.Netcode;
@@ -51,6 +53,8 @@ namespace Blastlands.Runtime
         private GameObject networkHost;
         private SeatTable seats;
         private InputBuffer[] buffers;
+        private GameTicketVerifier tickets;
+        private readonly Dictionary<ulong, string> ticketOf = new Dictionary<ulong, string>();
         private InputRateGate gate;
         private float gateClock;
         private PlayerInput[] applied;
@@ -117,8 +121,10 @@ namespace Blastlands.Runtime
             return manager;
         }
 
-        public bool StartServer(ushort port, int expectedPlayers)
+        public bool StartServer(ushort port, int expectedPlayers, GameTicketVerifier ticketVerifier)
         {
+            tickets = ticketVerifier;
+            ticketOf.Clear();
             seats = new SeatTable(expectedPlayers);
             buffers = new InputBuffer[expectedPlayers];
             gate = new InputRateGate(expectedPlayers);
@@ -131,6 +137,8 @@ namespace Blastlands.Runtime
             }
 
             network = Build("0.0.0.0", port);
+            network.NetworkConfig.ConnectionApproval = true;
+            network.ConnectionApprovalCallback = Approve;
             network.OnClientConnectedCallback += OnClientConnected;
             network.OnClientDisconnectCallback += OnClientDisconnected;
 
@@ -149,10 +157,12 @@ namespace Blastlands.Runtime
             return true;
         }
 
-        public bool StartClient(string host, ushort port, MatchState state)
+        public bool StartClient(string host, ushort port, MatchState state, string ticket)
         {
             clientState = state;
             network = Build(host, port);
+            network.NetworkConfig.ConnectionApproval = true;
+            network.NetworkConfig.ConnectionData = Encoding.UTF8.GetBytes(ticket ?? string.Empty);
 
             if (!network.StartClient())
             {
@@ -348,6 +358,26 @@ namespace Blastlands.Runtime
             }
         }
 
+        private void Approve(NetworkManager.ConnectionApprovalRequest request, NetworkManager.ConnectionApprovalResponse response)
+        {
+            string ticket = request.Payload == null ? null : Encoding.UTF8.GetString(request.Payload);
+            TicketVerdict verdict = tickets.Admit(
+                ticket, DateTimeOffset.UtcNow.ToUnixTimeSeconds(), out string player, out string nonce);
+
+            response.CreatePlayerObject = false;
+            response.Approved = verdict == TicketVerdict.Admitted;
+
+            if (response.Approved)
+            {
+                ticketOf[request.ClientNetworkId] = nonce;
+                Debug.Log("Blastlands server: admitting " + player);
+                return;
+            }
+
+            response.Reason = "ticket " + verdict;
+            Debug.LogWarning("Blastlands server: refusing a connection, its ticket is " + verdict);
+        }
+
         private void OnClientConnected(ulong connection)
         {
             if (network == null || !network.IsServer)
@@ -388,11 +418,18 @@ namespace Blastlands.Runtime
 
             Debug.LogWarning("Blastlands server: seat " + seat + " kept sending inputs faster than the match runs, disconnecting it");
             gate.Reset(seat);
+            ticketOf.Remove(connection);
             network.DisconnectClient(connection);
         }
 
         private void OnClientDisconnected(ulong connection)
         {
+            if (ticketOf.TryGetValue(connection, out string nonce))
+            {
+                ticketOf.Remove(connection);
+                tickets.Release(nonce);
+            }
+
             if (seats == null)
             {
                 return;

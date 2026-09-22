@@ -1,6 +1,7 @@
 #if UNITY_SERVER
 using System;
 using Blastlands.Core;
+using Blastlands.Core.Net;
 using UnityEngine;
 
 namespace Blastlands.Runtime
@@ -35,6 +36,12 @@ namespace Blastlands.Runtime
                 return;
             }
 
+            if (!GameTicketVerifier.TryReadKey(Environment.GetEnvironmentVariable, out byte[] ticketKey, out problem))
+            {
+                Fail(BadConfiguration, problem);
+                return;
+            }
+
             // Logged before anything can go wrong with them, because these four are the
             // first thing anybody reads off a failed instance.
             Debug.Log(
@@ -57,7 +64,7 @@ namespace Blastlands.Runtime
 
             var host = new GameObject("Blastlands Server");
             UnityEngine.Object.DontDestroyOnLoad(host);
-            host.AddComponent<ServerLoop>().Run(state, options);
+            host.AddComponent<ServerLoop>().Run(state, options, new GameTicketVerifier(ticketKey, options.MatchId));
         }
 
         // Fresh per instance. The lobby hands out one match per instance, so there is

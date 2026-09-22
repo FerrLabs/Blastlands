@@ -34,6 +34,7 @@ namespace Blastlands.Runtime
 
         [SerializeField] private string host = "127.0.0.1";
         [SerializeField] private int port = 7777;
+        [SerializeField] private string ticket = "";
 
         // Has to match what the server built, because the snapshot refuses a board of a
         // different size rather than writing tiles into the wrong rows. Until #19 that
@@ -85,7 +86,7 @@ namespace Blastlands.Runtime
             pacer = new TickPacer(state.Settings.TicksPerSecond, MaxCatchUpTicks);
 
             transport = gameObject.AddComponent<MatchTransport>();
-            if (!transport.StartClient(host, (ushort)port, state))
+            if (!transport.StartClient(host, (ushort)port, state, ticket))
             {
                 transport = null;
                 return;

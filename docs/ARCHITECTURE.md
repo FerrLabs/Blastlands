@@ -145,6 +145,13 @@ client                    lobby                     game server
 Other clients see the match via `GET /v1/matches` between creation and start, and join the
 same way.
 
+The game server admits a connection only through Netcode's connection approval, with the
+game ticket as connection data. `GameTicketVerifier` refuses a ticket that is malformed,
+signed with another key, issued for another match, past its expiry, or already used by an
+earlier connection. Expiry is the one place the game server reads the wall clock; it
+decides who gets in, not what happens in the simulation. The instance refuses to start
+without `BLASTLANDS_TICKET_SECRET`.
+
 ## Updating the client
 
 There is no launcher, so nothing else can update the game. That makes the update path part
