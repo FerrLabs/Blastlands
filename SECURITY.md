@@ -20,6 +20,7 @@ l'abus du lobby, l'automatisation côté client, et le déni de service.
 | Poser plus de bombes que sa capacité | La capacité est de l'état serveur. Un input « poser une bombe » invalide est ignoré, pas appliqué. |
 | Rejouer / accélérer le temps | Le temps est un compteur de ticks côté serveur. Un client qui tourne trop vite envoie juste des inputs qui seront traités au rythme du serveur. |
 | Save scumming, rollback | Il n'y a pas de save locale qui compte. |
+| Flood d'inputs | Chaque siège a un budget de paquets (`InputRateGate`) : une rafale d'une seconde passe, un débit soutenu au-delà de deux paquets par tick est refusé, et un siège qui dépasse pendant une seconde entière est déconnecté. Les inputs pour un tick passé ou trop lointain sont refusés par `InputBuffer`. |
 
 C'est la raison pour laquelle le serveur dédié a été choisi plutôt qu'un host-client relay
 (voir [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)) : en host-client, l'hôte *est* le
@@ -65,8 +66,6 @@ Ces points sont réels et suivis comme des issues, pas comme des acquis.
 - **Forge de ticket de join.** Le ticket rendu par le lobby doit être signé et à durée de
   vie courte, sinon on peut se connecter à une instance sans passer par le lobby ou entrer
   dans une partie pleine.
-- **Flood d'inputs.** Un client peut spammer des paquets. Le serveur borne le nombre
-  d'inputs traités par tick et par connexion et déconnecte au-delà.
 - **DoS sur le lobby ou sur une instance.** Un seul VPS = une seule cible. Mitigation :
   limites de connexion, et le fait qu'une instance qui tombe ne fait tomber qu'une partie.
 

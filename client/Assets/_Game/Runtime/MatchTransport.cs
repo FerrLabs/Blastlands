@@ -51,6 +51,8 @@ namespace Blastlands.Runtime
         private GameObject networkHost;
         private SeatTable seats;
         private InputBuffer[] buffers;
+        private InputRateGate gate;
+        private float gateClock;
         private PlayerInput[] applied;
         private MatchState clientState;
         private int lastSnapshotTick = -1;
@@ -119,6 +121,7 @@ namespace Blastlands.Runtime
         {
             seats = new SeatTable(expectedPlayers);
             buffers = new InputBuffer[expectedPlayers];
+            gate = new InputRateGate(expectedPlayers);
             applied = new PlayerInput[expectedPlayers];
             refusals = new int[expectedPlayers];
             toldAbout = new bool[expectedPlayers];
@@ -213,6 +216,30 @@ namespace Blastlands.Runtime
             complained = false;
             finished = false;
             Seat = SeatTable.NoSeat;
+        }
+
+        private void Update()
+        {
+            if (gate == null || network == null || !network.IsServer)
+            {
+                return;
+            }
+
+            gateClock += Time.unscaledDeltaTime * network.NetworkConfig.TickRate;
+            int elapsed = (int)gateClock;
+            if (elapsed < 1)
+            {
+                return;
+            }
+
+            gateClock -= elapsed;
+            for (int seat = 0; seat < buffers.Length && network != null; seat++)
+            {
+                if (gate.EndTicks(seat, elapsed))
+                {
+                    DropFlooder(seat);
+                }
+            }
         }
 
         private void OnDestroy()
@@ -336,6 +363,7 @@ namespace Blastlands.Runtime
                 return;
             }
 
+            gate.Reset(seat);
             Debug.Log("Blastlands server: seat " + seat + " taken");
 
             // Reliably and once. Losing it would leave that client watching somebody
@@ -349,6 +377,18 @@ namespace Blastlands.Runtime
             }
 
             SeatTaken?.Invoke(seat);
+        }
+
+        private void DropFlooder(int seat)
+        {
+            if (!seats.TryOccupant(seat, out ulong connection))
+            {
+                return;
+            }
+
+            Debug.LogWarning("Blastlands server: seat " + seat + " kept sending inputs faster than the match runs, disconnecting it");
+            gate.Reset(seat);
+            network.DisconnectClient(connection);
         }
 
         private void OnClientDisconnected(ulong connection)
@@ -374,7 +414,7 @@ namespace Blastlands.Runtime
         private void OnInputReceived(ulong sender, FastBufferReader payload)
         {
             int seat = seats == null ? SeatTable.NoSeat : seats.SeatOf(sender);
-            if (seat == SeatTable.NoSeat || payload.Length < InputCodec.Size)
+            if (seat == SeatTable.NoSeat || payload.Length - payload.Position < InputCodec.Size || !gate.Admit(seat))
             {
                 return;
             }
