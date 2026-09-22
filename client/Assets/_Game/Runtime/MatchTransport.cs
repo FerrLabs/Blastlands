@@ -72,6 +72,7 @@ namespace Blastlands.Runtime
         public event Action<int> SeatTaken;
         public event Action<int> SeatLost;
         public event Action<RoundOutcome, int> MatchEnded;
+        public event Action<MatchState> SnapshotApplied;
 
         public bool Running
         {
@@ -539,6 +540,7 @@ namespace Blastlands.Runtime
             if (SnapshotCodec.TryApply(incoming, size, clientState))
             {
                 lastSnapshotTick = clientState.Tick;
+                SnapshotApplied?.Invoke(clientState);
                 return;
             }
 

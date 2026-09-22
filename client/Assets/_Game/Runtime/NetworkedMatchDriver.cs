@@ -1,4 +1,5 @@
 using Blastlands.Core;
+using Blastlands.Core.Net;
 using UnityEngine;
 using PlayerInput = Blastlands.Core.PlayerInput;
 
@@ -26,6 +27,10 @@ namespace Blastlands.Runtime
         // raise when it does not.
         private const int LeadTicks = 2;
 
+        private const int InterpolationDelayTicks = 3;
+        private const int InterpolationSnapTicks = 15;
+        private const int TrailLength = 32;
+
         [SerializeField] private MatchView view;
         [SerializeField] private MatchHud hud;
         [SerializeField] private MatchCamera matchCamera;
@@ -48,6 +53,8 @@ namespace Blastlands.Runtime
         private MatchTransport transport;
         private PlayerDevices devices;
         private TickPacer pacer;
+        private PlayerTrail trail;
+        private InterpolationClock clock;
         private int nextTick = -1;
         private bool bound;
         private bool complained;
@@ -84,6 +91,8 @@ namespace Blastlands.Runtime
 
             devices = new PlayerDevices(1);
             pacer = new TickPacer(state.Settings.TicksPerSecond, MaxCatchUpTicks);
+            trail = new PlayerTrail(state.Players.Count, TrailLength);
+            clock = new InterpolationClock(InterpolationDelayTicks, InterpolationSnapTicks);
 
             transport = gameObject.AddComponent<MatchTransport>();
             if (!transport.StartClient(host, (ushort)port, state, ticket))
@@ -93,6 +102,13 @@ namespace Blastlands.Runtime
             }
 
             transport.SeatTaken += OnSeated;
+            transport.SnapshotApplied += OnSnapshot;
+        }
+
+        private void OnSnapshot(MatchState applied)
+        {
+            trail.Record(applied.Tick, applied.Players);
+            clock.Heard(applied.Tick);
         }
 
         // Bound only once the server has said which player this connection is. Binding
@@ -105,6 +121,7 @@ namespace Blastlands.Runtime
             {
                 view.UseTheme(themes != null && themes.Length > 0 ? themes[0] : null);
                 view.Bind(state);
+                view.Interpolate(trail, clock, seat);
             }
 
             if (matchCamera != null)
@@ -130,6 +147,7 @@ namespace Blastlands.Runtime
             if (transport != null)
             {
                 transport.SeatTaken -= OnSeated;
+                transport.SnapshotApplied -= OnSnapshot;
             }
         }
 
@@ -139,6 +157,8 @@ namespace Blastlands.Runtime
             {
                 return;
             }
+
+            clock.Advance(Mathf.RoundToInt(Time.deltaTime * state.Settings.TicksPerSecond * InterpolationClock.UnitsPerTick));
 
             // Drawn even before the seat lands, so a client waiting on one shows the
             // board rather than an empty screen. A server with every seat taken

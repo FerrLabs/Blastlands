@@ -107,6 +107,21 @@ against the speed the clip was authored at, which is why `MatchView.runClipSpeed
 Swapping animation packs means measuring that number again rather than accepting whatever
 skating falls out.
 
+**Remote players are drawn a few ticks in the past.** Snapshots arrive at the tick rate with
+jitter and loss, so drawing each one as it lands makes everybody else stutter. `PlayerTrail`
+keeps the last second of snapshot positions and `InterpolationClock` runs a render time three
+ticks behind the newest one; remote players are placed between the two snapshots around that
+time. A lost snapshot is bridged by its neighbours, a jump of more than a tile per tick (a
+wall regrowing on someone) is held and then snapped rather than slid across the board, and
+the clock never runs past the newest snapshot, so it holds instead of guessing. It steers by
+a tenth of its speed to stay on the delay and only jumps when it has fallen far behind.
+
+Bombs and flames are not delayed. They come from the newest snapshot and are aged by the
+server ticks the clock says have passed since it (`SnapshotAge`), never by local time: a fuse
+keeps counting and a flame goes out on its server tick through a short loss burst, and a
+flame is never shown later than the snapshot that carries it. The local player is drawn from
+the newest snapshot too, not the delayed trail, so what kills you is drawn where you were.
+
 ## The simulation core
 
 `client/Assets/_Game/Core/` is plain C# with **no `UnityEngine` dependency**. This is a hard

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Blastlands.Core;
+using Blastlands.Core.Net;
 using UnityEngine;
 
 namespace Blastlands.Runtime
@@ -114,6 +115,9 @@ namespace Blastlands.Runtime
         private readonly List<SubPos> lastSampled = new List<SubPos>();
         private int lastSampledTick = -1;
         private readonly HashSet<GridPos> burningTiles = new HashSet<GridPos>();
+        private PlayerTrail trail;
+        private InterpolationClock clock;
+        private int ownSeat = -1;
 
         private MatchState state;
         private Transform root;
@@ -198,6 +202,29 @@ namespace Blastlands.Runtime
             BuildScenery();
             SyncBlocks();
             BuildPlayers();
+        }
+
+        public void Interpolate(PlayerTrail playerTrail, InterpolationClock serverClock, int seat)
+        {
+            trail = playerTrail;
+            clock = serverClock;
+            ownSeat = seat;
+        }
+
+        private int TicksPast
+        {
+            get { return clock == null || !clock.Started ? 0 : clock.TicksPast(state.Tick); }
+        }
+
+        private SubPos Placement(int index, PlayerState player)
+        {
+            if (trail == null || clock == null || index == ownSeat
+                || !trail.TrySample(index, clock.RenderTime, out SubPos sampled))
+            {
+                return player.Position;
+            }
+
+            return sampled;
         }
 
         public void Render()
@@ -793,7 +820,7 @@ namespace Blastlands.Runtime
                 }
 
                 ActiveBomb bomb = state.Bombs[i];
-                float fuse = bomb.FuseRemaining / (float)bomb.FuseTicks;
+                float fuse = SnapshotAge.FuseAfter(bomb, TicksPast) / (float)bomb.FuseTicks;
                 float pulse = 1f + (0.14f * Mathf.Sin((1f - fuse) * 34f));
 
                 view.transform.localScale = bombBaseScales[i] * pulse;
@@ -821,7 +848,7 @@ namespace Blastlands.Runtime
                 {
                     sfx.BombDropped();
                 }
-                else if (BombFuse.IsWarning(bomb.FuseRemaining, bomb.FuseTicks, state.Settings.TicksPerSecond)
+                else if (BombFuse.IsWarning(SnapshotAge.FuseAfter(bomb, TicksPast), bomb.FuseTicks, state.Settings.TicksPerSecond)
                          && warnedFuses.Add(bomb.Bomb.Position))
                 {
                     // Once per bomb rather than once per frame, which is what the set is
@@ -869,8 +896,18 @@ namespace Blastlands.Runtime
         {
             bool hasArt = art != null && art.Flame != null;
 
-            for (int i = 0; i < state.Flames.Count; i++)
+            int ticksPast = TicksPast;
+            int shown = 0;
+
+            for (int f = 0; f < state.Flames.Count; f++)
             {
+                ActiveFlame flame = state.Flames[f];
+                if (!SnapshotAge.BurnsAfter(flame, ticksPast))
+                {
+                    continue;
+                }
+
+                int i = shown++;
                 bool created = flamePool.Count <= i;
                 GameObject view = TakeAt(flamePool, i, art != null ? art.Flame : null, PrimitiveType.Cube, MatchPalette.Flame, "Flame");
 
@@ -887,11 +924,10 @@ namespace Blastlands.Runtime
                     }
                 }
 
-                ActiveFlame flame = state.Flames[i];
                 view.transform.position = ToWorld(flame.Tile, hasArt ? 0f : 0.25f);
             }
 
-            HideFrom(flamePool, state.Flames.Count);
+            HideFrom(flamePool, shown);
             EmitBursts();
         }
 
@@ -1130,7 +1166,7 @@ namespace Blastlands.Runtime
                 }
 
                 view.SetActive(true);
-                view.transform.position = ToWorld(player.Position, 0f);
+                view.transform.position = ToWorld(Placement(i, player), 0f);
                 view.transform.rotation = Quaternion.Euler(0f, FacingAngle(player.Facing), 0f);
             }
         }
