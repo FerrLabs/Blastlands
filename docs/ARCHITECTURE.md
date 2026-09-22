@@ -306,7 +306,11 @@ sequenceDiagram
 
 ## Deployment
 
-Single VPS to start. Both images run under Docker on the same host:
+Both images run on the FerrLabs Kubernetes cluster, from `products/blastlands/` in
+[FerrLabs/Infra](https://github.com/FerrLabs/Infra): the lobby as a Deployment behind
+Traefik, the instances as a StatefulSet whose UDP ports are NodePort Services. This
+section used to say "single VPS, both images under Docker on the same host", which was
+the plan and never what shipped.
 
 - `ghcr.io/ferrlabs/blastlands/lobby` — one container, behind TLS, public HTTP. Built and
   published by `docker.yml`.

@@ -1,0 +1,282 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using Blastlands.Core;
+using Blastlands.Core.Lobby;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+
+namespace Blastlands.Runtime
+{
+    // The lobby, on screen. Holds a LobbyFlow, renders whichever screen it is on, and
+    // turns what the player does into calls on LobbyClient.
+    //
+    // Every call goes through One(), which keeps a single request in flight: a player
+    // hammering Join would otherwise queue a dozen of them and act on whichever came
+    // back last, and the lobby throttles per address anyway.
+    public sealed class LobbyScreens : MonoBehaviour
+    {
+        private const string MatchScene = "Match";
+        private const float SecondsBetweenStatusChecks = 1.5f;
+
+        [SerializeField] private LobbyArt art;
+        [SerializeField] private int maxPlayers = 4;
+
+        private readonly LobbyFlow flow = new LobbyFlow();
+        private LobbyClient lobby;
+        private Canvas canvas;
+        private RectTransform root;
+        private LobbyScreen drawn = LobbyScreen.Play;
+        private bool dirty = true;
+        private bool busy;
+        private float sinceStatus;
+
+        private void Awake()
+        {
+            if (art == null || !art.Complete)
+            {
+                Debug.LogError("Blastlands lobby: no art assigned, so there is nothing to draw the screens with.");
+                enabled = false;
+                return;
+            }
+
+            lobby = GetComponent<LobbyClient>();
+            if (lobby == null)
+            {
+                lobby = gameObject.AddComponent<LobbyClient>();
+                lobby.Use(ClientOptions.Lobby(Environment.GetCommandLineArgs()));
+            }
+
+            BuildCanvas();
+        }
+
+        private void Update()
+        {
+            if (flow.Screen == LobbyScreen.Play)
+            {
+                Play();
+                return;
+            }
+
+            if (flow.ShouldRefresh(Time.unscaledDeltaTime))
+            {
+                One(Listing());
+            }
+
+            if (flow.Screen == LobbyScreen.Host || flow.Screen == LobbyScreen.Wait)
+            {
+                sinceStatus += Time.unscaledDeltaTime;
+                if (sinceStatus >= SecondsBetweenStatusChecks)
+                {
+                    sinceStatus = 0f;
+                    One(Watching());
+                }
+            }
+
+            if (dirty || drawn != flow.Screen)
+            {
+                Draw();
+            }
+        }
+
+        private void Play()
+        {
+            MatchHandoff.Leave(flow.Invite);
+            enabled = false;
+            SceneManager.LoadScene(MatchScene);
+        }
+
+        private void Draw()
+        {
+            for (int i = root.childCount - 1; i >= 0; i--)
+            {
+                Destroy(root.GetChild(i).gameObject);
+            }
+
+            switch (flow.Screen)
+            {
+                case LobbyScreen.Name:
+                    LobbyPages.Name(root, art, flow, Named);
+                    break;
+                case LobbyScreen.Browse:
+                    LobbyPages.Browse(root, art, flow, Join, Create);
+                    break;
+                case LobbyScreen.Host:
+                    LobbyPages.Room(root, art, flow, true, Start, Leave);
+                    break;
+                case LobbyScreen.Wait:
+                    LobbyPages.Room(root, art, flow, false, null, Leave);
+                    break;
+            }
+
+            drawn = flow.Screen;
+            dirty = false;
+        }
+
+        private void Named(string typed)
+        {
+            Redraw();
+            if (flow.Named(typed))
+            {
+                One(Listing());
+            }
+        }
+
+        private void Create()
+        {
+            One(Creating());
+        }
+
+        private void Join(MatchListing listing)
+        {
+            One(Joining(listing));
+        }
+
+        private void Start()
+        {
+            One(Starting());
+        }
+
+        private void Leave()
+        {
+            flow.Left();
+            Redraw();
+            One(Listing());
+        }
+
+        private IEnumerator Listing()
+        {
+            yield return lobby.List(result =>
+            {
+                if (result.Ok)
+                {
+                    flow.Listed(result.Value);
+                }
+                else
+                {
+                    flow.Refused(result.Failure);
+                }
+
+                Redraw();
+            });
+        }
+
+        private IEnumerator Creating()
+        {
+            yield return lobby.Create(flow.Player + "'s match", flow.Player, maxPlayers, result =>
+            {
+                if (result.Ok && result.Value.CanStart)
+                {
+                    flow.Created(result.Value.Invite, result.Value.HostTicket);
+                    flow.Listed(new List<MatchListing> { result.Value.Listing });
+                }
+                else
+                {
+                    flow.Refused(result.Ok ? LobbyFailure.Unreadable : result.Failure);
+                }
+
+                Redraw();
+            });
+        }
+
+        private IEnumerator Joining(MatchListing listing)
+        {
+            yield return lobby.Join(listing.Id, flow.Player, result =>
+            {
+                if (result.Ok && result.Value.CanConnect)
+                {
+                    flow.Joined(result.Value);
+                }
+                else
+                {
+                    flow.Refused(result.Ok ? LobbyFailure.Unreadable : result.Failure, listing.Id);
+                }
+
+                Redraw();
+            });
+        }
+
+        private IEnumerator Starting()
+        {
+            yield return lobby.StartMatch(flow.Invite.MatchId, flow.HostTicket, result =>
+            {
+                if (result.Ok)
+                {
+                    flow.Running();
+                }
+                else
+                {
+                    flow.Refused(result.Failure, flow.Invite.MatchId);
+                }
+
+                Redraw();
+            });
+        }
+
+        // The host presses start on their own machine. Everybody else finds out here,
+        // and a match that vanished while they waited sends them back to the list
+        // rather than leaving them on a screen that will never change.
+        private IEnumerator Watching()
+        {
+            string id = flow.Invite.MatchId;
+
+            yield return lobby.Status(id, result =>
+            {
+                if (result.Ok)
+                {
+                    flow.Listed(new List<MatchListing> { result.Value.Listing });
+                    if (result.Value.Running)
+                    {
+                        flow.Running();
+                    }
+                }
+                else if (!result.WorthRetrying)
+                {
+                    flow.Refused(result.Failure, id);
+                }
+
+                Redraw();
+            });
+        }
+
+        private void One(IEnumerator work)
+        {
+            if (busy)
+            {
+                return;
+            }
+
+            busy = true;
+            StartCoroutine(Once(work));
+        }
+
+        private IEnumerator Once(IEnumerator work)
+        {
+            yield return StartCoroutine(work);
+            busy = false;
+        }
+
+        private void Redraw()
+        {
+            dirty = true;
+        }
+
+        private void BuildCanvas()
+        {
+            var host = new GameObject("Lobby Canvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+            host.transform.SetParent(transform, false);
+
+            canvas = host.GetComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+
+            CanvasScaler scaler = host.GetComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920f, 1080f);
+            scaler.matchWidthOrHeight = 0.5f;
+
+            root = LobbyChrome.Stretch(new GameObject("Screen", typeof(RectTransform)), 0f);
+            root.SetParent(host.transform, false);
+        }
+    }
+}

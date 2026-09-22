@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.58] - 2026-09-22
+
+### Features
+
+- feat(audio): place match cues by where they happened on the board (#14)
+
 ## [26.9.56] - 2026-09-22
 
 ### Features

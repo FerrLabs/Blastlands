@@ -111,6 +111,7 @@ namespace Blastlands.Runtime
         private readonly List<GridPos> pickupTiles = new List<GridPos>();
         private readonly List<GridPos> detonated = new List<GridPos>();
         private readonly List<GridPos> freshFlames = new List<GridPos>();
+        private readonly List<GridPos> brokenTiles = new List<GridPos>();
         private readonly List<bool> wasAlive = new List<bool>();
         private readonly List<Animator> playerAnimators = new List<Animator>();
         private readonly List<SubPos> lastSampled = new List<SubPos>();
@@ -169,6 +170,11 @@ namespace Blastlands.Runtime
         {
             state = matchState;
 
+            if (sfx != null)
+            {
+                sfx.ListenThrough(cameras);
+            }
+
             if (root != null)
             {
                 Destroy(root.gameObject);
@@ -192,6 +198,7 @@ namespace Blastlands.Runtime
             staleFuses.Clear();
             pickupTiles.Clear();
             detonated.Clear();
+            brokenTiles.Clear();
             wasAlive.Clear();
             playerAnimators.Clear();
             lastSampled.Clear();
@@ -610,7 +617,7 @@ namespace Blastlands.Runtime
         // changes what it is, which regrowth does every time a bush burns.
         private void SyncBlocks()
         {
-            int broken = 0;
+            brokenTiles.Clear();
 
             for (int y = 0; y < state.Arena.Height; y++)
             {
@@ -636,7 +643,7 @@ namespace Blastlands.Runtime
                         // death: neither of those is a blast taking a wall apart.
                         if (kind == TileKind.Floor)
                         {
-                            broken++;
+                            brokenTiles.Add(tile);
                         }
                     }
 
@@ -655,10 +662,38 @@ namespace Blastlands.Runtime
             // One cue for the frame, not one per wall. A blast that opens four tiles at
             // once is one collapse to whoever is watching, and four overlapping copies
             // of the same clip is just clipping.
-            if (broken > 0 && sfx != null)
+            if (brokenTiles.Count > 0 && sfx != null)
             {
-                sfx.BlockBroken(broken);
+                sfx.BlockBroken(brokenTiles.Count, ToWorld(NearestToTheEar(brokenTiles), 0f));
             }
+        }
+
+        private GridPos NearestToTheEar(List<GridPos> tiles)
+        {
+            if (tiles.Count == 1 || cameras == null
+                || !cameras.SingleViewportIsListening(out Vector3 ear, out float _))
+            {
+                return tiles[0];
+            }
+
+            int best = 0;
+            float shortest = float.MaxValue;
+
+            for (int i = 0; i < tiles.Count; i++)
+            {
+                Vector3 at = ToWorld(tiles[i], 0f);
+                float sideways = at.x - ear.x;
+                float depth = at.z - ear.z;
+                float distance = (sideways * sideways) + (depth * depth);
+
+                if (distance < shortest)
+                {
+                    shortest = distance;
+                    best = i;
+                }
+            }
+
+            return tiles[best];
         }
 
         // Pickups are pooled per kind rather than in one list: a pool entry keeps the
@@ -698,7 +733,7 @@ namespace Blastlands.Runtime
                 GridPos tile = pickupTiles[i];
                 if (state.PowerUpIndexAt(tile) < 0 && !state.HasFlameAt(tile) && sfx != null)
                 {
-                    sfx.PickedUp();
+                    sfx.PickedUp(ToWorld(tile, 0f));
                 }
             }
 
@@ -854,7 +889,7 @@ namespace Blastlands.Runtime
 
                 if (!bombTiles.Contains(bomb.Bomb.Position))
                 {
-                    sfx.BombDropped();
+                    sfx.BombDropped(ToWorld(bomb.Bomb.Position, 0f));
                 }
                 else if (BombFuse.IsWarning(SnapshotAge.FuseAfter(bomb, TicksPast), bomb.FuseTicks, state.Settings.TicksPerSecond)
                          && warnedFuses.Add(bomb.Bomb.Position))
@@ -862,7 +897,7 @@ namespace Blastlands.Runtime
                     // Once per bomb rather than once per frame, which is what the set is
                     // for. The warning is the moment it enters its last second, and a
                     // clip restarted sixty times over that second is a buzz.
-                    sfx.FuseBurningDown();
+                    sfx.FuseBurningDown(ToWorld(bomb.Bomb.Position, 0f));
                 }
             }
 
@@ -1043,7 +1078,7 @@ namespace Blastlands.Runtime
 
             if (caught > 0 && sfx != null)
             {
-                sfx.Exploded(caught);
+                sfx.Exploded(caught, ToWorld(detonated.Count > 0 ? NearestToTheEar(detonated) : freshFlames[0], 0f));
             }
 
             if (caught > 0 && cameras != null)
@@ -1131,7 +1166,7 @@ namespace Blastlands.Runtime
         {
             if (sfx != null)
             {
-                sfx.Died();
+                sfx.Died(ToWorld(player.Tile, 0f));
             }
 
             GameObject prefab = art == null ? null : art.DeathMarker(player.Id);

@@ -1,5 +1,6 @@
 using System;
 using Blastlands.Core;
+using Blastlands.Core.Lobby;
 using Blastlands.Core.Net;
 using UnityEngine;
 using PlayerInput = Blastlands.Core.PlayerInput;
@@ -13,7 +14,7 @@ namespace Blastlands.Runtime
     // state it renders is written entirely by snapshots, which is what makes editing it
     // pointless rather than difficult.
     //
-    // Where it stops short is the join. There is no lobby screen yet (#19), so the
+    // Where it stops short is the join. There is no lobby screen yet (#7), so the
     // endpoint and the shape of the match are serialized here instead of being learned
     // from the lobby, and the arena has to be told the same size the server built. That
     // is a development harness, not the finished flow.
@@ -77,6 +78,17 @@ namespace Blastlands.Runtime
 
         private void Start()
         {
+            // The lobby leaves an invite when it hands the match over. The serialized
+            // fields are what is left for a scene opened by hand against a server
+            // started by hand, which is how this is tested without a lobby running.
+            if (MatchHandoff.Waiting)
+            {
+                MatchInvite invite = MatchHandoff.Take();
+                host = invite.Host;
+                port = invite.Port;
+                ticket = invite.Ticket;
+            }
+
             devices = new PlayerDevices(1);
 
             transport = gameObject.AddComponent<MatchTransport>();
