@@ -78,7 +78,7 @@ jobs:
           # pipeline reports 141, and the branch is skipped: a client change big enough
           # to fill the pipe buffer would have gone green without starting the editor.
           # Reproduced at 4000 paths, every one of them under client/.
-          elif grep -qE '^(client/|\.github/workflows/ci-unity\.yml$)' <<<"$changed"; then
+          elif grep -qE '^(client/|\.github/workflows/ci-unity\.yml$|\.github/scripts/compile-server\.sh$)' <<<"$changed"; then
             echo 'RUN=true' >> "$GITHUB_ENV"
           else
             echo 'RUN=false' >> "$GITHUB_ENV"
@@ -167,6 +167,39 @@ jobs:
           testMode: editmode
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           checkName: Unity test results
+
+      # ServerLoop.cs and everything else under `#if UNITY_SERVER` is invisible to the
+      # run above: the editor compiles for its own platform, where that symbol is never
+      # defined. Without this, the only thing that compiles the dedicated server code is
+      # the release build, so a compile error there passes every review and every PR
+      # check and only appears when a version is being cut. See #240.
+      #
+      # Same editor image the tests just pulled, so no second 10 GB download, and the
+      # project's own Library/ScriptAssemblies for the package references. No licence:
+      # this runs the editor's C# compiler, not the editor.
+      #
+      # UNITY_SERVER is the only define set, because it is the only one any `#if` under
+      # _Game reads. A real server build also defines UNITY_STANDALONE_LINUX, UNITY_64
+      # and the version family, so the first `#if UNITY_STANDALONE_LINUX` would be
+      # checked here in its `#else` branch; add the define then. scriptingDefineSymbols
+      # is empty, so there is nothing project-wide to mirror.
+      #
+      # It cannot replace the editmode run: everything under _Game is compiled into one
+      # assembly here and two in Unity, so an `internal` crossing the Core/Runtime line,
+      # or Core touching UnityEngine despite noEngineReferences, would pass here. The
+      # editmode run catches both.
+      - if: env.RUN == 'true'
+        name: Compile the dedicated server code
+        run: |
+          set -euo pipefail
+          version="$(sed -n 's/^m_EditorVersion: //p' client/ProjectSettings/ProjectVersion.txt)"
+          image="unityci/editor:ubuntu-${version}-linux-il2cpp-3"
+          docker image inspect "${image}" >/dev/null 2>&1 \
+            || echo "::warning::${image} is not local, so the tag no longer matches the one game-ci pulled and this step is about to download it again"
+          docker run --rm --network none \
+            -v "${GITHUB_WORKSPACE}:/github/workspace" -w /github/workspace \
+            "${image}" \
+            bash .github/scripts/compile-server.sh client
 
       - if: always() && env.RUN == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
