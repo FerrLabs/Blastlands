@@ -9,27 +9,50 @@ permissions:
   contents: read
 
 jobs:
-  licence:
-    name: Licence
+  # Both secrets, not the licence alone: without the asset token the build job pulls the
+  # 10 GB editor and only then finds the submodule it cannot fetch, and the answer is the
+  # same either way.
+  #
+  # A release fails here rather than skipping. Skipping is right for a `workflow_dispatch`
+  # on a fork or a checkout without the secrets, and wrong for a release, which would
+  # otherwise report success while attaching no client archive and publishing no server
+  # image. That is exactly what happened when this repository moved and its secrets did
+  # not come with it: green releases, and a deployment still on the image before them.
+  prerequisites:
+    name: Prerequisites
     runs-on: ${{ github.event.repository.private && 'ferrlabs-k8s-light' || 'ubuntu-latest' }}
     outputs:
       available: ${{ steps.check.outputs.available }}
     steps:
       - id: check
         env:
+          EVENT: ${{ github.event_name }}
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          ASSETS_TOKEN: ${{ secrets.BLASTLANDS_ASSETS_TOKEN }}
         run: |
-          if [ -n "${UNITY_LICENSE}" ]; then
+          missing=''
+          [ -n "${UNITY_LICENSE}" ] || missing="${missing} UNITY_LICENSE"
+          [ -n "${ASSETS_TOKEN}" ] || missing="${missing} BLASTLANDS_ASSETS_TOKEN"
+          missing="${missing# }"
+
+          if [ -z "${missing}" ]; then
             echo 'available=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'available=false' >> "$GITHUB_OUTPUT"
-            echo '::notice::UNITY_LICENSE is not configured, so no player or server build is produced.'
+            exit 0
           fi
+
+          echo 'available=false' >> "$GITHUB_OUTPUT"
+
+          if [ "${EVENT}" = 'release' ]; then
+            echo "::error::${missing} is not configured, so this release has no client archive and no server image."
+            exit 1
+          fi
+
+          echo "::notice::${missing} is not configured, so no player or server build is produced."
 
   build:
     name: ${{ matrix.name }}
-    needs: licence
-    if: needs.licence.outputs.available == 'true'
+    needs: prerequisites
+    if: needs.prerequisites.outputs.available == 'true'
     runs-on: ${{ github.event.repository.private && 'ferrlabs-k8s-docker' || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
