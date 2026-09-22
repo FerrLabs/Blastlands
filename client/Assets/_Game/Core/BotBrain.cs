@@ -129,7 +129,7 @@ namespace Blastlands.Core
             // length, so it only pays when the direction is not going to change.
             if (!blast.IsSafeFor(tile, settings.LookaheadTicks))
             {
-                Direction away = StepToSafety(state, blast, tile, ticksPerTile);
+                Direction away = Escape(state, blast, player, ticksPerTile);
                 bool dash = settings.ReactionTicks > 0 && player.CanDash && away != Direction.None;
                 return Steer(player, away, dash);
             }
@@ -154,7 +154,8 @@ namespace Blastlands.Core
                 }
             }
 
-            Direction toward = StepTowardTarget(state, blast, player, tile, ticksPerTile);
+            EscapeWindow window = EscapeWindow.From(state, blast, ticksPerTile, next => Walkable(state, next));
+            Direction toward = StepTowardTarget(state, window, player, tile, ticksPerTile);
 
             // Standing still is never the safe option, whatever the blast map currently
             // says. A bot with nothing to walk towards that plants itself is a bot
@@ -186,6 +187,68 @@ namespace Blastlands.Core
             return speed <= 0 ? SubPos.UnitsPerTile : ((SubPos.UnitsPerTile + speed - 1) / speed);
         }
 
+
+        private Direction Escape(MatchState state, BlastMap blast, PlayerState player, int ticksPerTile)
+        {
+            EscapeWindow window = EscapeWindow.From(state, blast, ticksPerTile, next => Walkable(state, next));
+            int here = blast.TicksUntilFire(player.Tile);
+
+            Direction best = Direction.None;
+            long bestSlack = -1;
+
+            for (int i = 0; i < Order.Length; i++)
+            {
+                GridPos delta = Directions.Delta(Order[i]);
+                GridPos next = player.Tile.Offset(delta.X, delta.Y);
+                int latest;
+                if (!Walkable(state, next) || !window.TryLatestEntry(next, out latest))
+                {
+                    continue;
+                }
+
+                int arrival = TicksToCross(state, player, Order[i]);
+                long slack = (long)latest - arrival;
+                if (arrival < here && slack > bestSlack)
+                {
+                    best = Order[i];
+                    bestSlack = slack;
+                }
+            }
+
+            return best != Direction.None ? best : StepToSafety(state, blast, player.Tile, ticksPerTile);
+        }
+
+        private static int TicksToCross(MatchState state, PlayerState player, Direction direction)
+        {
+            int speed = state.Settings.SpeedFor(player.SpeedSteps);
+            int x = WithinTile(player.Position.X);
+            int y = WithinTile(player.Position.Y);
+
+            int distance;
+            switch (direction)
+            {
+                case Direction.Right:
+                    distance = SubPos.UnitsPerTile - x;
+                    break;
+                case Direction.Left:
+                    distance = x + 1;
+                    break;
+                case Direction.Down:
+                    distance = SubPos.UnitsPerTile - y;
+                    break;
+                default:
+                    distance = y + 1;
+                    break;
+            }
+
+            return speed <= 0 ? distance : (distance + speed - 1) / speed;
+        }
+
+        private static int WithinTile(int units)
+        {
+            int offset = units % SubPos.UnitsPerTile;
+            return offset < 0 ? offset + SubPos.UnitsPerTile : offset;
+        }
 
         // Fleeing to a tile that merely burns later is what gets a bot cornered: it
         // outruns one blast into the next one, and each hop has fewer ways out than the
@@ -226,16 +289,18 @@ namespace Blastlands.Core
         // its own fuse is how it dies — which is exactly what happened when this picked
         // one target set instead of trying both.
         private Direction StepTowardTarget(
-            MatchState state, BlastMap blast, PlayerState player, GridPos from, int ticksPerTile)
+            MatchState state, EscapeWindow window, PlayerState player, GridPos from, int ticksPerTile)
         {
+            System.Func<GridPos, int, bool> leavable =
+                (tile, depth) => window.Allows(tile, (depth * ticksPerTile) + settings.SafetyMarginTicks);
+
             if (player.CanCarryMore)
             {
                 Direction toBomb = FirstStepToward(
                     state,
                     from,
-                    (tile, depth) => blast.SurvivesArrival(tile, depth * ticksPerTile, settings.SafetyMarginTicks)
-                                     && state.LooseBombIndexAt(tile) >= 0,
-                    (tile, depth) => blast.SurvivesArrival(tile, depth * ticksPerTile, settings.SafetyMarginTicks));
+                    (tile, depth) => leavable(tile, depth) && state.LooseBombIndexAt(tile) >= 0,
+                    leavable);
 
                 if (toBomb != Direction.None)
                 {
@@ -258,9 +323,8 @@ namespace Blastlands.Core
                 Direction toFiringPosition = FirstStepToward(
                     state,
                     from,
-                    (tile, depth) => blast.SurvivesArrival(tile, depth * ticksPerTile, settings.SafetyMarginTicks)
-                                     && Reaches(state.Arena, tile, target, player.FireRange),
-                    (tile, depth) => blast.SurvivesArrival(tile, depth * ticksPerTile, settings.SafetyMarginTicks));
+                    (tile, depth) => leavable(tile, depth) && Reaches(state.Arena, tile, target, player.FireRange),
+                    leavable);
 
                 if (toFiringPosition != Direction.None)
                 {
@@ -271,9 +335,8 @@ namespace Blastlands.Core
             return FirstStepToward(
                 state,
                 from,
-                (tile, depth) => blast.SurvivesArrival(tile, depth * ticksPerTile, settings.SafetyMarginTicks)
-                                 && TouchesSoftBlock(state, tile),
-                (tile, depth) => blast.SurvivesArrival(tile, depth * ticksPerTile, settings.SafetyMarginTicks));
+                (tile, depth) => leavable(tile, depth) && TouchesSoftBlock(state, tile),
+                leavable);
         }
 
         // The check that stops a bot killing itself: place the bomb it is considering,
