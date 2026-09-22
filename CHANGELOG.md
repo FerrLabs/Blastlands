@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.38] - 2026-09-22
+
+### Features
+
+- feat(server): admit only connections with a valid game ticket (#261)
+
 ## [26.9.37] - 2026-09-22
 
 ### Features
