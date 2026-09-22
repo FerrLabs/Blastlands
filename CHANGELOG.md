@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.52] - 2026-09-22
+
+### Features
+
+- feat(input): read player controls from an input actions asset (#280)
+
 ## [26.9.51] - 2026-09-22
 
 ### Bug Fixes
