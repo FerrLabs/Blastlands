@@ -61,7 +61,64 @@ namespace Blastlands.Core
                 }
             }
 
+            IgniteLooseBombs(state, bombs, times);
             return new BlastMap(times);
+        }
+
+        private static void IgniteLooseBombs(MatchState state, IReadOnlyList<ActiveBomb> bombs, Dictionary<GridPos, int> times)
+        {
+            var definitions = new List<Bomb>(bombs.Count + state.LooseBombs.Count);
+            for (int i = 0; i < bombs.Count; i++)
+            {
+                definitions.Add(bombs[i].Bomb);
+            }
+
+            var lit = new HashSet<GridPos>();
+            var trigger = new int[1];
+            bool changed = true;
+            while (changed)
+            {
+                changed = false;
+                for (int i = 0; i < state.LooseBombs.Count; i++)
+                {
+                    GridPos tile = state.LooseBombs[i];
+                    int reached;
+                    if (lit.Contains(tile) || !times.TryGetValue(tile, out reached) || HasBombAt(bombs, tile))
+                    {
+                        continue;
+                    }
+
+                    lit.Add(tile);
+                    changed = true;
+                    trigger[0] = definitions.Count;
+                    definitions.Add(new Bomb(tile, -1, state.Settings.StartingFireRange, BombKind.Standard));
+
+                    int fuse = reached + state.Settings.LooseBombFuseTicks;
+                    ExplosionResult result = ExplosionResolver.Resolve(state.Arena, definitions, trigger);
+                    for (int f = 0; f < result.FlameTiles.Count; f++)
+                    {
+                        GridPos flame = result.FlameTiles[f];
+                        int existing;
+                        if (!times.TryGetValue(flame, out existing) || fuse < existing)
+                        {
+                            times[flame] = fuse;
+                        }
+                    }
+                }
+            }
+        }
+
+        private static bool HasBombAt(IReadOnlyList<ActiveBomb> bombs, GridPos tile)
+        {
+            for (int i = 0; i < bombs.Count; i++)
+            {
+                if (bombs[i].Bomb.Position == tile)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         public int TicksUntilFire(GridPos tile)
