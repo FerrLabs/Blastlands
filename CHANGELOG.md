@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.34] - 2026-09-22
+
+### Bug Fixes
+
+- fix(client): scale flame tiles up so the blast area reads (#249)
+
 ## [26.9.33] - 2026-09-22
 
 ### Features
