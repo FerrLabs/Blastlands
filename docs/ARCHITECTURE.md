@@ -324,6 +324,14 @@ exit, does end the container: that is the case where the backoff is what you wan
 match per process either way, which is what the one-process-one-match design in
 `ServerBootstrap` requires.
 
+**The instance reaches the lobby over HTTPS**, `BLASTLANDS_LOBBY=https://api.blastlands.ferrlabs.com`,
+even from a pod next to the lobby's own Service. `insecureHttpOption` is `NotAllowed` in the
+project settings, so the player refuses a cleartext URL and fails every heartbeat before it
+connects, while the entrypoint's curl takes one happily. An internal `http://` therefore gives
+an instance that picks up a match and then goes silent, which the lobby reaps mid-game. The
+`/internal/*` routes are served publicly on purpose for the same reason, and guarded by
+`BLASTLANDS_INSTANCE_TOKEN`.
+
 The supervisor also refuses a match it has just finished. Seeing the same id again means
 the release never landed, and replaying it would run a finished game on a loop; stalling
 instead lets the lobby's reaper free the port.
