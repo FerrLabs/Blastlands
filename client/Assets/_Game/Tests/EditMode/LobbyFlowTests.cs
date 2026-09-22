@@ -141,6 +141,56 @@ namespace Blastlands.Core.Tests
             Assert.That(flow.Matches.Count, Is.EqualTo(0));
         }
 
+        // A notice belongs to the answer that caused it. Carrying "that name is no
+        // good" onto the match list tells the player off for something they fixed.
+        [Test]
+        public void GettingSomewhereDropsTheLastComplaint()
+        {
+            var flow = new LobbyFlow();
+            Assert.That(flow.Named("x"), Is.False);
+
+            Assert.That(flow.Named("Bryan"), Is.True);
+            Assert.That(flow.HasNotice, Is.False);
+
+            flow.Refused(LobbyFailure.NoCapacity);
+            flow.Created(Invite("mine"), "host-ticket");
+            Assert.That(flow.HasNotice, Is.False);
+
+            flow.Refused(LobbyFailure.NotEnoughPlayers);
+            flow.Left();
+            Assert.That(flow.HasNotice, Is.False);
+        }
+
+        // The notice that explains why the player is back on the list does stay, or
+        // they are dropped there with no reason given.
+        [Test]
+        public void TheReasonForBeingBouncedSurvivesTheBounce()
+        {
+            LobbyFlow flow = Browsing();
+            flow.Joined(Invite("b"));
+
+            flow.Refused(LobbyFailure.MatchFull, "b");
+
+            Assert.That(flow.Screen, Is.EqualTo(LobbyScreen.Browse));
+            Assert.That(flow.HasNotice, Is.True);
+            Assert.That(flow.Notice, Is.EqualTo(LobbyFailure.MatchFull));
+        }
+
+        // Being bounced has to drop the invite too: a screen that hands whatever it is
+        // holding to the match scene would dial a match that is full or gone.
+        [Test]
+        public void AMatchThatWentAwayIsNotStillDialable()
+        {
+            LobbyFlow flow = Browsing();
+            flow.Joined(Invite("b"));
+
+            flow.Refused(LobbyFailure.MatchAlreadyStarted, "b");
+
+            Assert.That(flow.Invite.CanConnect, Is.False);
+            Assert.That(flow.HostTicket, Is.Empty);
+            Assert.That(flow.Running(), Is.False);
+        }
+
         [Test]
         public void LeavingAMatchForgetsTheWayBackIntoIt()
         {

@@ -12,9 +12,11 @@ namespace Blastlands.Runtime
     // The lobby, on screen. Holds a LobbyFlow, renders whichever screen it is on, and
     // turns what the player does into calls on LobbyClient.
     //
-    // Every call goes through One(), which keeps a single request in flight: a player
-    // hammering Join would otherwise queue a dozen of them and act on whichever came
-    // back last, and the lobby throttles per address anyway.
+    // Two lanes. What the player asked for runs at once, and a second press while it
+    // is still in flight is dropped: hammering Join would otherwise queue a dozen and
+    // act on whichever came back last, and the lobby throttles per address anyway.
+    // The list refresh and the status poll run in the other lane and give way, because
+    // a press landing in the three seconds between refreshes must not be swallowed.
     public sealed class LobbyScreens : MonoBehaviour
     {
         private const string MatchScene = "Match";
@@ -30,6 +32,8 @@ namespace Blastlands.Runtime
         private LobbyScreen drawn = LobbyScreen.Play;
         private bool dirty = true;
         private bool busy;
+        private bool polling;
+        private int generation;
         private float sinceStatus;
 
         private void Awake()
@@ -45,8 +49,13 @@ namespace Blastlands.Runtime
             if (lobby == null)
             {
                 lobby = gameObject.AddComponent<LobbyClient>();
-                lobby.Use(ClientOptions.Lobby(Environment.GetCommandLineArgs()));
             }
+
+            // Told where the lobby is every time, including when the component came
+            // with the scene. Its serialized address is a developer's convenience, and
+            // leaving it in charge means a build ignores --lobby and the environment
+            // and quietly dials whatever was saved in the scene.
+            lobby.Use(ClientOptions.Lobby(Environment.GetCommandLineArgs()));
 
             BuildCanvas();
         }
@@ -61,7 +70,7 @@ namespace Blastlands.Runtime
 
             if (flow.ShouldRefresh(Time.unscaledDeltaTime))
             {
-                One(Listing());
+                Poll(Listing());
             }
 
             if (flow.Screen == LobbyScreen.Host || flow.Screen == LobbyScreen.Wait)
@@ -70,7 +79,7 @@ namespace Blastlands.Runtime
                 if (sinceStatus >= SecondsBetweenStatusChecks)
                 {
                     sinceStatus = 0f;
-                    One(Watching());
+                    Poll(Watching());
                 }
             }
 
@@ -119,36 +128,43 @@ namespace Blastlands.Runtime
             Redraw();
             if (flow.Named(typed))
             {
-                One(Listing());
+                Asked(Listing());
             }
         }
 
         private void Create()
         {
-            One(Creating());
+            Asked(Creating());
         }
 
         private void Join(MatchListing listing)
         {
-            One(Joining(listing));
+            Asked(Joining(listing));
         }
 
         private void Start()
         {
-            One(Starting());
+            Asked(Starting());
         }
 
         private void Leave()
         {
             flow.Left();
             Redraw();
-            One(Listing());
+            Asked(Listing());
         }
 
         private IEnumerator Listing()
         {
+            int mine = generation;
+
             yield return lobby.List(result =>
             {
+                if (Stale(mine))
+                {
+                    return;
+                }
+
                 if (result.Ok)
                 {
                     flow.Listed(result.Value);
@@ -220,9 +236,15 @@ namespace Blastlands.Runtime
         private IEnumerator Watching()
         {
             string id = flow.Invite.MatchId;
+            int mine = generation;
 
             yield return lobby.Status(id, result =>
             {
+                if (Stale(mine))
+                {
+                    return;
+                }
+
                 if (result.Ok)
                 {
                     flow.Listed(new List<MatchListing> { result.Value.Listing });
@@ -240,21 +262,49 @@ namespace Blastlands.Runtime
             });
         }
 
-        private void One(IEnumerator work)
+        private void Asked(IEnumerator work)
         {
             if (busy)
             {
                 return;
             }
 
+            // A poll in flight answers a question about the screen the player has just
+            // left, so its answer is dropped when it lands rather than the coroutine
+            // being stopped: stopping one skips the using in LobbyClient, which leaves
+            // the request undisposed.
+            generation++;
+
             busy = true;
             StartCoroutine(Once(work));
         }
 
+        private void Poll(IEnumerator work)
+        {
+            if (busy || polling)
+            {
+                return;
+            }
+
+            polling = true;
+            StartCoroutine(Polled(work));
+        }
+
         private IEnumerator Once(IEnumerator work)
         {
-            yield return StartCoroutine(work);
+            yield return work;
             busy = false;
+        }
+
+        private IEnumerator Polled(IEnumerator work)
+        {
+            yield return work;
+            polling = false;
+        }
+
+        private bool Stale(int mine)
+        {
+            return mine != generation;
         }
 
         private void Redraw()
