@@ -15,6 +15,8 @@ namespace Blastlands.Runtime
         [SerializeField] private ArenaTheme theme;
         [SerializeField] private float blockFootprint = 0.92f;
         [SerializeField] private float playerHeight = 1.15f;
+        [SerializeField] private float ringRadius = 0.46f;
+        [SerializeField] private float ringWidth = 0.1f;
 
         // How much ground the Run clip covers per second when it is played back at its
         // authored rate, measured off SimpleCharacter_5.0's own root motion. It is what
@@ -1021,6 +1023,7 @@ namespace Blastlands.Runtime
                     TileFitter.FitToHeight(view, playerHeight);
                 }
 
+                PlayerRing.Attach(view, MatchPalette.ForPlayer(i), ringRadius, ringWidth, groundDetailLift * 4f);
                 playerViews.Add(view);
                 playerAnimators.Add(Rig(view));
                 wasAlive.Add(state.Players[i].Alive);
