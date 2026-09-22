@@ -138,14 +138,29 @@ jobs:
       # every release filled the account's artifact storage quota on their own, and every
       # upload after that failed, the Unity tests included.
       #
+      # On FerrLabs runners the relay is the cluster's Garage, like the Library cache.
+      # The artifact quota is a monthly allowance of GB-hours for the whole org, not a
+      # size: once spent, every upload fails until the next billing month whatever is
+      # deleted, and it was spent in September, which is what failed v26.9.35 onwards.
+      #
       # No Linux client in the matrix: nothing published or downloaded it, and it compiles
       # the same code as the Windows client, since the platform is only checked at run
       # time. It comes back as one matrix entry the day it has to be distributed.
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+      - if: runner.environment == 'github-hosted'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: ${{ matrix.name }}
           path: build
           retention-days: 1
+
+      - if: runner.environment == 'self-hosted'
+        uses: ./.github/actions/build-relay
+        with:
+          mode: put
+          path: build
+          name: ${{ matrix.targetPlatform }}
+          s3-key: ${{ secrets.SCCACHE_S3_KEY }}
+          s3-secret: ${{ secrets.SCCACHE_S3_SECRET }}
 
   # Attache le client Windows à la release. Le lobby lit ensuite la release
   # elle-même : sa version, cet asset et l'empreinte que GitHub calcule dessus.
@@ -164,10 +179,27 @@ jobs:
       # bloc, c'est l'idiome de ce fichier.
       contents: write
     steps:
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+      # Only for the relay action, which is local to the repository.
+      - if: runner.environment == 'self-hosted'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          lfs: false
+          sparse-checkout: .github/actions
+
+      - if: runner.environment == 'github-hosted'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: Windows client
           path: client-build
+
+      - if: runner.environment == 'self-hosted'
+        uses: ./.github/actions/build-relay
+        with:
+          mode: get
+          path: client-build
+          name: StandaloneWindows64
+          s3-key: ${{ secrets.SCCACHE_S3_KEY }}
+          s3-secret: ${{ secrets.SCCACHE_S3_SECRET }}
 
       - name: Package and attach
         env:
@@ -210,11 +242,22 @@ jobs:
           lfs: false
 
       # The build job uploads `path: build`, so StandaloneLinux64/ is already at the root
-      # of the artifact and lands where the Dockerfile expects it.
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+      # of the artifact and lands where the Dockerfile expects it. The relay keeps the
+      # same layout.
+      - if: runner.environment == 'github-hosted'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: Linux dedicated server
           path: image
+
+      - if: runner.environment == 'self-hosted'
+        uses: ./.github/actions/build-relay
+        with:
+          mode: get
+          path: image
+          name: StandaloneLinux64
+          s3-key: ${{ secrets.SCCACHE_S3_KEY }}
+          s3-secret: ${{ secrets.SCCACHE_S3_SECRET }}
 
       # A context of its own rather than client/, which is the whole Unity project.
       # Assets and Library are gigabytes and there is no .dockerignore, so building from

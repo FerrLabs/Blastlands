@@ -1,0 +1,34 @@
+name: Build relay
+description: Hand a build directory from one job of a run to another through the ci-cache bucket of the in-cluster Garage.
+
+inputs:
+  mode:
+    description: put or get.
+    required: true
+  path:
+    description: Directory whose contents are put, or into which they are extracted on get.
+    required: true
+  name:
+    description: Object name, unique within the run.
+    required: true
+  s3-key:
+    description: Garage access key id.
+    required: true
+  s3-secret:
+    description: Garage secret access key.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        MODE: ${{ inputs.mode }}
+        RELAY_PATH: ${{ inputs.path }}
+        RELAY_NAME: ${{ inputs.name }}
+        RELAY_ENDPOINT: sccache-s3.github-runner.svc.cluster.local:3900
+        RELAY_BUCKET: ci-cache
+        RELAY_REGION: ferrlabs
+        S3_KEY: ${{ inputs.s3-key }}
+        S3_SECRET: ${{ inputs.s3-secret }}
+      run: '"${GITHUB_ACTION_PATH}/relay.sh" "${MODE}"'
