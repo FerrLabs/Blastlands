@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Blastlands.Core;
 using UnityEngine;
@@ -5,89 +6,36 @@ using UnityEngine.UI;
 
 namespace Blastlands.Runtime
 {
-    // One panel per player, pinned to a corner. Like MatchView it renders state and owns
-    // none of it, so it can be switched off without changing a match.
-    //
-    // Every visible part is a prefab out of the Synty Apocalypse HUD pack. Nothing here
-    // draws: the panel root is an empty RectTransform used only to group and place, and
-    // the three stat boxes bring their own plate, frame, icon slot and fill. The version
-    // before this built the plate itself from a bare sprite on a hand-made Image, then
-    // tinted it dark because the pack's metal left white icons with no contrast. Both
-    // halves of that were the wrong answer to "which prefab is this".
-    //
-    // Stats are fills rather than numbers because each one is small and capped, so what
-    // matters is how close to the cap it is. It also keeps the HUD clear of TextMeshPro.
     public sealed class MatchHud : MonoBehaviour
     {
-        private static readonly Vector2[] Corners =
-        {
-            new Vector2(0f, 1f),
-            new Vector2(1f, 1f),
-            new Vector2(0f, 0f),
-            new Vector2(1f, 0f)
-        };
+        private static readonly Rect WholeScreen = new Rect(0f, 0f, 1f, 1f);
+        private static readonly Vector2 TopCentre = new Vector2(0.5f, 1f);
+        private static readonly Vector2 Centre = new Vector2(0.5f, 0.5f);
 
         [SerializeField] private HudArt art;
-        [SerializeField] private float margin = 26f;
+        [SerializeField] private float inset = 24f;
+        [SerializeField] private float splitScale = 0.62f;
+        [SerializeField] private float clockClearance = 96f;
 
-        // The pack authors a stat box at 120 square, which is a size for one player
-        // filling the screen rather than four sharing it.
-        [SerializeField] private float boxSize = 74f;
-        [SerializeField] private float boxGap = 6f;
+        private readonly List<HudRoster> rosters = new List<HudRoster>();
+        private readonly List<HudVitals> vitals = new List<HudVitals>();
+        private readonly List<HudActions> actions = new List<HudActions>();
+        private readonly List<int> viewers = new List<int>();
+        private HudClock clock;
+        private HudRound round;
 
-        // Bigger than a player's stat so it reads as the odd one out, and scaled
-        // uniformly: the plate is authored art, and stretching it on one axis distorts
-        // its frame and the bar inside it.
-        [SerializeField] private float clockSize = 104f;
-
-        // The pack authors the diode large enough to headline a panel of its own.
-        [SerializeField] private float diodeSize = 26f;
-
-        // Smaller than the identity diode, so a row of them reads as a tally rather
-        // than as four more panels.
-        [SerializeField] private float pipSize = 14f;
-        [SerializeField] private float pipGap = 5f;
-
-        private static readonly Rect WholeScreen = new Rect(0f, 0f, 1f, 1f);
-
-        private readonly List<Panel> panels = new List<Panel>();
-        private readonly List<Clock> clocks = new List<Clock>();
         private MatchState state;
         private MatchSeries series;
         private MatchCamera cameras;
+        private Func<int, InputDeviceKind> deviceOf;
         private Canvas canvas;
 
-        // The match clock, one per viewport for the same reason the panels are: on a
-        // split screen each player reads their own quadrant and nothing else.
-        private sealed class Clock
-        {
-            public CanvasGroup Group;
-            public Slider Bar;
-            public Image Fill;
-        }
-
-        private sealed class Panel
-        {
-            public int PlayerIndex;
-            public CanvasGroup Group;
-            public Slider[] Bars;
-            public Image[] Fills;
-            public GameObject Skull;
-
-            // One entry per round it takes to win the series, each holding every image
-            // in that pip so the whole thing can be lit or left dark in one go.
-            public List<Image[]> Pips;
-        }
-
-        // The cameras are needed because a panel belongs inside the viewport of the
-        // person it describes. On one screen that is the whole window and nothing here
-        // changes; split four ways it is a quadrant, and a HUD that ignores the split
-        // hands each player somebody else's numbers.
-        public void Bind(MatchState matchState, MatchCamera matchCameras, MatchSeries matchSeries)
+        public void Bind(MatchState matchState, MatchCamera matchCameras, MatchSeries matchSeries, Func<int, InputDeviceKind> devices)
         {
             state = matchState;
             cameras = matchCameras;
             series = matchSeries;
+            deviceOf = devices;
             Rebuild();
         }
 
@@ -98,136 +46,143 @@ namespace Blastlands.Runtime
                 return;
             }
 
-            RenderClock();
+            clock?.Render(state);
 
-            for (int i = 0; i < panels.Count; i++)
+            if (series != null)
             {
-                Panel panel = panels[i];
-                PlayerState player = state.Players[panel.PlayerIndex];
-
-                // What is carried, against what could be carried. The bar empties as
-                // bombs are spent, which is the number that decides what you can do.
-                Show(panel, 0, player.BombsHeld, player.CarryCapacity);
-                Show(panel, 1, player.FireRange, state.Settings.MaxFireRange);
-                Show(panel, 2, player.SpeedSteps + 1, state.Settings.MaxSpeedSteps + 1);
-
-                // A dead player keeps their corner. Who is left is the state of the
-                // round, and a panel that vanished would reshuffle the others.
-                if (panel.Skull != null)
-                {
-                    panel.Skull.SetActive(!player.Alive);
-                }
-
-                RenderPips(panel);
-
-                if (panel.Group != null)
-                {
-                    bool won = state.Outcome == RoundOutcome.Winner
-                        && state.WinnerId == player.Id;
-                    panel.Group.alpha = PanelMood.AlphaFor(player.Alive, state.Outcome, won);
-                }
-            }
-        }
-
-        // Lit for a round won, dark for one still to play. Read straight off the series
-        // every frame rather than incremented on an event: a HUD that counts for itself
-        // is a second score to drift away from the real one.
-        private void RenderPips(Panel panel)
-        {
-            if (panel.Pips == null)
-            {
-                return;
+                round?.Render(series);
             }
 
-            int won = series == null ? 0 : series.Wins(panel.PlayerIndex);
-            Color accent = MatchPalette.ForPlayer(panel.PlayerIndex);
-
-            for (int i = 0; i < panel.Pips.Count; i++)
+            foreach (HudRoster roster in rosters)
             {
-                Image[] images = panel.Pips[i];
-                Color colour = i < won ? accent : MatchPalette.PipUnwon;
-
-                for (int j = 0; j < images.Length; j++)
-                {
-                    if (images[j] != null)
-                    {
-                        images[j].color = colour;
-                    }
-                }
-            }
-        }
-
-        private static void Show(Panel panel, int index, int value, int max)
-        {
-            if (index >= panel.Bars.Length || panel.Bars[index] == null)
-            {
-                return;
+                roster.Render(state, series);
             }
 
-            panel.Bars[index].value = max <= 0 ? 0f : Mathf.Clamp01(value / (float)max);
+            foreach (HudVitals panel in vitals)
+            {
+                panel.Render(state);
+            }
+
+            foreach (HudActions buttons in actions)
+            {
+                buttons.Render(state);
+            }
         }
 
         private void Rebuild()
         {
-            for (int i = 0; i < panels.Count; i++)
+            rosters.Clear();
+            vitals.Clear();
+            actions.Clear();
+            clock = null;
+            round = null;
+
+            if (canvas != null)
             {
-                if (panels[i].Group != null)
-                {
-                    Destroy(panels[i].Group.gameObject);
-                }
+                Destroy(canvas.gameObject);
+                canvas = null;
             }
 
-            panels.Clear();
-
-            for (int i = 0; i < clocks.Count; i++)
-            {
-                if (clocks[i].Group != null)
-                {
-                    Destroy(clocks[i].Group.gameObject);
-                }
-            }
-
-            clocks.Clear();
-
-            if (state == null)
+            if (state == null || art == null)
             {
                 return;
             }
 
-            EnsureCanvas();
+            BuildCanvas();
 
-            // One full set of panels per viewport, rather than the set split between
-            // them. Everybody keeps the corner and the colour they have on a single
-            // screen, and nobody loses sight of what the other three are carrying just
-            // because the window was divided up.
-            int viewports = cameras == null ? 0 : cameras.ViewCount;
-
-            if (viewports <= 1)
+            int views = cameras == null ? 0 : cameras.ViewCount;
+            if (views <= 1)
             {
-                BuildPanels(WholeScreen);
-                BuildClock(WholeScreen);
+                BuildWholeScreen();
             }
             else
             {
-                for (int i = 0; i < viewports; i++)
-                {
-                    Camera view = cameras.ViewAt(i);
-                    Rect viewport = view == null ? WholeScreen : view.rect;
-                    BuildPanels(viewport);
-                    BuildClock(viewport);
-                }
+                BuildSplit(views);
             }
 
             Render();
         }
 
-        private void EnsureCanvas()
+        private void BuildWholeScreen()
         {
-            if (canvas != null)
+            RectTransform area = HudPlacement.Area(canvas.transform, "Screen", WholeScreen);
+
+            var everyone = new List<int>();
+            for (int i = 0; i < state.Players.Count; i++)
             {
-                return;
+                everyone.Add(i);
             }
 
+            rosters.Add(HudRoster.Build(art, area, everyone, series, true, inset, 1f));
+            clock = HudClock.Build(art, area, TopCentre, inset, 1f);
+
+            if (series != null)
+            {
+                round = HudRound.Build(art, area, inset, 1f);
+            }
+
+            BuildLocalPlayer(area, 0, 1f);
+        }
+
+        private void BuildSplit(int views)
+        {
+            for (int view = 0; view < views; view++)
+            {
+                Camera camera = cameras.ViewAt(view);
+                Rect viewport = camera == null ? WholeScreen : camera.rect;
+                RectTransform area = HudPlacement.Area(canvas.transform, "View " + view, viewport);
+                ClearTheClock(area, viewport);
+                int seat = BuildLocalPlayer(area, view, splitScale);
+
+                if (seat >= 0)
+                {
+                    rosters.Add(HudRoster.Build(art, area, new[] { seat }, series, false, inset * splitScale, splitScale));
+                }
+            }
+
+            RectTransform middle = HudPlacement.Area(canvas.transform, "Middle", WholeScreen);
+            clock = HudClock.Build(art, middle, Centre, 0f, splitScale);
+        }
+
+        private void ClearTheClock(RectTransform area, Rect viewport)
+        {
+            if (viewport.xMin > 0f)
+            {
+                area.offsetMin = new Vector2(clockClearance, area.offsetMin.y);
+            }
+
+            if (viewport.xMax < 1f)
+            {
+                area.offsetMax = new Vector2(-clockClearance, area.offsetMax.y);
+            }
+        }
+
+        private int BuildLocalPlayer(Transform area, int view, float scale)
+        {
+            if (cameras == null)
+            {
+                viewers.Clear();
+                viewers.Add(0);
+            }
+            else
+            {
+                cameras.ViewersOf(view, viewers);
+            }
+
+            if (viewers.Count == 0 || viewers[0] < 0 || viewers[0] >= state.Players.Count)
+            {
+                return -1;
+            }
+
+            int seat = viewers[0];
+            InputDeviceKind device = deviceOf == null ? InputDeviceKind.Keyboard : deviceOf(seat);
+            vitals.Add(HudVitals.Build(art, area, seat, inset * scale, scale));
+            actions.Add(HudActions.Build(art, area, seat, device, inset * scale, scale));
+            return seat;
+        }
+
+        private void BuildCanvas()
+        {
             var host = new GameObject("MatchHud Canvas", typeof(Canvas), typeof(CanvasScaler));
             host.transform.SetParent(transform, false);
 
@@ -238,358 +193,6 @@ namespace Blastlands.Runtime
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1920f, 1080f);
             scaler.matchWidthOrHeight = 0.5f;
-        }
-
-        // Hidden outright when sudden death is off, rather than left sitting full. A bar
-        // that never moves is claiming there is a deadline when there is none, which is
-        // worse than not showing one.
-        private void RenderClock()
-        {
-            bool deadline = MatchClock.HasDeadline(state);
-            float remaining = MatchClock.Remaining(state);
-            bool closing = MatchClock.Closing(state);
-
-            Color colour = closing
-                ? MatchPalette.ClockClosing
-                : MatchClock.Warning(state) ? MatchPalette.ClockWarning : MatchPalette.ClockCalm;
-
-            for (int i = 0; i < clocks.Count; i++)
-            {
-                Clock clock = clocks[i];
-
-                if (clock.Group != null)
-                {
-                    clock.Group.alpha = deadline ? 1f : 0f;
-                }
-
-                if (clock.Bar != null)
-                {
-                    clock.Bar.value = remaining;
-                }
-
-                if (clock.Fill != null)
-                {
-                    clock.Fill.color = colour;
-                }
-            }
-        }
-
-        // Anchors and viewports are both fractions of the window, so a corner of a
-        // viewport is that same corner read inside the viewport's own rectangle. On a
-        // single screen the rectangle is the whole window and this is the arithmetic the
-        // HUD was already doing.
-        //
-        // Public because the thing that can be wrong here is the arithmetic, not the
-        // GameObjects around it, and a transposed axis puts a panel over somebody else's
-        // half of the screen without anything failing.
-        public static Vector2 AnchorIn(Rect viewport, Vector2 corner)
-        {
-            return new Vector2(
-                viewport.x + (corner.x * viewport.width),
-                viewport.y + (corner.y * viewport.height));
-        }
-
-        // Top centre of the viewport, away from the four corners the players occupy. It
-        // is the one thing on screen that belongs to nobody in particular.
-        private void BuildClock(Rect viewport)
-        {
-            if (art == null || art.StatBox == null || state == null)
-            {
-                return;
-            }
-
-            GameObject box = Instantiate(art.StatBox, canvas.transform);
-            box.name = "Match clock";
-
-            var group = box.GetComponent<CanvasGroup>();
-            if (group == null)
-            {
-                group = box.AddComponent<CanvasGroup>();
-            }
-
-            var rect = box.GetComponent<RectTransform>();
-            Vector2 anchor = AnchorIn(viewport, new Vector2(0.5f, 1f));
-            rect.anchorMin = anchor;
-            rect.anchorMax = anchor;
-            rect.pivot = new Vector2(0.5f, 1f);
-
-            // Scaled rather than resized, for the reason BuildStat gives: the pack
-            // authored the plate, its frame and its bar against each other.
-            float authored = rect.rect.width;
-            rect.localScale = Vector3.one * (authored > 0f ? clockSize / authored : 1f);
-            rect.anchoredPosition = new Vector2(0f, -margin);
-
-            var clock = new Clock { Group = group };
-
-            Slider bar = box.GetComponentInChildren<Slider>(true);
-            if (bar != null)
-            {
-                bar.minValue = 0f;
-                bar.maxValue = 1f;
-                bar.interactable = false;
-                bar.transition = Selectable.Transition.None;
-
-                if (bar.handleRect != null)
-                {
-                    bar.handleRect.gameObject.SetActive(false);
-                    bar.handleRect = null;
-                }
-
-                if (bar.fillRect != null)
-                {
-                    clock.Fill = bar.fillRect.GetComponent<Image>();
-                }
-
-                clock.Bar = bar;
-            }
-
-            // The icon slot holds a stat's symbol on a player panel. There is no symbol
-            // for time here, and an empty plate reads better than a borrowed one.
-            Image[] images = box.GetComponentsInChildren<Image>(true);
-            for (int i = 0; i < images.Length; i++)
-            {
-                if (images[i] != clock.Fill && images[i].sprite == art.Bombs)
-                {
-                    images[i].enabled = false;
-                }
-            }
-
-            clocks.Add(clock);
-        }
-
-        private void BuildPanels(Rect viewport)
-        {
-            for (int i = 0; i < state.Players.Count; i++)
-            {
-                panels.Add(BuildPanel(i, viewport));
-            }
-        }
-
-        private Panel BuildPanel(int index, Rect viewport)
-        {
-            Vector2 corner = Corners[index % Corners.Length];
-
-            // Past four players the corners are taken, so the extras stack inwards along
-            // the same edge rather than landing on top of each other.
-            int row = index / Corners.Length;
-
-            Vector2 panelSize = new Vector2(
-                (boxSize * 3f) + (boxGap * 2f),
-                boxSize);
-
-            var root = new GameObject("Player " + (index + 1), typeof(RectTransform), typeof(CanvasGroup));
-            root.transform.SetParent(canvas.transform, false);
-
-            Vector2 anchor = AnchorIn(viewport, corner);
-
-            var rect = root.GetComponent<RectTransform>();
-            rect.anchorMin = anchor;
-            rect.anchorMax = anchor;
-            rect.pivot = corner;
-            rect.sizeDelta = panelSize;
-            // Past four players the corners are taken and panels stack in rows, so the
-            // gap between two rows has to clear the tally hanging off the one before it
-            // as well as the panel itself. At a flat ten it did not: the last stretch of
-            // a row-0 tally was drawn over the row-1 stat boxes, at the same x.
-            float rowGap = pipGap + pipSize + 6f;
-            rect.anchoredPosition = new Vector2(
-                corner.x > 0.5f ? -margin : margin,
-                (corner.y > 0.5f ? -1f : 1f) * (margin + (row * (panelSize.y + rowGap))));
-
-            Color accent = MatchPalette.ForPlayer(index);
-
-            BuildDiode(root.transform, accent);
-
-            var bars = new Slider[3];
-            var fills = new Image[3];
-            GameObject skull = BuildSkull(root.transform);
-            Sprite[] icons = { art == null ? null : art.Bombs, art == null ? null : art.Fire, art == null ? null : art.Speed };
-
-            for (int i = 0; i < bars.Length; i++)
-            {
-                BuildStat(root.transform, i, icons[i], accent, bars, fills);
-            }
-
-            return new Panel
-            {
-                PlayerIndex = index,
-                Group = root.GetComponent<CanvasGroup>(),
-                Bars = bars,
-                Fills = fills,
-                Skull = skull,
-                Pips = BuildPips(root.transform, panelSize)
-            };
-        }
-
-        private void BuildStat(Transform parent, int slot, Sprite icon, Color accent, Slider[] bars, Image[] fills)
-        {
-            if (art == null || art.StatBox == null)
-            {
-                return;
-            }
-
-            GameObject box = Instantiate(art.StatBox, parent);
-            box.name = "Stat " + slot;
-
-            var rect = box.GetComponent<RectTransform>();
-            rect.anchorMin = new Vector2(0f, 1f);
-            rect.anchorMax = new Vector2(0f, 1f);
-            rect.pivot = new Vector2(0f, 1f);
-
-            // Scaled rather than resized. The plate, its frame and the icon inside it are
-            // separate rects the pack authored against each other, and setting the root's
-            // size leaves every child where it was.
-            float authored = rect.rect.width;
-            box.transform.localScale = Vector3.one * (authored > 0f ? boxSize / authored : 1f);
-            rect.anchoredPosition = new Vector2(slot * (boxSize + boxGap), 0f);
-
-            Slider bar = box.GetComponentInChildren<Slider>(true);
-            if (bar != null)
-            {
-                bar.minValue = 0f;
-                bar.maxValue = 1f;
-                bar.interactable = false;
-                bar.transition = Selectable.Transition.None;
-
-                // The handle is for dragging, which these never are.
-                if (bar.handleRect != null)
-                {
-                    bar.handleRect.gameObject.SetActive(false);
-                    bar.handleRect = null;
-                }
-
-                if (bar.fillRect != null)
-                {
-                    fills[slot] = bar.fillRect.GetComponent<Image>();
-                    if (fills[slot] != null)
-                    {
-                        fills[slot].color = accent;
-                    }
-                }
-
-                bars[slot] = bar;
-            }
-
-            Transform slotIcon = box.transform.Find("Icon");
-            if (slotIcon != null && icon != null)
-            {
-                Image image = slotIcon.GetComponent<Image>();
-                image.sprite = icon;
-
-                // The slot is wider than it is tall, and these icons are not.
-                image.preserveAspect = true;
-            }
-        }
-
-        private GameObject BuildSkull(Transform parent)
-        {
-            if (art == null || art.Icon == null || art.Dead == null)
-            {
-                return null;
-            }
-
-            GameObject skull = Instantiate(art.Icon, parent);
-            skull.name = "Dead";
-
-            var rect = skull.GetComponent<RectTransform>();
-            rect.anchorMin = new Vector2(1f, 1f);
-            rect.anchorMax = new Vector2(1f, 1f);
-            rect.pivot = new Vector2(1f, 1f);
-            rect.sizeDelta = new Vector2(40f, 40f);
-            rect.anchoredPosition = new Vector2(-14f, -14f);
-
-            Image image = skull.GetComponent<Image>();
-            if (image != null)
-            {
-                image.sprite = art.Dead;
-                image.preserveAspect = true;
-            }
-
-            skull.transform.SetAsLastSibling();
-            skull.SetActive(false);
-            return skull;
-        }
-
-        // One small light per round it takes to win, in a row under the stat boxes. The
-        // HUD has no text and wants none, and for a count this small a row of lights is
-        // read faster than a number would be anyway.
-        //
-        // Placed below the panel on the top corners and above it on the bottom ones, so
-        // the tally always sits between the stats and the middle of the screen rather
-        // than running off the edge.
-        private List<Image[]> BuildPips(Transform parent, Vector2 panelSize)
-        {
-            if (art == null || art.Diode == null || series == null)
-            {
-                return null;
-            }
-
-            var pips = new List<Image[]>();
-            Vector2 corner = ((RectTransform)parent).pivot;
-            float y = corner.y > 0.5f ? -(panelSize.y + pipGap) : panelSize.y + pipGap;
-
-            for (int i = 0; i < series.RoundsToWin; i++)
-            {
-                GameObject pip = Instantiate(art.Diode, parent);
-                pip.name = "Round " + (i + 1);
-
-                // Same reason BuildDiode gives: the glow is a particle system a
-                // RectTransform cannot size, and it spills across the arena.
-                foreach (ParticleSystem system in pip.GetComponentsInChildren<ParticleSystem>(true))
-                {
-                    system.gameObject.SetActive(false);
-                }
-
-                var rect = pip.GetComponent<RectTransform>();
-                rect.anchorMin = new Vector2(0f, corner.y);
-                rect.anchorMax = new Vector2(0f, corner.y);
-                rect.pivot = new Vector2(0f, corner.y);
-
-                float authored = rect.rect.width;
-                pip.transform.localScale = Vector3.one * (authored > 0f ? pipSize / authored : 1f);
-                rect.anchoredPosition = new Vector2(i * (pipSize + pipGap), y);
-
-                pips.Add(pip.GetComponentsInChildren<Image>(true));
-            }
-
-            return pips;
-        }
-
-        // The pack's indicator light, tinted to the player. A HUD diode is already the
-        // thing that says "this panel is yours" without any text.
-        private void BuildDiode(Transform parent, Color accent)
-        {
-            if (art == null || art.Diode == null)
-            {
-                return;
-            }
-
-            GameObject diode = Instantiate(art.Diode, parent);
-            diode.name = "Identity";
-
-            // The glow is a particle system, which a RectTransform cannot size: it keeps
-            // its authored scale and spills across the arena. The lit sprite alone is
-            // what carries the colour anyway.
-            foreach (ParticleSystem system in diode.GetComponentsInChildren<ParticleSystem>(true))
-            {
-                system.gameObject.SetActive(false);
-            }
-
-            var rect = diode.GetComponent<RectTransform>();
-            rect.anchorMin = new Vector2(0f, 1f);
-            rect.anchorMax = new Vector2(0f, 1f);
-            rect.pivot = new Vector2(0f, 1f);
-
-            // Sizing the root leaves the children at their authored size, so the whole
-            // thing is scaled instead.
-            float scale = rect.rect.width > 0f ? diodeSize / rect.rect.width : 1f;
-            diode.transform.localScale = Vector3.one * scale;
-            rect.anchoredPosition = new Vector2(12f, -6f);
-
-            foreach (Image image in diode.GetComponentsInChildren<Image>(true))
-            {
-                image.color = accent;
-            }
         }
     }
 }

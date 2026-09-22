@@ -2,6 +2,7 @@ using System.Text;
 using Blastlands.Core;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.DualShock;
 using PlayerInput = Blastlands.Core.PlayerInput;
 
 namespace Blastlands.Runtime
@@ -117,6 +118,17 @@ namespace Blastlands.Runtime
             }
 
             return text.ToString();
+        }
+
+        public InputDeviceKind KindFor(int player)
+        {
+            Gamepad pad = PadFor(player);
+            if (pad == null)
+            {
+                return InputDeviceKind.Keyboard;
+            }
+
+            return pad is DualShockGamepad ? InputDeviceKind.PlayStation : InputDeviceKind.Xbox;
         }
 
         private static Gamepad PadFor(int player)

@@ -449,10 +449,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Blastlands.Runtime::Blastlands.Runtime.MatchHud
   art: {fileID: 11400000, guid: 60607a3b2b9136d4d94e66a78b3d7b32, type: 2}
-  margin: 26
-  boxSize: 74
-  boxGap: 6
-  diodeSize: 26
+  inset: 24
+  splitScale: 0.62
+  clockClearance: 96
 --- !u!114 &613233831
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -3,13 +3,6 @@ using UnityEngine;
 
 namespace Blastlands.Runtime
 {
-    // How long is left before the coast starts closing, as a fraction the HUD can drain
-    // a bar with.
-    //
-    // Deliberately not a mm:ss readout. The rest of the HUD is bars and colour because
-    // the project has no TextMeshPro and does not want it, and a number is the wrong
-    // shape anyway: what a player needs mid-fight is a glance that says how much room is
-    // left, not a figure to read.
     public static class MatchClock
     {
         // The last stretch, where the bar changes colour rather than starts blinking.

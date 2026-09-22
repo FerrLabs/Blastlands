@@ -2,29 +2,54 @@ using UnityEngine;
 
 namespace Blastlands.Runtime
 {
-    // The Synty interface art the HUD is assembled from. Every field may be left empty:
-    // the HUD still lays its panels out and simply shows nothing in the slot.
     [CreateAssetMenu(fileName = "HudArt", menuName = "Blastlands/Hud Art")]
     public sealed class HudArt : ScriptableObject
     {
-        // One framed stat from the Apocalypse HUD pack: plate, icon and fill in a single
-        // prefab. Three of them are the whole panel, which is why there is no plate here
-        // any more. The old panel was a bare sprite stretched over a hand-built Image and
-        // then tinted, because the pack's metal plate left white icons with no contrast
-        // on it. Recolouring an asset to make it work is the tell that it was the wrong
-        // asset.
+        [SerializeField] private GameObject clock;
+        [SerializeField] private GameObject banner;
+        [SerializeField] private GameObject badge;
+        [SerializeField] private GameObject row;
         [SerializeField] private GameObject statBox;
-
-        // The pack's own icon component, and the indicator light it uses to mark state.
-        // Nothing here is assembled by hand: the HUD instantiates these and pushes
-        // values into them.
         [SerializeField] private GameObject icon;
-        [SerializeField] private GameObject diode;
+        [SerializeField] private GameObject label;
+        [SerializeField] private GameObject caption;
+        [SerializeField] private GameObject dial;
+        [SerializeField] private GameObject padPrompt;
+        [SerializeField] private GameObject keyPrompt;
+        [SerializeField] private GameObject roundWon;
 
         [SerializeField] private Sprite bombs;
         [SerializeField] private Sprite fire;
         [SerializeField] private Sprite speed;
         [SerializeField] private Sprite dead;
+        [SerializeField] private Sprite shove;
+        [SerializeField] private Sprite mouseLeft;
+        [SerializeField] private Sprite xboxSouth;
+        [SerializeField] private Sprite xboxWest;
+        [SerializeField] private Sprite xboxShoulder;
+        [SerializeField] private Sprite playStationSouth;
+        [SerializeField] private Sprite playStationWest;
+        [SerializeField] private Sprite playStationShoulder;
+
+        public GameObject Clock
+        {
+            get { return clock; }
+        }
+
+        public GameObject Banner
+        {
+            get { return banner; }
+        }
+
+        public GameObject Badge
+        {
+            get { return badge; }
+        }
+
+        public GameObject Row
+        {
+            get { return row; }
+        }
 
         public GameObject StatBox
         {
@@ -36,9 +61,34 @@ namespace Blastlands.Runtime
             get { return icon; }
         }
 
-        public GameObject Diode
+        public GameObject Label
         {
-            get { return diode; }
+            get { return label; }
+        }
+
+        public GameObject Caption
+        {
+            get { return caption; }
+        }
+
+        public GameObject Dial
+        {
+            get { return dial; }
+        }
+
+        public GameObject PadPrompt
+        {
+            get { return padPrompt; }
+        }
+
+        public GameObject KeyPrompt
+        {
+            get { return keyPrompt; }
+        }
+
+        public GameObject RoundWon
+        {
+            get { return roundWon; }
         }
 
         public Sprite Bombs
@@ -59,6 +109,31 @@ namespace Blastlands.Runtime
         public Sprite Dead
         {
             get { return dead; }
+        }
+
+        public Sprite Shove
+        {
+            get { return shove; }
+        }
+
+        public Sprite MouseLeft
+        {
+            get { return mouseLeft; }
+        }
+
+        public Sprite PadGlyph(InputDeviceKind device, PromptGlyph glyph)
+        {
+            bool playStation = device == InputDeviceKind.PlayStation;
+
+            switch (glyph)
+            {
+                case PromptGlyph.PadWest:
+                    return playStation ? playStationWest : xboxWest;
+                case PromptGlyph.PadShoulder:
+                    return playStation ? playStationShoulder : xboxShoulder;
+                default:
+                    return playStation ? playStationSouth : xboxSouth;
+            }
         }
     }
 }

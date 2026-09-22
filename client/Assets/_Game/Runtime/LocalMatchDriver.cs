@@ -155,7 +155,7 @@ namespace Blastlands.Runtime
             // to be able to see how many there are and where they sit.
             if (hud != null)
             {
-                hud.Bind(state, matchCamera, series);
+                hud.Bind(state, matchCamera, series, devices.KindFor);
             }
 
             // After the view, which is what owns the renderers it switches around.

@@ -114,7 +114,7 @@ namespace Blastlands.Runtime
 
             if (hud != null)
             {
-                hud.Bind(state, matchCamera, null);
+                hud.Bind(state, matchCamera, null, _ => devices.KindFor(0));
             }
 
             if (fog != null)
