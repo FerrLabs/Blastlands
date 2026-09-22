@@ -26,6 +26,9 @@ namespace Blastlands.Runtime
         [SerializeField] private float bombFootprint = 0.72f;
         [SerializeField] private float powerUpSize = 0.78f;
         [SerializeField] private Color telegraphColor = new Color(0.95f, 0.35f, 0.12f, 1f);
+        [SerializeField] private Color telegraphFlashColor = new Color(1f, 0.85f, 0.4f, 1f);
+        [SerializeField] private float telegraphPulseHz = 3f;
+        [SerializeField] private float telegraphStartSize = 0.3f;
         [SerializeField] private MatchAudio sfx;
 
         // Told about blasts so it can shake the viewport each one is near. The view is
@@ -90,6 +93,8 @@ namespace Blastlands.Runtime
         private readonly List<GameObject> bombPool = new List<GameObject>();
         private readonly List<GameObject> looseBombPool = new List<GameObject>();
         private readonly List<GameObject> telegraphPool = new List<GameObject>();
+        private readonly MaterialPropertyBlock telegraphBlock = new MaterialPropertyBlock();
+        private Vector3 telegraphFullScale = Vector3.one;
         private static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
         private static readonly int Speed = Animator.StringToHash("Speed_f");
         private static readonly int Static = Animator.StringToHash("Static_b");
@@ -722,8 +727,12 @@ namespace Blastlands.Runtime
                 if (created)
                 {
                     TileFitter.FitInBox(view, 0.92f);
-                    Tint(view, telegraphColor);
+                    telegraphFullScale = view.transform.localScale;
                 }
+
+                float closing = 1f - ((float)wall.TicksRemaining / Mathf.Max(1, state.Settings.WallTelegraphTicks));
+                view.transform.localScale = telegraphFullScale * Mathf.Lerp(telegraphStartSize, 1f, closing);
+                PulseTelegraph(view);
 
                 TileFitter.PlaceAsGround(view, ToWorld(wall.Tile, groundDetailLift * 2f));
                 shown++;
@@ -732,22 +741,22 @@ namespace Blastlands.Runtime
             HideFrom(telegraphPool, shown);
         }
 
-        // Deliberately the same prefab as a live bomb, sat flat on the floor and left
-        // still. A pickup that looked like something else would have players learning
-        // two shapes for one object; what separates them is that this one is not ticking.
         // A property block rather than a material instance: the decal is Synty's, and
         // the warning colour is ours to put on top of it without editing the asset.
-        private static void Tint(GameObject target, Color color)
+        private void PulseTelegraph(GameObject view)
         {
-            var block = new MaterialPropertyBlock();
-            block.SetColor(BaseColor, color);
+            float pulse = 0.5f + (0.5f * Mathf.Sin(Time.time * Mathf.PI * 2f * telegraphPulseHz));
+            telegraphBlock.SetColor(BaseColor, Color.Lerp(telegraphColor, telegraphFlashColor, pulse));
 
-            foreach (Renderer renderer in target.GetComponentsInChildren<Renderer>(true))
+            foreach (Renderer renderer in view.GetComponentsInChildren<Renderer>(true))
             {
-                renderer.SetPropertyBlock(block);
+                renderer.SetPropertyBlock(telegraphBlock);
             }
         }
 
+        // Deliberately the same prefab as a live bomb, sat flat on the floor and left
+        // still. A pickup that looked like something else would have players learning
+        // two shapes for one object; what separates them is that this one is not ticking.
         private void SyncLooseBombs()
         {
             for (int i = 0; i < state.LooseBombs.Count; i++)
