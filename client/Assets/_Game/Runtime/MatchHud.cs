@@ -21,6 +21,9 @@ namespace Blastlands.Runtime
         private readonly List<HudVitals> vitals = new List<HudVitals>();
         private readonly List<HudActions> actions = new List<HudActions>();
         private readonly List<int> viewers = new List<int>();
+        private readonly List<HudFade> fades = new List<HudFade>();
+        private readonly List<int> fadeViews = new List<int>();
+        private readonly List<Vector2> onScreen = new List<Vector2>();
         private HudClock clock;
         private HudRound round;
 
@@ -67,6 +70,58 @@ namespace Blastlands.Runtime
             {
                 buttons.Render(state);
             }
+
+            FadeWhatCoversAPlayer();
+        }
+
+        private void FadeWhatCoversAPlayer()
+        {
+            int shownView = -1;
+            for (int i = 0; i < fades.Count; i++)
+            {
+                if (fadeViews[i] != shownView)
+                {
+                    shownView = fadeViews[i];
+                    PlayersOnScreen(shownView);
+                }
+
+                fades[i].Update(onScreen, Time.unscaledDeltaTime);
+            }
+        }
+
+        private void PlayersOnScreen(int view)
+        {
+            onScreen.Clear();
+            Camera camera = cameras == null ? Camera.main : cameras.ViewAt(view);
+            if (camera == null)
+            {
+                return;
+            }
+
+            foreach (PlayerState player in state.Players)
+            {
+                if (!player.Alive)
+                {
+                    continue;
+                }
+
+                Vector3 point = camera.WorldToScreenPoint(MatchView.ToWorld(player.Position, 0.5f));
+                if (point.z > 0f)
+                {
+                    onScreen.Add(point);
+                }
+            }
+        }
+
+        private RectTransform Block(Transform parent, string name)
+        {
+            return HudPlacement.Area(parent, name, WholeScreen);
+        }
+
+        private void Fade(RectTransform block, int view)
+        {
+            fades.Add(new HudFade(block));
+            fadeViews.Add(view);
         }
 
         private void Rebuild()
@@ -74,6 +129,8 @@ namespace Blastlands.Runtime
             rosters.Clear();
             vitals.Clear();
             actions.Clear();
+            fades.Clear();
+            fadeViews.Clear();
             clock = null;
             round = null;
 
@@ -113,12 +170,19 @@ namespace Blastlands.Runtime
                 everyone.Add(i);
             }
 
-            rosters.Add(HudRoster.Build(art, area, everyone, series, true, inset, 1f));
-            clock = HudClock.Build(art, area, TopCentre, inset, 1f);
+            RectTransform rosterBlock = Block(area, "Roster");
+            rosters.Add(HudRoster.Build(art, rosterBlock, everyone, series, true, inset, 1f));
+            Fade(rosterBlock, 0);
+
+            RectTransform clockBlock = Block(area, "Clock");
+            clock = HudClock.Build(art, clockBlock, TopCentre, inset, 1f);
+            Fade(clockBlock, 0);
 
             if (series != null)
             {
-                round = HudRound.Build(art, area, inset, 1f);
+                RectTransform roundBlock = Block(area, "Round");
+                round = HudRound.Build(art, roundBlock, inset, 1f);
+                Fade(roundBlock, 0);
             }
 
             BuildLocalPlayer(area, 0, 1f);
@@ -136,7 +200,9 @@ namespace Blastlands.Runtime
 
                 if (seat >= 0)
                 {
-                    rosters.Add(HudRoster.Build(art, area, new[] { seat }, series, false, inset * splitScale, splitScale));
+                    RectTransform tag = Block(area, "Tag");
+                    rosters.Add(HudRoster.Build(art, tag, new[] { seat }, series, false, inset * splitScale, splitScale));
+                    Fade(tag, view);
                 }
             }
 
@@ -176,8 +242,13 @@ namespace Blastlands.Runtime
 
             int seat = viewers[0];
             InputDeviceKind device = deviceOf == null ? InputDeviceKind.Keyboard : deviceOf(seat);
-            vitals.Add(HudVitals.Build(art, area, seat, inset * scale, scale));
-            actions.Add(HudActions.Build(art, area, seat, device, inset * scale, scale));
+            RectTransform vitalsBlock = Block(area, "Vitals block");
+            vitals.Add(HudVitals.Build(art, vitalsBlock, seat, inset * scale, scale));
+            Fade(vitalsBlock, view);
+
+            RectTransform actionsBlock = Block(area, "Actions block");
+            actions.Add(HudActions.Build(art, actionsBlock, seat, device, inset * scale, scale));
+            Fade(actionsBlock, view);
             return seat;
         }
 
