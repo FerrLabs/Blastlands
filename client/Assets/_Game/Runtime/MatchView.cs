@@ -93,7 +93,7 @@ namespace Blastlands.Runtime
         private readonly List<GameObject> bombPool = new List<GameObject>();
         private readonly List<GameObject> looseBombPool = new List<GameObject>();
         private readonly List<GameObject> telegraphPool = new List<GameObject>();
-        private readonly MaterialPropertyBlock telegraphBlock = new MaterialPropertyBlock();
+        private MaterialPropertyBlock telegraphBlock;
         private Vector3 telegraphFullScale = Vector3.one;
         private static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
         private static readonly int Speed = Animator.StringToHash("Speed_f");
@@ -745,6 +745,7 @@ namespace Blastlands.Runtime
         // the warning colour is ours to put on top of it without editing the asset.
         private void PulseTelegraph(GameObject view)
         {
+            telegraphBlock ??= new MaterialPropertyBlock();
             float pulse = 0.5f + (0.5f * Mathf.Sin(Time.time * Mathf.PI * 2f * telegraphPulseHz));
             telegraphBlock.SetColor(BaseColor, Color.Lerp(telegraphColor, telegraphFlashColor, pulse));
 
