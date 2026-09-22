@@ -32,7 +32,8 @@ namespace Blastlands.Runtime
         private LobbyScreen drawn = LobbyScreen.Play;
         private bool dirty = true;
         private bool busy;
-        private Coroutine polling;
+        private bool polling;
+        private int generation;
         private float sinceStatus;
 
         private void Awake()
@@ -155,8 +156,15 @@ namespace Blastlands.Runtime
 
         private IEnumerator Listing()
         {
+            int mine = generation;
+
             yield return lobby.List(result =>
             {
+                if (Stale(mine))
+                {
+                    return;
+                }
+
                 if (result.Ok)
                 {
                     flow.Listed(result.Value);
@@ -228,9 +236,15 @@ namespace Blastlands.Runtime
         private IEnumerator Watching()
         {
             string id = flow.Invite.MatchId;
+            int mine = generation;
 
             yield return lobby.Status(id, result =>
             {
+                if (Stale(mine))
+                {
+                    return;
+                }
+
                 if (result.Ok)
                 {
                     flow.Listed(new List<MatchListing> { result.Value.Listing });
@@ -255,13 +269,11 @@ namespace Blastlands.Runtime
                 return;
             }
 
-            // A poll in flight is worth less than the press that just happened, and its
-            // answer would land on a screen the player has already left.
-            if (polling != null)
-            {
-                StopCoroutine(polling);
-                polling = null;
-            }
+            // A poll in flight answers a question about the screen the player has just
+            // left, so its answer is dropped when it lands rather than the coroutine
+            // being stopped: stopping one skips the using in LobbyClient, which leaves
+            // the request undisposed.
+            generation++;
 
             busy = true;
             StartCoroutine(Once(work));
@@ -269,24 +281,30 @@ namespace Blastlands.Runtime
 
         private void Poll(IEnumerator work)
         {
-            if (busy || polling != null)
+            if (busy || polling)
             {
                 return;
             }
 
-            polling = StartCoroutine(Polled(work));
+            polling = true;
+            StartCoroutine(Polled(work));
         }
 
         private IEnumerator Once(IEnumerator work)
         {
-            yield return StartCoroutine(work);
+            yield return work;
             busy = false;
         }
 
         private IEnumerator Polled(IEnumerator work)
         {
-            yield return StartCoroutine(work);
-            polling = null;
+            yield return work;
+            polling = false;
+        }
+
+        private bool Stale(int mine)
+        {
+            return mine != generation;
         }
 
         private void Redraw()
