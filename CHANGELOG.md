@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.44] - 2026-09-22
+
+### Features
+
+- feat(lobby): fill the seats nobody joined with bots (#265)
+
 ## [26.9.43] - 2026-09-22
 
 ### Features
