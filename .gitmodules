@@ -1,0 +1,3 @@
+[submodule "client/Assets/Synty"]
+	path = client/Assets/Synty
+	url = ../Blastlands-Assets.git

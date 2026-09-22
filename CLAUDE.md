@@ -73,6 +73,11 @@ Les packs d'interface disponibles :
 Le code d'UI se limite à instancier le prefab, le positionner et lui pousser des
 valeurs. Il ne dessine rien.
 
+`client/Assets/Synty` is a private submodule (FerrLabs/Blastlands-Assets) holding only the
+licensed files the game references; see `docs/assets.md` before adding or removing an asset.
+A `SIMPLE` pack imports to `client/Assets/<PackName>`, outside that submodule: move it to
+`client/Assets/Synty/<PackName>` before committing, or the art lands back in Blastlands.
+
 Le HUD du jeu est `Assets/Synty/InterfaceApocalypseHUD`. Ne pas commiter les dossiers
 `Samples/` des packs : ce sont les scènes de démo de Synty, réimportables à volonté, et
 elles pèsent plus lourd que le pack utile.

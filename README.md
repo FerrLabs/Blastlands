@@ -50,6 +50,8 @@ cargo run --manifest-path server/Cargo.toml
 ```
 
 **Client**: Unity Hub, Add, Add project from disk, `client/`, with Unity `6000.4.2f1`.
+The licensed art is a private submodule at `client/Assets/Synty`: clone with
+`--recurse-submodules` and set up the LFS credentials described in [docs/assets.md](docs/assets.md).
 
 The repo tracks `Packages/manifest.json`, `ProjectVersion.txt` and `Assets/`; Unity generates
 the rest of `ProjectSettings/` on first open and resolves the packages from the manifest.

@@ -78,7 +78,7 @@ jobs:
           # pipeline reports 141, and the branch is skipped: a client change big enough
           # to fill the pipe buffer would have gone green without starting the editor.
           # Reproduced at 4000 paths, every one of them under client/.
-          elif grep -qE '^(client/|\.github/workflows/ci-unity\.yml$|\.github/scripts/compile-server\.sh$)' <<<"$changed"; then
+          elif grep -qE '^(client/|\.gitmodules$|\.github/workflows/ci-unity\.yml$|\.github/scripts/compile-server\.sh$)' <<<"$changed"; then
             echo 'RUN=true' >> "$GITHUB_ENV"
           else
             echo 'RUN=false' >> "$GITHUB_ENV"
@@ -133,6 +133,20 @@ jobs:
           git config --local credential.helper '!f() { echo "username=x-access-token"; echo "password=$LFS_TOKEN"; }; f'
           git lfs pull
           echo "materialised $(git lfs ls-files | wc -l) LFS files"
+
+      - if: env.RUN == 'true'
+        name: Fetch the licensed assets
+        env:
+          ASSETS_TOKEN: ${{ secrets.BLASTLANDS_ASSETS_TOKEN }}
+        run: |
+          if [ -z "$ASSETS_TOKEN" ]; then
+            echo "::error::BLASTLANDS_ASSETS_TOKEN is not set, so the private asset submodule cannot be fetched. See docs/assets.md."
+            exit 1
+          fi
+          helper='!f() { echo "username=x-access-token"; echo "password=$ASSETS_TOKEN"; }; f'
+          git -c credential.helper= -c credential.helper="$helper" submodule update --init --depth 1 client/Assets/Synty
+          git -C client/Assets/Synty -c credential.helper= -c credential.helper="$helper" lfs pull
+          echo "materialised $(git -C client/Assets/Synty lfs ls-files | wc -l) licensed LFS files"
 
       - if: env.RUN == 'true' && runner.environment == 'github-hosted'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
