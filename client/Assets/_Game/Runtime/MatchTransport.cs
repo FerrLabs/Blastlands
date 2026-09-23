@@ -415,7 +415,8 @@ namespace Blastlands.Runtime
                 chosenBy.Remove(connection);
                 if (served.ChooseCharacter(seat, character))
                 {
-                    Debug.Log("Blastlands server: seat " + seat + " plays " + character);
+                    Debug.Log(
+                        "Blastlands server: seat " + seat + " plays " + served.Players[seat].Character);
                 }
             }
 

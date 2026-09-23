@@ -161,13 +161,46 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
-        public void ATicketWithoutAChoiceKeepsTheSeatsKit()
+        public void ATicketWithoutAChoiceRestoresTheSeatsKit()
         {
             MatchState state = MatchFactory.Create(ArenaSettings.Default, Arena, 4, 3u, CharacterKits.ForSeat);
 
-            Assert.That(state.ChooseCharacter(3, CharacterKind.None), Is.False);
-            Assert.That(state.ChooseCharacter(4, CharacterKind.Runner), Is.False);
+            Assert.That(state.ChooseCharacter(3, CharacterKind.None), Is.True);
             Assert.That(state.Players[3].Character, Is.EqualTo(CharacterKind.Sapper));
+        }
+
+        [Test]
+        public void NoSeatOutsideTheMatchIsChosen()
+        {
+            MatchState state = MatchFactory.Create(ArenaSettings.Default, Arena, 4, 3u, CharacterKits.ForSeat);
+
+            Assert.That(state.ChooseCharacter(4, CharacterKind.Runner), Is.False);
+            Assert.That(state.ChooseCharacter(-1, CharacterKind.Runner), Is.False);
+        }
+
+        [Test]
+        public void ASeatThatChangesHandsDoesNotPassOnTheKitItWasGiven()
+        {
+            MatchState state = MatchFactory.Create(ArenaSettings.Default, Arena, 4, 3u, CharacterKits.ForSeat);
+            Assert.That(state.ChooseCharacter(0, CharacterKind.Sapper), Is.True);
+
+            Assert.That(state.ChooseCharacter(0, CharacterKind.None), Is.True);
+
+            PlayerState seat = state.Players[0];
+            Assert.That(seat.Character, Is.EqualTo(CharacterKind.Demolisher), "seat 0 is the roster's own, not the Sapper the player who left had picked");
+            Assert.That(seat.NextBombKind, Is.EqualTo(BombKind.Standard), "the Sapper's bomb goes with the Sapper");
+        }
+
+        [Test]
+        public void AKitlessMatchStaysKitlessWhenASeatChangesHands()
+        {
+            MatchState state = MatchFactory.Create(ArenaSettings.Default, Arena, 4, 3u);
+            Assert.That(state.ChooseCharacter(2, CharacterKind.Runner), Is.True);
+
+            Assert.That(state.ChooseCharacter(2, CharacterKind.None), Is.True);
+
+            Assert.That(state.Players[2].Character, Is.EqualTo(CharacterKind.None));
+            Assert.That(state.Players[2].SpeedSteps, Is.EqualTo(0), "the Runner's legs go with the Runner");
         }
     }
 }

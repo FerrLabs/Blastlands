@@ -170,13 +170,14 @@ namespace Blastlands.Core
 
         public bool ChooseCharacter(int seat, CharacterKind character)
         {
-            if (Tick != 0 || character == CharacterKind.None || !Settings.Rules.AllowsCharacters
-                || seat < 0 || seat >= players.Count)
+            if (Tick != 0 || !Settings.Rules.AllowsCharacters || seat < 0 || seat >= players.Count)
             {
                 return false;
             }
 
-            players[seat].Rekit(character, Settings);
+            PlayerState player = players[seat];
+            player.Rekit(
+                character == CharacterKind.None ? player.StartingCharacter : character, Settings);
             return true;
         }
 

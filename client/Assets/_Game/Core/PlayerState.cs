@@ -15,10 +15,13 @@ namespace Blastlands.Core
             BombsHeld = settings.StartingHeldBombs;
             CarryCapacity = settings.StartingCarryCapacity;
             Facing = Direction.Down;
+            StartingCharacter = character;
             Rekit(character, settings);
         }
 
         public int Id { get; }
+
+        public CharacterKind StartingCharacter { get; }
 
         public void Rekit(CharacterKind character, MatchSettings settings)
         {
