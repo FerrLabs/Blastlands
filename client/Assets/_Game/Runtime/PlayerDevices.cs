@@ -135,10 +135,12 @@ namespace Blastlands.Runtime
             private readonly InputAction drop;
             private readonly InputAction dash;
             private readonly InputAction shove;
+            private readonly InputAction ability;
             private readonly InputAction reroll;
             private readonly PressLatch dropLatch = new PressLatch();
             private readonly PressLatch dashLatch = new PressLatch();
             private readonly PressLatch shoveLatch = new PressLatch();
+            private readonly PressLatch abilityLatch = new PressLatch();
 
             private bool assigned;
             private Gamepad pad;
@@ -153,6 +155,7 @@ namespace Blastlands.Runtime
                 drop = actions.FindAction("Player/Drop", true);
                 dash = actions.FindAction("Player/Dash", true);
                 shove = actions.FindAction("Player/Shove", true);
+                ability = actions.FindAction("Player/Ability", true);
                 reroll = actions.FindAction("Player/Reroll", true);
                 actions.Enable();
             }
@@ -196,6 +199,7 @@ namespace Blastlands.Runtime
                 dropLatch.Note(drop.WasPressedThisFrame());
                 dashLatch.Note(dash.WasPressedThisFrame());
                 shoveLatch.Note(shove.WasPressedThisFrame());
+                abilityLatch.Note(ability.WasPressedThisFrame());
             }
 
             public bool RerollPressed()
@@ -207,7 +211,8 @@ namespace Blastlands.Runtime
             {
                 int moveX, moveY;
                 MoveReader.Resolve(step.ReadValue<Vector2>(), stick.ReadValue<Vector2>(), out moveX, out moveY);
-                return new PlayerInput(moveX, moveY, dropLatch.Take(), dashLatch.Take(), shoveLatch.Take());
+                return new PlayerInput(
+                    moveX, moveY, dropLatch.Take(), dashLatch.Take(), shoveLatch.Take(), abilityLatch.Take());
             }
 
             public void Dispose()

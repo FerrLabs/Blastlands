@@ -136,7 +136,8 @@ namespace Blastlands.Core.Tests
                     .Append(player.CarryCapacity).Append(' ').Append(player.FireRange).Append(' ')
                     .Append(player.SpeedSteps).Append(' ').Append((int)player.NextBombKind).Append(' ')
                     .Append((int)player.Facing).Append(' ').Append(player.DashTicksRemaining).Append(' ')
-                    .Append(player.StunTicksRemaining).Append(' ').Append(player.RevealTicksRemaining)
+                    .Append(player.StunTicksRemaining).Append(' ').Append(player.RevealTicksRemaining).Append(' ')
+                    .Append((int)player.Character).Append(' ').Append(player.AbilityCooldownRemaining)
                     .Append('\n');
             }
 

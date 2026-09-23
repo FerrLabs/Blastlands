@@ -34,6 +34,7 @@ namespace Blastlands.Core
             CollectPowerUps(state);
             CollectLooseBombs(state);
             DropBombs(state, inputs);
+            Abilities.Resolve(state, inputs);
             ExpireFlames(state);
             DetonateDueBombs(state);
             BurnPowerUps(state);

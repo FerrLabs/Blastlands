@@ -15,6 +15,7 @@ namespace Blastlands.Core.Net
         private const byte DropBit = 1 << 0;
         private const byte DashBit = 1 << 1;
         private const byte PushBit = 1 << 2;
+        private const byte AbilityBit = 1 << 3;
 
         public static bool TryWrite(byte[] buffer, int offset, int tick, PlayerInput input)
         {
@@ -34,6 +35,7 @@ namespace Blastlands.Core.Net
             if (input.DropBomb) { flags |= DropBit; }
             if (input.Dash) { flags |= DashBit; }
             if (input.Push) { flags |= PushBit; }
+            if (input.Ability) { flags |= AbilityBit; }
             buffer[offset + 8] = flags;
 
             return true;
@@ -65,7 +67,8 @@ namespace Blastlands.Core.Net
                 ReadInt16(buffer, offset + 6),
                 (flags & DropBit) != 0,
                 (flags & DashBit) != 0,
-                (flags & PushBit) != 0);
+                (flags & PushBit) != 0,
+                (flags & AbilityBit) != 0);
 
             return true;
         }

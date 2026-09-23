@@ -5,8 +5,10 @@ namespace Blastlands.Runtime
         KeyE,
         KeySpace,
         MouseLeft,
+        MouseRight,
         PadSouth,
         PadWest,
-        PadShoulder
+        PadShoulder,
+        PadNorth
     }
 }

@@ -30,9 +30,13 @@ MonoBehaviour:
   dead: {fileID: 21300000, guid: ca292955d9929dd48b658eb22b7e89b4, type: 3}
   shove: {fileID: 21300000, guid: 1acaa59fd8634f74b9664cdaa3b45a46, type: 3}
   mouseLeft: {fileID: 21300000, guid: a780adaa0a1955544844e37c0c5fbbf5, type: 3}
+  mouseRight: {fileID: 21300000, guid: 514e6027260dd88429027de05d4a015d, type: 3}
   xboxSouth: {fileID: 21300000, guid: 9a90020586103344daf973657440b68c, type: 3}
   xboxWest: {fileID: 21300000, guid: 978425d2c9012c643b64a0220f678bf7, type: 3}
   xboxShoulder: {fileID: 21300000, guid: 0c6d8c6a1a1d435438afb46405c344f5, type: 3}
+  xboxNorth: {fileID: 21300000, guid: 5f4bc7b1f47a33e4c8f3e0d1382f5f0d, type: 3}
   playStationSouth: {fileID: 21300000, guid: c93d91fe23f946d47b6d8d83b8d33cbc, type: 3}
   playStationWest: {fileID: 21300000, guid: 44a29bd9781c01a4c9a76dd8a4904314, type: 3}
   playStationShoulder: {fileID: 21300000, guid: 4def63e4b1471854089a515ebaeba3f6, type: 3}
+  playStationNorth: {fileID: 21300000, guid: eb0cde2977b60124094994d9785245f5, type: 3}
+  triggerAbility: {fileID: 21300000, guid: 489366355da6cce40b755a44cc0ef1b6, type: 3}

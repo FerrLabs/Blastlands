@@ -8,6 +8,7 @@ namespace Blastlands.Runtime.Tests
         [TestCase(HudAction.Bomb, PromptGlyph.KeyE)]
         [TestCase(HudAction.Dash, PromptGlyph.KeySpace)]
         [TestCase(HudAction.Shove, PromptGlyph.MouseLeft)]
+        [TestCase(HudAction.Ability, PromptGlyph.MouseRight)]
         public void TheKeyboardPromptsMatchTheKeyboardBindings(HudAction action, PromptGlyph expected)
         {
             Assert.That(ActionPrompts.For(InputDeviceKind.Keyboard, action), Is.EqualTo(expected));
@@ -20,12 +21,13 @@ namespace Blastlands.Runtime.Tests
             Assert.That(ActionPrompts.For(pad, HudAction.Bomb), Is.EqualTo(PromptGlyph.PadSouth));
             Assert.That(ActionPrompts.For(pad, HudAction.Dash), Is.EqualTo(PromptGlyph.PadShoulder));
             Assert.That(ActionPrompts.For(pad, HudAction.Shove), Is.EqualTo(PromptGlyph.PadWest));
+            Assert.That(ActionPrompts.For(pad, HudAction.Ability), Is.EqualTo(PromptGlyph.PadNorth));
         }
 
         [Test]
         public void OnlyKeyboardGlyphsAreDrawnAsKeys()
         {
-            foreach (HudAction action in new[] { HudAction.Bomb, HudAction.Dash, HudAction.Shove })
+            foreach (HudAction action in new[] { HudAction.Bomb, HudAction.Dash, HudAction.Shove, HudAction.Ability })
             {
                 Assert.That(ActionPrompts.OnKeyboard(ActionPrompts.For(InputDeviceKind.Keyboard, action)), Is.True);
                 Assert.That(ActionPrompts.OnKeyboard(ActionPrompts.For(InputDeviceKind.Xbox, action)), Is.False);

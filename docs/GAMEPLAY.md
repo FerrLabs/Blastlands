@@ -405,9 +405,9 @@ overlap, so that a wall growing back under you cannot lock you in place.
 ## Characters
 
 Each player is a character, and a character is a head start on one power-up the arena
-already hands out. No character has a verb of its own yet: that is the cheap half of #2,
-built first to find out whether choosing matters before paying for abilities that are each a
-simulation rule, a netcode surface, a UI surface and a balance problem at once.
+already hands out, plus one ability of its own (see **Abilities** below). The kits came first,
+the cheap half of #2, to find out whether choosing matters before paying for abilities that are
+each a simulation rule, a netcode surface, a UI surface and a balance problem at once.
 
 | Character | Starts with |
 |---|---|
@@ -431,7 +431,7 @@ kit by chance. A local series turns the roster by one each round, so the same pa
 the same kit for the whole series. A player who chose a character in the lobby gets it instead: the choice rides in the
 signed game ticket and the instance applies it to that seat before kickoff (see the join
 tickets in `ARCHITECTURE.md`). Clients do not need to know it up front, because every snapshot
-carries each player's reach, speed and bomb kind.
+carries each player's character along with their reach, speed and bomb kind.
 
 **The pick** is made on the match list, above the matches, and remembered on that machine
 between matches and launches. Online it goes with the join or create request. In a local match
@@ -459,6 +459,27 @@ There is no test that pins these. Survival saturates: a Demolisher given the max
 everything still survived 22 of 48 matches against 23 for the real one, and only its wins moved.
 Wins are rare enough that telling a strong kit from an absurd one takes around 240 matches, ten
 minutes, which is not a unit test. Measure it again after changing a kit or the bots.
+
+## Abilities
+
+One ability per character, on one shared button: right mouse, or north on a pad. Each has its
+own cooldown, and a press that finds nothing to do spends none of it, the same courtesy the dash
+gets. Like the kits, abilities exist only in Arena, and none of them kills: bombs stay the only
+thing that does. Using one gives a hider away, exactly as dashing out of a bush does.
+
+| Character | Ability | Cooldown |
+|---|---|---|
+| Demolisher | **Trigger**: sets off your oldest live bomb now | 6 s |
+
+The rest of the roster follows one ability per change: Runner vanishes (#35), Grenadier throws
+(#36), Sapper raises a wall (#37).
+
+**Trigger** turns the fuse from a warning into a choice. A bomb you placed is a threat everybody
+reads the same way, two and a half seconds and then fire; being able to cut that short is what
+makes standing next to a Demolisher's bomb a different decision from standing next to anyone
+else's. It needs a bomb of yours on the board, which in Arena is the scarce part.
+
+Bots trigger when a rival they can see stands in the blast, chains included, and they do not.
 
 ## Bots
 
