@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.79] - 2026-09-23
+
+### Features
+
+- feat(lobby): let the host add bots instead of waiting for a player (#49)
+
 ## [26.9.78] - 2026-09-23
 
 ### Bug Fixes
