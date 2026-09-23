@@ -129,7 +129,7 @@ namespace Blastlands.Core
             // length, so it only pays when the direction is not going to change.
             if (!blast.IsSafeFor(tile, settings.LookaheadTicks))
             {
-                Direction away = StepToSafety(state, blast, tile, ticksPerTile);
+                Direction away = Escape(state, blast, player, ticksPerTile);
                 bool dash = settings.ReactionTicks > 0 && player.CanDash && away != Direction.None;
                 return Steer(player, away, dash);
             }
@@ -187,6 +187,78 @@ namespace Blastlands.Core
         }
 
 
+        private Direction Escape(MatchState state, BlastMap blast, PlayerState player, int ticksPerTile)
+        {
+            if (settings.Planning == BotPlanning.OnArrival)
+            {
+                return StepToSafety(state, blast, player.Tile, ticksPerTile);
+            }
+
+            EscapeWindow window = EscapeWindow.From(state, blast, ticksPerTile, next => Walkable(state, next));
+            int here = blast.TicksUntilFire(player.Tile);
+
+            Direction best = Direction.None;
+            long bestSlack = -1;
+
+            for (int i = 0; i < Order.Length; i++)
+            {
+                GridPos delta = Directions.Delta(Order[i]);
+                GridPos next = player.Tile.Offset(delta.X, delta.Y);
+                int latest;
+                if (!Walkable(state, next) || !window.TryLatestEntry(next, out latest))
+                {
+                    continue;
+                }
+
+                int arrival = TicksToCross(state, player, Order[i]);
+                long slack = (long)latest - arrival;
+                if (arrival < here && slack > bestSlack)
+                {
+                    best = Order[i];
+                    bestSlack = slack;
+                }
+            }
+
+            return best != Direction.None ? best : StepToSafety(state, blast, player.Tile, ticksPerTile);
+        }
+
+        private static int TicksToCross(MatchState state, PlayerState player, Direction direction)
+        {
+            int speed = state.Settings.SpeedFor(player.SpeedSteps);
+            int x = WithinTile(player.Position.X);
+            int y = WithinTile(player.Position.Y);
+
+            int distance;
+            switch (direction)
+            {
+                case Direction.Right:
+                    distance = SubPos.UnitsPerTile - x;
+                    break;
+                case Direction.Left:
+                    distance = x + 1;
+                    break;
+                case Direction.Down:
+                    distance = SubPos.UnitsPerTile - y;
+                    break;
+                default:
+                    distance = y + 1;
+                    break;
+            }
+
+            // A tick of slack on top. Steer aims at the centre of the next tile, so a
+            // bot standing off the lane travels diagonally and covers less along this
+            // axis than its speed each tick. Reading the crossing as faster than it is
+            // would be fatal here: this feeds the check on whether the bot clears its
+            // own tile before the fire arrives.
+            return speed <= 0 ? distance : ((distance + speed - 1) / speed) + 1;
+        }
+
+        private static int WithinTile(int units)
+        {
+            int offset = units % SubPos.UnitsPerTile;
+            return offset < 0 ? offset + SubPos.UnitsPerTile : offset;
+        }
+
         // Fleeing to a tile that merely burns later is what gets a bot cornered: it
         // outruns one blast into the next one, and each hop has fewer ways out than the
         // last. Aim for ground the current bombs cannot reach at all, and settle for
@@ -228,14 +300,28 @@ namespace Blastlands.Core
         private Direction StepTowardTarget(
             MatchState state, BlastMap blast, PlayerState player, GridPos from, int ticksPerTile)
         {
+            // Only the level that plans everywhere pays for the window here. The others
+            // judge an errand by whether the fire has arrived yet, which is what lets
+            // them walk somewhere they cannot leave.
+            System.Func<GridPos, int, bool> leavable;
+            if (settings.Planning == BotPlanning.Always)
+            {
+                EscapeWindow window = EscapeWindow.From(state, blast, ticksPerTile, next => Walkable(state, next));
+                leavable = (tile, depth) => window.Allows(tile, (depth * ticksPerTile) + settings.SafetyMarginTicks);
+            }
+            else
+            {
+                leavable = (tile, depth) =>
+                    blast.SurvivesArrival(tile, depth * ticksPerTile, settings.SafetyMarginTicks);
+            }
+
             if (player.CanCarryMore)
             {
                 Direction toBomb = FirstStepToward(
                     state,
                     from,
-                    (tile, depth) => blast.SurvivesArrival(tile, depth * ticksPerTile, settings.SafetyMarginTicks)
-                                     && state.LooseBombIndexAt(tile) >= 0,
-                    (tile, depth) => blast.SurvivesArrival(tile, depth * ticksPerTile, settings.SafetyMarginTicks));
+                    (tile, depth) => leavable(tile, depth) && state.LooseBombIndexAt(tile) >= 0,
+                    leavable);
 
                 if (toBomb != Direction.None)
                 {
@@ -258,9 +344,8 @@ namespace Blastlands.Core
                 Direction toFiringPosition = FirstStepToward(
                     state,
                     from,
-                    (tile, depth) => blast.SurvivesArrival(tile, depth * ticksPerTile, settings.SafetyMarginTicks)
-                                     && Reaches(state.Arena, tile, target, player.FireRange),
-                    (tile, depth) => blast.SurvivesArrival(tile, depth * ticksPerTile, settings.SafetyMarginTicks));
+                    (tile, depth) => leavable(tile, depth) && Reaches(state.Arena, tile, target, player.FireRange),
+                    leavable);
 
                 if (toFiringPosition != Direction.None)
                 {
@@ -271,9 +356,8 @@ namespace Blastlands.Core
             return FirstStepToward(
                 state,
                 from,
-                (tile, depth) => blast.SurvivesArrival(tile, depth * ticksPerTile, settings.SafetyMarginTicks)
-                                 && TouchesSoftBlock(state, tile),
-                (tile, depth) => blast.SurvivesArrival(tile, depth * ticksPerTile, settings.SafetyMarginTicks));
+                (tile, depth) => leavable(tile, depth) && TouchesSoftBlock(state, tile),
+                leavable);
         }
 
         // The check that stops a bot killing itself: place the bomb it is considering,
@@ -451,21 +535,68 @@ namespace Blastlands.Core
                 // difference turns a trap into an escape or the other way about.
                 int targetTicksPerTile = TicksPerTileFor(state, sightings[i].PlayerId, ticksPerTile);
 
+                // Judged the same way the bot judges its own escapes. On arrival safety
+                // alone a target looks like it gets away whenever the fire has not
+                // reached the next tile yet, even when that tile is a pocket closing
+                // behind it, so the bot talks itself out of bombs that would have
+                // landed. The level that plans its own way out plans the victim's too.
+                System.Func<GridPos, int, bool> reachable;
+                if (settings.Planning == BotPlanning.Always)
+                {
+                    // The bomb being considered blocks the tile it sits on. Left out,
+                    // the victim's window relaxes straight through it and the bot reads
+                    // an escape that the bomb it is about to place has already closed.
+                    GridPos blocked = tile;
+                    EscapeWindow theirs = EscapeWindow.From(
+                        state, after, targetTicksPerTile, next => next != blocked && Walkable(state, next));
+                    reachable = (candidate, depth) =>
+                        candidate != tile && theirs.Allows(candidate, depth * targetTicksPerTile);
+                }
+                else
+                {
+                    reachable = (candidate, depth) =>
+                        candidate != tile && after.SurvivesArrival(candidate, depth * targetTicksPerTile, 0);
+                }
+
                 bool escapes = FirstStepToward(
                     state,
                     target,
                     (candidate, depth) => after.TicksUntilFire(candidate) == BlastMap.Never,
-                    (candidate, depth) => candidate != tile
-                                          && after.SurvivesArrival(candidate, depth * targetTicksPerTile, 0))
+                    reachable)
                     != Direction.None;
 
                 if (!escapes)
                 {
                     return true;
                 }
+
+                // A bomb that leaves one way out is worth placing too, for the level
+                // that can see that far: the target has to guess right first time and
+                // cannot double back. Anything looser than one door is not pressure, it
+                // is a bomb somebody strolls away from.
+                if (settings.Planning == BotPlanning.Always && WaysOut(state, after, target, targetTicksPerTile) <= 1)
+                {
+                    return true;
+                }
             }
 
             return false;
+        }
+
+        private static int WaysOut(MatchState state, BlastMap after, GridPos target, int ticksPerTile)
+        {
+            int doors = 0;
+            for (int i = 0; i < Order.Length; i++)
+            {
+                GridPos delta = Directions.Delta(Order[i]);
+                GridPos next = target.Offset(delta.X, delta.Y);
+                if (Walkable(state, next) && after.SurvivesArrival(next, ticksPerTile, 0))
+                {
+                    doors++;
+                }
+            }
+
+            return doors;
         }
 
         private static int TicksPerTileFor(MatchState state, int playerId, int fallback)

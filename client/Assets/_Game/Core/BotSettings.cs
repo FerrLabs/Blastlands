@@ -5,12 +5,14 @@ namespace Blastlands.Core
     // further, and holds on to what it saw for longer.
     public readonly struct BotSettings
     {
-        public BotSettings(int reactionTicks, int lookaheadTicks, int safetyMarginTicks, int memoryTicks)
+        public BotSettings(
+            int reactionTicks, int lookaheadTicks, int safetyMarginTicks, int memoryTicks, BotPlanning planning)
         {
             ReactionTicks = reactionTicks < 0 ? 0 : reactionTicks;
             LookaheadTicks = lookaheadTicks;
             SafetyMarginTicks = safetyMarginTicks;
             MemoryTicks = memoryTicks;
+            Planning = planning;
         }
 
         // Ticks between decisions. The bot keeps walking the way it was during them,
@@ -29,6 +31,10 @@ namespace Blastlands.Core
         // line of sight, a hard one keeps hunting the place you were.
         public int MemoryTicks { get; }
 
+        // How far ahead it judges a tile. The knob that does the separating now: the
+        // timing ones stopped once every level could get out of its own blast.
+        public BotPlanning Planning { get; }
+
         // The lookahead here is deliberately longer than it looks like it should be, and
         // that is the whole of #186. Raising it makes this bot worse, not better: it
         // reads more tiles as dangerous and flees more often, and with nine ticks between
@@ -41,17 +47,17 @@ namespace Blastlands.Core
         // between 34 and 36, so 35 is the middle of a plateau rather than a lucky point.
         public static BotSettings Easy
         {
-            get { return new BotSettings(9, 35, 2, 30); }
+            get { return new BotSettings(9, 35, 2, 30, BotPlanning.OnArrival); }
         }
 
         public static BotSettings Normal
         {
-            get { return new BotSettings(4, 45, 4, 90); }
+            get { return new BotSettings(4, 45, 4, 90, BotPlanning.WhenFleeing); }
         }
 
         public static BotSettings Hard
         {
-            get { return new BotSettings(0, 90, 6, 180); }
+            get { return new BotSettings(0, 90, 6, 180, BotPlanning.Always); }
         }
     }
 }
