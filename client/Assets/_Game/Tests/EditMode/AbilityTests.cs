@@ -357,6 +357,36 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
+        public void NoWallGoesUpOnFireOrOverSomethingToPickUp()
+        {
+            MatchState onFire = Sapper();
+            onFire.AddFlame(new GridPos(5, 7), 10, 0);
+            MatchState onPowerUp = Sapper();
+            onPowerUp.HidePowerUp(new GridPos(5, 7), PowerUpKind.FireUp);
+            Assert.That(onPowerUp.TryRevealPowerUp(new GridPos(5, 7), out _), Is.True);
+            MatchState onLooseBomb = Sapper();
+            onLooseBomb.AddLooseBomb(new GridPos(5, 7));
+            MatchState facingNowhere = Sapper();
+            facingNowhere.Players[0].Facing = Direction.None;
+
+            foreach (MatchState state in new[] { onFire, onPowerUp, onLooseBomb, facingNowhere })
+            {
+                Assert.That(Abilities.TryWallTile(state, state.Players[0], out _), Is.False);
+            }
+        }
+
+        [Test]
+        public void EveryCharacterOnTheRosterHasAnAbility()
+        {
+            foreach (CharacterKind character in CharacterKits.All)
+            {
+                Assert.That(Abilities.Has(character), Is.True, character.ToString());
+            }
+
+            Assert.That(Abilities.Has(CharacterKind.None), Is.False);
+        }
+
+        [Test]
         public void TheSnapshotCarriesRaisedWalls()
         {
             MatchState server = Sapper();

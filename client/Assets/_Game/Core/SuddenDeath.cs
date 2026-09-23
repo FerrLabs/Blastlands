@@ -94,6 +94,12 @@ namespace Blastlands.Core
                 }
             }
 
+            int raised = state.RaisedWallIndexAt(tile);
+            if (raised >= 0)
+            {
+                state.RemoveRaisedWallAt(raised);
+            }
+
             int loose = state.LooseBombIndexAt(tile);
             if (loose >= 0)
             {
