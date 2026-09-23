@@ -200,6 +200,17 @@ jobs:
           # Put this back to `all` the day a PlayMode test exists, or it will be skipped
           # silently.
           testMode: editmode
+          # Only the assembly that needs an editor. Blastlands.Core.Tests runs here too
+          # by default, and it is the whole cost of this job: 709 seconds against 0.5
+          # for the runtime tests, on the single Docker runner. Those same tests already
+          # run in `Simulation core`, on dotnet, in under a minute, and the duplication
+          # is what made this job red: TheThreeSkillLevelsAreActuallyDifferent takes 184
+          # seconds in this container, over the editor's 180-second cap per test.
+          #
+          # Core is engine-free by rule and CI enforces that, so nothing it covers needs
+          # the editor to be meaningful. If a test here ever does need Unity, it belongs
+          # in Blastlands.Runtime.Tests.
+          customParameters: -assemblyNames Blastlands.Runtime.Tests
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           checkName: Unity test results
 
