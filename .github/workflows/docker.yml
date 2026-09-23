@@ -40,7 +40,7 @@ jobs:
       id-token: write
       attestations: write
       security-events: write
-    uses: FerrLabs/.github/.github/workflows/reusable-docker-build.yml@e056bc558880db30ee871328878c3a5098d11e4d # main
+    uses: FerrLabs/.github/.github/workflows/reusable-docker-build.yml@006179d85612bca62c683001b983a3bfa98ca507 # main
     with:
       image-name: ghcr.io/ferrlabs/blastlands/lobby
       tag: ${{ needs.version.outputs.value }}
@@ -53,4 +53,8 @@ jobs:
       # the FerrLabs pool on a private FerrLabs repository and `ubuntu-latest` anywhere
       # else, which is what `github.event.repository.private` already decides in every
       # other job here.
-    secrets: inherit
+      #
+      # No `secrets:` either. server/Dockerfile mounts none: it is a plain cargo build
+      # off crates.io, so every secret the reusable build accepts is optional here, and
+      # inheriting handed a public repository's workflow the whole org set for nothing.
+      # GITHUB_TOKEN reaches a called workflow on its own.
