@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.76] - 2026-09-23
+
+### Bug Fixes
+
+- fix(sim): clear a raised wall under a closing ring (#43)
+
 ## [26.9.75] - 2026-09-23
 
 ### Features
