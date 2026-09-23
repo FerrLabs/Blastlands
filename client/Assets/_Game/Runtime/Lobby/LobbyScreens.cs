@@ -20,6 +20,14 @@ namespace Blastlands.Runtime
     public sealed class LobbyScreens : MonoBehaviour
     {
         private const string MatchScene = "Match";
+
+        // Never derived from the player's name. The lobby's DisplayName rule (2 to 16
+        // characters, letters, digits, space, hyphen, underscore) is the player's own
+        // name budget already spent, so appending anything to it can overflow the same
+        // limit, and a possessive apostrophe is outside the character set regardless of
+        // length. The host's name is shown next to this one in the match list, so
+        // nothing personal is lost by keeping this fixed.
+        private const string DefaultMatchName = "Match";
         private const float SecondsBetweenStatusChecks = 1.5f;
 
         [SerializeField] private LobbyArt art;
@@ -186,7 +194,7 @@ namespace Blastlands.Runtime
 
         private IEnumerator Creating()
         {
-            yield return lobby.Create(flow.Player + "'s match", flow.Player, maxPlayers, CharacterChoice.Current, result =>
+            yield return lobby.Create(DefaultMatchName, flow.Player, maxPlayers, CharacterChoice.Current, result =>
             {
                 if (result.Ok && result.Value.CanStart)
                 {

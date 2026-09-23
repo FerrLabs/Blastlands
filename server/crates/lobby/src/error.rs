@@ -1,3 +1,4 @@
+use axum::extract::rejection::JsonRejection;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
@@ -55,6 +56,24 @@ pub enum LobbyError {
 
     #[error("the client download could not be obtained, try again shortly")]
     DownloadUnavailable,
+
+    /// A request body axum refused before any handler saw it: malformed JSON, a
+    /// wrong content type, or a field whose value does not match its type (an
+    /// out-of-roster `character`, a display name outside the length or the
+    /// character set `DisplayName::deserialize` enforces). Without this,
+    /// `Json<T>` extraction failures skip `LobbyError` entirely and axum answers
+    /// with its own plain-text body, which breaks the `{"code": ...}` contract
+    /// every other error here keeps. A client reading for a code and finding
+    /// none has no way to tell that case apart from a body it genuinely cannot
+    /// parse.
+    ///
+    /// The status is axum's own for the rejection (422 for a body that parses as
+    /// JSON but not into the target type, 400 for one that is not JSON at all),
+    /// kept rather than flattened to one code so a syntax error and a value a
+    /// validator refused stay tellable apart the way the rest of this API keeps
+    /// client and server mistakes apart.
+    #[error("{message}")]
+    InvalidRequest { status: StatusCode, message: String },
 }
 
 impl LobbyError {
@@ -74,6 +93,7 @@ impl LobbyError {
             // 426 tells the client the request would succeed on a newer build, which
             // is exactly the signal the updater needs.
             Self::ClientTooOld { .. } => StatusCode::UPGRADE_REQUIRED,
+            Self::InvalidRequest { status, .. } => *status,
         }
     }
 
@@ -94,6 +114,7 @@ impl LobbyError {
             Self::ReleaseUnknown => "release_unknown",
             Self::ReleaseNotFound => "release_not_found",
             Self::DownloadUnavailable => "download_unavailable",
+            Self::InvalidRequest { .. } => "invalid_request",
         }
     }
 }
@@ -102,6 +123,15 @@ impl LobbyError {
 struct ErrorBody {
     code: &'static str,
     message: String,
+}
+
+impl From<JsonRejection> for LobbyError {
+    fn from(rejection: JsonRejection) -> Self {
+        Self::InvalidRequest {
+            status: rejection.status(),
+            message: rejection.body_text(),
+        }
+    }
 }
 
 impl IntoResponse for LobbyError {

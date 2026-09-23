@@ -32,6 +32,15 @@ Responsibilities:
   who joined learns the host pressed start: a started match leaves the listing.
 - Reap matches whose game server stopped heartbeating.
 
+Every refusal, whatever the layer, answers `{"code": "...", "message": "..."}` as JSON. That
+includes a request body axum itself refuses before a handler runs, such as an out-of-roster
+`character` or a `name` outside `DisplayName`'s length and character set: a `ValidatedJson`
+extractor stands in for `Json<T>` on every route that reads a body and turns axum's own
+rejection into the same shape, at axum's own status (422 for a body that parses as JSON but not
+into the request type, 400 for one that is not JSON at all). Without it, that one path breaks the
+contract every other refusal keeps, and a client reading for a code and finding none has no way
+to tell "you sent something wrong" apart from "I could not read that at all".
+
 ### Join tickets
 
 The lobby signs a game ticket for every player it admits: the host gets one in
