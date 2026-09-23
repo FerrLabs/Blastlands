@@ -52,6 +52,15 @@
                     "initialStateCheck": false
                 },
                 {
+                    "name": "Ability",
+                    "type": "Button",
+                    "id": "d56b692a-d4fa-46c4-9947-b248d69bbbff",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
                     "name": "Reroll",
                     "type": "Button",
                     "id": "3e3f0603-7156-4797-943e-368660d4e3e9",
@@ -279,6 +288,28 @@
                     "processors": "",
                     "groups": "",
                     "action": "Shove",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "b15d977a-e3ca-425d-b88f-fba67d6a1c62",
+                    "path": "<Gamepad>/buttonNorth",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Ability",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "0e6e607e-12a7-4d1b-a7ff-e8673c93b47c",
+                    "path": "<Mouse>/rightButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Ability",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },

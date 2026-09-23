@@ -29,6 +29,7 @@ namespace Blastlands.Core
             int cornerAssist,
             int looseBombFuseTicks,
             PushSettings push,
+            AbilitySettings abilities,
             VisionSettings vision,
             SuddenDeathSettings suddenDeath,
             RuleSet rules)
@@ -37,6 +38,7 @@ namespace Blastlands.Core
             SuddenDeath = suddenDeath;
             Vision = vision;
             Push = push;
+            Abilities = abilities;
             LooseBombFuseTicks = looseBombFuseTicks;
             PlayerRadius = playerRadius;
             CornerAssist = cornerAssist;
@@ -79,6 +81,7 @@ namespace Blastlands.Core
 
             Vision = from.Vision;
             Push = from.Push;
+            Abilities = from.Abilities;
             LooseBombFuseTicks = from.LooseBombFuseTicks;
             PlayerRadius = from.PlayerRadius;
             CornerAssist = from.CornerAssist;
@@ -177,6 +180,8 @@ namespace Blastlands.Core
 
         public PushSettings Push { get; }
 
+        public AbilitySettings Abilities { get; }
+
         public VisionSettings Vision { get; }
 
         // What stops a round that neither survivor can win. See #105.
@@ -271,6 +276,7 @@ namespace Blastlands.Core
                     cornerAssist: 9,
                     looseBombFuseTicks: 12,
                     push: PushSettings.Default,
+                    abilities: AbilitySettings.Default,
                     vision: VisionSettings.Default,
                     suddenDeath: SuddenDeathSettings.Default,
                     rules: RuleSet.Arena);

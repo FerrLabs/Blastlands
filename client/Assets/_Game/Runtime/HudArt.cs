@@ -1,3 +1,4 @@
+using Blastlands.Core;
 using UnityEngine;
 
 namespace Blastlands.Runtime
@@ -24,12 +25,16 @@ namespace Blastlands.Runtime
         [SerializeField] private Sprite dead;
         [SerializeField] private Sprite shove;
         [SerializeField] private Sprite mouseLeft;
+        [SerializeField] private Sprite mouseRight;
         [SerializeField] private Sprite xboxSouth;
         [SerializeField] private Sprite xboxWest;
         [SerializeField] private Sprite xboxShoulder;
+        [SerializeField] private Sprite xboxNorth;
         [SerializeField] private Sprite playStationSouth;
         [SerializeField] private Sprite playStationWest;
         [SerializeField] private Sprite playStationShoulder;
+        [SerializeField] private Sprite playStationNorth;
+        [SerializeField] private Sprite triggerAbility;
 
         public GameObject Clock
         {
@@ -116,9 +121,14 @@ namespace Blastlands.Runtime
             get { return shove; }
         }
 
-        public Sprite MouseLeft
+        public Sprite Mouse(PromptGlyph glyph)
         {
-            get { return mouseLeft; }
+            return glyph == PromptGlyph.MouseRight ? mouseRight : mouseLeft;
+        }
+
+        public Sprite AbilityOf(CharacterKind character)
+        {
+            return character == CharacterKind.Demolisher ? triggerAbility : null;
         }
 
         public Sprite PadGlyph(InputDeviceKind device, PromptGlyph glyph)
@@ -131,6 +141,8 @@ namespace Blastlands.Runtime
                     return playStation ? playStationWest : xboxWest;
                 case PromptGlyph.PadShoulder:
                     return playStation ? playStationShoulder : xboxShoulder;
+                case PromptGlyph.PadNorth:
+                    return playStation ? playStationNorth : xboxNorth;
                 default:
                     return playStation ? playStationSouth : xboxSouth;
             }

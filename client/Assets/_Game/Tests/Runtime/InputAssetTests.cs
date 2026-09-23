@@ -13,6 +13,7 @@ namespace Blastlands.Runtime.Tests
     {
         private PlayerDevices devices;
         private Keyboard keyboard;
+        private Mouse mouse;
         private Gamepad first;
         private Gamepad second;
 
@@ -20,7 +21,7 @@ namespace Blastlands.Runtime.Tests
         {
             base.Setup();
             keyboard = InputSystem.AddDevice<Keyboard>();
-            InputSystem.AddDevice<Mouse>();
+            mouse = InputSystem.AddDevice<Mouse>();
             first = InputSystem.AddDevice<Gamepad>();
             second = InputSystem.AddDevice<Gamepad>();
             devices = new PlayerDevices(2);
@@ -114,6 +115,18 @@ namespace Blastlands.Runtime.Tests
 
             PressAndRelease(keyboard.spaceKey);
             Assert.That(Sampled(0).Dash, Is.True);
+        }
+
+        [Test]
+        public void TheRightButtonAndThePadsNorthUseTheAbility()
+        {
+            PressAndRelease(mouse.rightButton);
+            Assert.That(Sampled(0).Ability, Is.True);
+
+            InputSystem.Update();
+            PressAndRelease(second.buttonNorth);
+            Assert.That(Sampled(1).Ability, Is.True);
+            Assert.That(Sampled(0).Ability, Is.False);
         }
     }
 }

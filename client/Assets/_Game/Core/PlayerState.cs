@@ -32,7 +32,7 @@ namespace Blastlands.Core
             CharacterKits.Apply(this, character, settings);
         }
 
-        public CharacterKind Character { get; private set; }
+        public CharacterKind Character { get; internal set; }
 
         public SubPos Position { get; set; }
 
@@ -83,6 +83,8 @@ namespace Blastlands.Core
 
         public int PushCooldownRemaining { get; set; }
 
+        public int AbilityCooldownRemaining { get; set; }
+
         public bool Shoved
         {
             get { return ShoveTicksRemaining > 0; }
@@ -96,6 +98,11 @@ namespace Blastlands.Core
         public bool CanPush
         {
             get { return Alive && !Stunned && PushCooldownRemaining <= 0; }
+        }
+
+        public bool CanUseAbility
+        {
+            get { return Alive && !Stunned && !Shoved && AbilityCooldownRemaining <= 0; }
         }
 
         // Ticks left of being given away by having acted. Cover hides someone who is

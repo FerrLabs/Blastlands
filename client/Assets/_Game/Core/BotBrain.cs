@@ -58,7 +58,11 @@ namespace Blastlands.Core
             // Dropping carries no direction, so taking the heading from it would leave
             // the bot standing on its own bomb for the whole reaction delay. It leaves
             // along the route the escape check already proved was open.
-            heading = decision.DropBomb ? plannedEscape : decision.Move;
+            if (!decision.Ability)
+            {
+                heading = decision.DropBomb ? plannedEscape : decision.Move;
+            }
+
             return decision;
         }
 
@@ -140,6 +144,11 @@ namespace Blastlands.Core
             if (ShoveKills(state, player, blast, out Direction shoveInto))
             {
                 return PlayerInput.Pushing(shoveInto);
+            }
+
+            if (BotAbilities.ShouldUse(state, player))
+            {
+                return PlayerInput.UsingAbility();
             }
 
             if (player.CanDropBomb

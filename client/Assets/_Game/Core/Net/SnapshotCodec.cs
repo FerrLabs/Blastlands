@@ -216,6 +216,8 @@ namespace Blastlands.Core.Net
                 writer.Int16(player.StunTicksRemaining);
                 writer.Int16(player.PushCooldownRemaining);
                 writer.Int16(player.RevealTicksRemaining);
+                writer.Byte((byte)player.Character);
+                writer.Int16(player.AbilityCooldownRemaining);
             }
         }
 
@@ -247,7 +249,9 @@ namespace Blastlands.Core.Net
                     ShoveTicksRemaining = reader.Int16(),
                     StunTicksRemaining = reader.Int16(),
                     PushCooldownRemaining = reader.Int16(),
-                    RevealTicksRemaining = reader.Int16()
+                    RevealTicksRemaining = reader.Int16(),
+                    Character = reader.Byte(),
+                    AbilityCooldownRemaining = reader.Int16()
                 };
 
                 if (!line.IsSane())
@@ -481,6 +485,7 @@ namespace Blastlands.Core.Net
         public const byte HighestBombKind = (byte)BombKind.Cluster;
         public const byte HighestPowerUpKind = (byte)PowerUpKind.ClusterBomb;
         public const byte HighestDirection = (byte)Direction.Up;
+        public const byte HighestCharacter = (byte)CharacterKind.Sapper;
 
         private static bool IsTile(byte raw)
         {
@@ -555,10 +560,13 @@ namespace Blastlands.Core.Net
             public int StunTicksRemaining;
             public int PushCooldownRemaining;
             public int RevealTicksRemaining;
+            public byte Character;
+            public int AbilityCooldownRemaining;
 
             public bool IsSane()
             {
                 return IsBombKind(NextBombKind)
+                    && Character <= HighestCharacter
                     && IsDirection(Facing)
                     && IsDirection(DashDirection)
                     && IsDirection(ShoveDirection);
@@ -583,6 +591,8 @@ namespace Blastlands.Core.Net
                 player.StunTicksRemaining = StunTicksRemaining;
                 player.PushCooldownRemaining = PushCooldownRemaining;
                 player.RevealTicksRemaining = RevealTicksRemaining;
+                player.Character = (CharacterKind)Character;
+                player.AbilityCooldownRemaining = AbilityCooldownRemaining;
             }
         }
     }

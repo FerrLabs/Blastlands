@@ -11,12 +11,16 @@ namespace Blastlands.Runtime
         private readonly Image icon;
         private readonly Image fill;
         private readonly TMP_Text count;
+        private readonly TMP_Text caption;
+        private readonly GameObject[] parts;
 
-        private HudActionButton(Image icon, Image fill, TMP_Text count)
+        private HudActionButton(Image icon, Image fill, TMP_Text count, TMP_Text caption, GameObject[] parts)
         {
             this.icon = icon;
             this.fill = fill;
             this.count = count;
+            this.caption = caption;
+            this.parts = parts;
         }
 
         public static HudActionButton Build(
@@ -47,7 +51,8 @@ namespace Blastlands.Runtime
             HudPlacement.Tint(fill, accent);
 
             float size = DialSize(dial) * scale;
-            BuildPrompt(art, parent, action, device, corner, offset + new Vector2(size * 0.86f, size * 0.86f), scale);
+            GameObject prompt = BuildPrompt(
+                art, parent, action, device, corner, offset + new Vector2(size * 0.86f, size * 0.86f), scale);
 
             GameObject caption = HudPlacement.Spawn(art.Caption, parent, action + " caption");
             HudPlacement.Pin(caption, corner, offset + new Vector2(size * 0.5f - 60f * scale, -34f * scale), scale * 0.4f);
@@ -59,9 +64,10 @@ namespace Blastlands.Runtime
             }
 
             TMP_Text count = null;
+            GameObject label = null;
             if (counted)
             {
-                GameObject label = HudPlacement.Spawn(art.Label, parent, action + " count");
+                label = HudPlacement.Spawn(art.Label, parent, action + " count");
                 HudPlacement.Pin(label, corner, offset + new Vector2(size * 0.5f - 60f * scale, size * 0.06f), scale * 0.4f);
                 count = HudPlacement.Text(label);
                 if (count != null)
@@ -70,7 +76,28 @@ namespace Blastlands.Runtime
                 }
             }
 
-            return new HudActionButton(icon, fill, count);
+            return new HudActionButton(icon, fill, count, captionText, new[] { dial, prompt, caption, label });
+        }
+
+        public void Dress(Sprite glyph, string name)
+        {
+            if (icon != null)
+            {
+                icon.sprite = glyph;
+            }
+
+            HudPlacement.Write(caption, name.ToUpperInvariant());
+        }
+
+        public void Reveal(bool visible)
+        {
+            foreach (GameObject part in parts)
+            {
+                if (part != null && part.activeSelf != visible)
+                {
+                    part.SetActive(visible);
+                }
+            }
         }
 
         public void Show(float readiness, bool ready, string counter)
@@ -88,7 +115,7 @@ namespace Blastlands.Runtime
             HudPlacement.Write(count, counter);
         }
 
-        private static void BuildPrompt(
+        private static GameObject BuildPrompt(
             HudArt art,
             Transform parent,
             HudAction action,
@@ -112,7 +139,7 @@ namespace Blastlands.Runtime
                     face.preserveAspect = true;
                 }
 
-                return;
+                return button;
             }
 
             GameObject key = HudPlacement.Spawn(art.KeyPrompt, parent, action + " prompt");
@@ -120,17 +147,19 @@ namespace Blastlands.Runtime
             HudPlacement.Hide(key, "Press and Hold");
             HudPlacement.Write(HudPlacement.Text(key), ActionPrompts.KeyLabel(glyph));
 
-            if (glyph == PromptGlyph.MouseLeft)
+            if (glyph == PromptGlyph.MouseLeft || glyph == PromptGlyph.MouseRight)
             {
                 HudPlacement.Hide(key, "Label_Input_Key");
                 Image mouse = HudPlacement.Part<Image>(key, "ICON");
                 if (mouse != null)
                 {
                     mouse.gameObject.SetActive(true);
-                    mouse.sprite = art.MouseLeft;
+                    mouse.sprite = art.Mouse(glyph);
                     mouse.preserveAspect = true;
                 }
             }
+
+            return key;
         }
 
         private static float DialSize(GameObject dial)

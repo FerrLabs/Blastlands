@@ -4,6 +4,7 @@ namespace Blastlands.Runtime
     {
         Bomb,
         Dash,
-        Shove
+        Shove,
+        Ability
     }
 }

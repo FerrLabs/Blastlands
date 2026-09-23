@@ -266,6 +266,9 @@ namespace Blastlands.Core.Tests
                 (int)SnapshotCodec.HighestPowerUpKind,
                 Is.EqualTo(Enum.GetValues(typeof(PowerUpKind)).Length - 1));
             Assert.That((int)SnapshotCodec.HighestDirection, Is.EqualTo(Enum.GetValues(typeof(Direction)).Length - 1));
+            Assert.That(
+                (int)SnapshotCodec.HighestCharacter,
+                Is.EqualTo(Enum.GetValues(typeof(CharacterKind)).Length - 1));
         }
 
         private static void AssertSame(MatchState server, MatchState client, int depth)
@@ -308,6 +311,11 @@ namespace Blastlands.Core.Tests
                     got.RevealTicksRemaining,
                     Is.EqualTo(sent.RevealTicksRemaining),
                     $"player {i} reveal, depth {depth}");
+                Assert.That(got.Character, Is.EqualTo(sent.Character), $"player {i} character, depth {depth}");
+                Assert.That(
+                    got.AbilityCooldownRemaining,
+                    Is.EqualTo(sent.AbilityCooldownRemaining),
+                    $"player {i} ability cooldown, depth {depth}");
             }
 
             Assert.That(client.Bombs.Count, Is.EqualTo(server.Bombs.Count), $"bombs, depth {depth}");
