@@ -19,4 +19,7 @@ jobs:
     uses: FerrLabs/.github/.github/workflows/reusable-security-scan.yml@006179d85612bca62c683001b983a3bfa98ca507 # main
     with:
       run-on-private: true
-    secrets: inherit
+    # No `secrets:`. The only one the scan reads is SNYK_TOKEN, which exists in no
+    # FerrLabs scope, and it guards on that and soft-passes without it. It declares no
+    # secrets of its own, so there is nothing to pass explicitly: if a token is ever
+    # added, the reusable workflow has to declare it before a caller can hand it over.
