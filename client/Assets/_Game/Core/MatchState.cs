@@ -168,6 +168,19 @@ namespace Blastlands.Core
             get { return flames; }
         }
 
+        public bool ChooseCharacter(int seat, CharacterKind character)
+        {
+            if (Tick != 0 || !Settings.Rules.AllowsCharacters || seat < 0 || seat >= players.Count)
+            {
+                return false;
+            }
+
+            PlayerState player = players[seat];
+            player.Rekit(
+                character == CharacterKind.None ? player.StartingCharacter : character, Settings);
+            return true;
+        }
+
         public PlayerState AddPlayer(GridPos spawn)
         {
             return AddPlayer(spawn, CharacterKind.None);

@@ -12,8 +12,18 @@ namespace Blastlands.Core.Net
         public const string SecretVariable = "BLASTLANDS_TICKET_SECRET";
 
         private const string Format = "v1";
+        private const string FormatWithCharacter = "v2";
         private const int FieldCount = 6;
         private const int SignatureBytes = 32;
+
+        private static readonly Dictionary<string, CharacterKind> CharacterTokens =
+            new Dictionary<string, CharacterKind>(StringComparer.Ordinal)
+            {
+                { "demolisher", CharacterKind.Demolisher },
+                { "runner", CharacterKind.Runner },
+                { "grenadier", CharacterKind.Grenadier },
+                { "sapper", CharacterKind.Sapper }
+            };
 
         private readonly byte[] key;
         private readonly string matchId;
@@ -53,10 +63,12 @@ namespace Blastlands.Core.Net
             return true;
         }
 
-        public TicketVerdict Admit(string ticket, long nowUnixSeconds, out string player, out string nonce)
+        public TicketVerdict Admit(
+            string ticket, long nowUnixSeconds, out string player, out string nonce, out CharacterKind character)
         {
             player = null;
             nonce = null;
+            character = CharacterKind.None;
 
             if (string.IsNullOrEmpty(ticket))
             {
@@ -64,12 +76,13 @@ namespace Blastlands.Core.Net
             }
 
             string[] fields = ticket.Split('.');
-            if (fields.Length != FieldCount || !string.Equals(fields[0], Format, StringComparison.Ordinal))
+            int extra = ExtraFields(fields[0]);
+            if (extra < 0 || fields.Length != FieldCount + extra)
             {
                 return TicketVerdict.Malformed;
             }
 
-            if (!TryHex(fields[5], out byte[] presented) || presented.Length != SignatureBytes)
+            if (!TryHex(fields[5 + extra], out byte[] presented) || presented.Length != SignatureBytes)
             {
                 return TicketVerdict.Malformed;
             }
@@ -85,8 +98,10 @@ namespace Blastlands.Core.Net
                 return TicketVerdict.OtherMatch;
             }
 
-            if (!long.TryParse(fields[3], NumberStyles.None, CultureInfo.InvariantCulture, out long expires)
-                || !TryHex(fields[2], out byte[] name))
+            CharacterKind chosen = CharacterKind.None;
+            if (!long.TryParse(fields[3 + extra], NumberStyles.None, CultureInfo.InvariantCulture, out long expires)
+                || !TryHex(fields[2], out byte[] name)
+                || (extra == 1 && !CharacterTokens.TryGetValue(fields[3], out chosen)))
             {
                 return TicketVerdict.Malformed;
             }
@@ -98,14 +113,15 @@ namespace Blastlands.Core.Net
 
             ForgetLapsed(nowUnixSeconds);
 
-            if (spent.ContainsKey(fields[4]))
+            if (spent.ContainsKey(fields[4 + extra]))
             {
                 return TicketVerdict.AlreadyUsed;
             }
 
-            nonce = fields[4];
+            nonce = fields[4 + extra];
             spent.Add(nonce, expires);
             player = Encoding.UTF8.GetString(name);
+            character = chosen;
             return TicketVerdict.Admitted;
         }
 
@@ -115,6 +131,16 @@ namespace Blastlands.Core.Net
             {
                 spent.Remove(nonce);
             }
+        }
+
+        private static int ExtraFields(string format)
+        {
+            if (string.Equals(format, Format, StringComparison.Ordinal))
+            {
+                return 0;
+            }
+
+            return string.Equals(format, FormatWithCharacter, StringComparison.Ordinal) ? 1 : -1;
         }
 
         private byte[] Sign(string payload)

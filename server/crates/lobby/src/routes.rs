@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use tower_http::trace::TraceLayer;
 
 use crate::auth::require_instance_token;
+use crate::characters::Character;
 use crate::download::DownloadLinks;
 use crate::error::LobbyError;
 use crate::matches::{
@@ -106,11 +107,15 @@ pub struct CreateMatchRequest {
     pub name: DisplayName,
     pub host: DisplayName,
     pub max_players: u8,
+    #[serde(default)]
+    pub character: Option<Character>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct JoinRequest {
     pub player: DisplayName,
+    #[serde(default)]
+    pub character: Option<Character>,
 }
 
 #[derive(Debug, Serialize)]
@@ -261,7 +266,9 @@ async fn create_match(
 
     let created = MatchCreated {
         summary: MatchSummary::from(&entry),
-        game_ticket: state.tickets.issue(entry.id, &entry.host, since_epoch()),
+        game_ticket: state
+            .tickets
+            .issue(entry.id, &entry.host, request.character, since_epoch()),
         endpoint: entry.endpoint,
         ticket,
     };
@@ -283,7 +290,9 @@ async fn join_match(
     }
 
     let admitted = state.directory.join(id, request.player.clone())?;
-    let ticket = state.tickets.issue(id, &request.player, since_epoch());
+    let ticket = state
+        .tickets
+        .issue(id, &request.player, request.character, since_epoch());
 
     Ok(Json(JoinAccepted {
         endpoint: admitted.endpoint,
@@ -666,6 +675,68 @@ mod tests {
         let game_ticket = created["game_ticket"].as_str().expect("a game ticket");
         assert!(game_ticket.starts_with(&format!("v1.{}.", created["id"].as_str().unwrap())));
         assert_ne!(created["ticket"], created["game_ticket"]);
+    }
+
+    #[tokio::test]
+    async fn a_chosen_character_is_signed_into_the_join_ticket() {
+        let router = router();
+        let created = create_match_on(&router, "Friday night").await;
+        let id = created["id"].as_str().unwrap().to_owned();
+
+        let response = router
+            .clone()
+            .oneshot(post_json(
+                &format!("/v1/matches/{id}/join"),
+                json!({ "player": "Alex", "character": "sapper" }),
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let ticket = body_json(response).await["ticket"]
+            .as_str()
+            .expect("a ticket")
+            .to_owned();
+        let fields: Vec<&str> = ticket.split('.').collect();
+        assert_eq!(fields.len(), 7);
+        assert_eq!(fields[0], "v2");
+        assert_eq!(fields[3], "sapper");
+    }
+
+    #[tokio::test]
+    async fn the_host_can_bring_a_character_too() {
+        let response = router()
+            .oneshot(post_json(
+                "/v1/matches",
+                json!({ "name": "Friday night", "host": "Bryan", "max_players": 4, "character": "runner" }),
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::CREATED);
+        let game_ticket = body_json(response).await["game_ticket"]
+            .as_str()
+            .expect("a game ticket")
+            .to_owned();
+        assert_eq!(game_ticket.split('.').nth(3), Some("runner"));
+    }
+
+    #[tokio::test]
+    async fn a_character_the_lobby_does_not_know_is_refused() {
+        let router = router();
+        let created = create_match_on(&router, "Friday night").await;
+        let id = created["id"].as_str().unwrap().to_owned();
+
+        let response = router
+            .clone()
+            .oneshot(post_json(
+                &format!("/v1/matches/{id}/join"),
+                json!({ "player": "Alex", "character": "hoarder" }),
+            ))
+            .await
+            .unwrap();
+
+        assert!(response.status().is_client_error());
     }
 
     #[tokio::test]

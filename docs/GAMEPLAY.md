@@ -428,9 +428,10 @@ now holds every kit to the plain player's capacity.
 
 **Seats take the roster in turn**, so four players are one of each and nobody lands the strong
 kit by chance. A local series turns the roster by one each round, so the same pad does not keep
-the same kit for the whole series. The server and every client apply the same rule, which is why the choice does
-not travel on the wire. Choosing a character is a later step: a picker on the client, and the
-lobby carrying the choice to the instance.
+the same kit for the whole series. A player who chose a character in the lobby gets it instead: the choice rides in the
+signed game ticket and the instance applies it to that seat before kickoff (see the join
+tickets in `ARCHITECTURE.md`). Clients do not need to know it up front, because every snapshot
+carries each player's reach, speed and bomb kind. The picker on the client is still to come.
 
 **Balance, measured, and not guarded in CI.** Over 240 four-bot matches, every kit in every
 seat on each board so a strong spawn cannot pass for a strong kit:
