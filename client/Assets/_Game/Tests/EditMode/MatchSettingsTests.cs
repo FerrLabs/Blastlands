@@ -99,7 +99,8 @@ namespace Blastlands.Core.Tests
             // column of eight covers a third of what the constructor carries, misses a
             // field added later, and would pass a WallTelegraphTicks = from.WallRetryTicks
             // as long as neither appeared in the column.
-            foreach (PropertyInfo property in typeof(MatchSettings).GetProperties())
+            foreach (PropertyInfo property in typeof(MatchSettings)
+                .GetProperties(BindingFlags.Public | BindingFlags.Instance))
             {
                 if (Deliberate.Contains(property.Name))
                 {
