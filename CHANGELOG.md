@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.68] - 2026-09-23
+
+### Features
+
+- feat(bots): make planning depth the difficulty ladder (#22)
+
 ## [26.9.63] - 2026-09-22
 
 ### Features
