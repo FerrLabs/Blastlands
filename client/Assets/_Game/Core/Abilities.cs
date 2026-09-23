@@ -62,6 +62,8 @@ namespace Blastlands.Core
                     return true;
                 case CharacterKind.Grenadier:
                     return player.CanDropBomb && TryLanding(state, player, out _);
+                case CharacterKind.Sapper:
+                    return TryWallTile(state, player, out _);
                 default:
                     return false;
             }

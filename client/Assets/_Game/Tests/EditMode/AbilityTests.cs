@@ -346,6 +346,17 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
+        public void WallIsOnlyReadyWhereAWallCanGoUp()
+        {
+            MatchState open = Sapper();
+            MatchState occupied = Match(Arena, CharacterKind.Sapper, new GridPos(4, 7), new GridPos(5, 7));
+            occupied.Players[0].Facing = Direction.Right;
+
+            Assert.That(Abilities.CanUseNow(open, open.Players[0]), Is.True);
+            Assert.That(Abilities.CanUseNow(occupied, occupied.Players[0]), Is.False);
+        }
+
+        [Test]
         public void TheSnapshotCarriesRaisedWalls()
         {
             MatchState server = Sapper();

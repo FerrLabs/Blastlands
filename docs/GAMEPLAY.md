@@ -507,6 +507,24 @@ throw when the landing tile's blast catches a rival they can see and not themsel
 wall only when a bomb would reach them and a wall on the tile they face would stop it, which is
 rare, since a bot running from a bomb is usually facing away from it.
 
+**Balance, measured.** 240 four-bot Hard matches, every kit in every seat, with the default
+settings, sudden death included, so nearly every match ends with one survivor. Not comparable with
+the kits table above, which was measured without sudden death. Wins per character:
+
+| | kits only | trigger added | all four abilities |
+|---|---|---|---|
+| Demolisher | 58 | 73 | 78 |
+| Runner | 33 | 30 | 51 |
+| Grenadier | 56 | 40 | 29 |
+| Sapper | 49 | 53 | 43 |
+
+Vanish lifts the Runner out of last place, and bots vanish about five times a match. The trigger
+keeps the Demolisher on top at about one press a match. The Grenadier falls furthest, and not
+because of its own ability: bots threw only 34 times in 240 matches, so what moved it is the other
+three getting stronger around it. Bots never raised a wall, as the rule above predicts, so the
+Sapper's number says nothing about the wall. Tuning the trigger or giving bots better reasons to
+throw and build is the next balance question; these are first-pass values.
+
 ## Bots
 
 Bots fill empty slots so a match starts without waiting for eight humans, and they replace
