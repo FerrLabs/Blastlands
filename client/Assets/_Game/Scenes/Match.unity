@@ -231,6 +231,7 @@ GameObject:
   - component: {fileID: 613233828}
   - component: {fileID: 613233830}
   - component: {fileID: 613233831}
+  - component: {fileID: 613233832}
   m_Layer: 0
   m_Name: Match
   m_TagString: Untagged
@@ -467,6 +468,31 @@ MonoBehaviour:
   view: {fileID: 613233826}
   cameras: {fileID: 1120936999}
   linger: 0.3
+--- !u!114 &613233832
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 613233824}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c157a02fc6047cd8acf2058d7655f6a, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Blastlands.Runtime::Blastlands.Runtime.NetworkedMatchDriver
+  view: {fileID: 613233826}
+  hud: {fileID: 613233830}
+  matchCamera: {fileID: 1120936999}
+  fog: {fileID: 613233831}
+  themes:
+  - {fileID: 11400000, guid: 4787bde93129f154e9ce0c149fd3014e, type: 2}
+  - {fileID: 11400000, guid: 3692e84adac833e44a46d08a340ac0a4, type: 2}
+  - {fileID: 11400000, guid: 98475a0bee7410e4b9d671a16e475bb7, type: 2}
+  - {fileID: 11400000, guid: 7cb0814d5b4fe614ea4fa07ce907a7f4, type: 2}
+  host: 127.0.0.1
+  port: 7777
+  ticket:
+  mode: 0
 --- !u!1 &1120936998
 GameObject:
   m_ObjectHideFlags: 0
