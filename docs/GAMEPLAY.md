@@ -472,8 +472,7 @@ thing that does. Using one gives a hider away, exactly as dashing out of a bush 
 | Demolisher | **Trigger**: sets off your oldest live bomb now | 6 s |
 | Runner | **Vanish**: hidden for 2 s wherever you stand | 10 s |
 | Grenadier | **Throw**: your next bomb lands up to three tiles ahead | 5 s |
-
-The Sapper's wall follows in its own change (#37).
+| Sapper | **Wall**: raises a soft block on the tile in front of you for 8 s | 10 s |
 
 **Trigger** turns the fuse from a warning into a choice. A bomb you placed is a threat everybody
 reads the same way, two and a half seconds and then fire; being able to cut that short is what
@@ -492,11 +491,21 @@ wall or a gap. It spends a bomb from your pocket like dropping one does and keep
 your bomb kind, Cluster included, and the fuse is the ordinary one. With nothing in hand or the way
 ahead blocked the press does nothing and costs nothing.
 
+**Wall** is a soft block like any other while it stands: it stops movement, sight and fire, and
+a blast takes it down. What it never does is stay. It crumbles after eight seconds, and a wall
+that was blown up clears for good rather than joining the regrowth, so the Sapper can reshape a
+corridor for a moment but never the arena. It only goes up on empty floor that nobody's body is
+touching, with no bomb, fire, pickup or regrowing wall on it, which is what stops it from burying
+anyone or anything. A bush does not qualify: turning cover into a wall would be a way to delete
+hiding places.
+
 Bots trigger when a rival they can see stands in the blast, chains included, and hold when the
 blast would reach them too. Having triggered, they stand still until their next decision rather
 than walk on into the fire they just lit: the tile they are on is the one the check proved safe.
 They vanish when a rival they can see is within three tiles and they are not already hidden, and
-throw when the landing tile's blast catches a rival they can see and not themselves.
+throw when the landing tile's blast catches a rival they can see and not themselves. They raise a
+wall only when a bomb would reach them and a wall on the tile they face would stop it, which is
+rare, since a bot running from a bomb is usually facing away from it.
 
 ## Bots
 

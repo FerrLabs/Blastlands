@@ -139,6 +139,35 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
+        public void TheSapperRaisesAWallThatShieldsItFromABomb()
+        {
+            MatchState state = Match(CharacterKind.Sapper, new GridPos(4, 7), new GridPos(13, 13));
+            state.Players[0].Facing = Direction.Right;
+            state.AddBomb(new ActiveBomb(new Bomb(new GridPos(7, 7), 1, 3, BombKind.Standard), 30));
+
+            Assert.That(BotAbilities.ShouldUse(state, state.Players[0]), Is.True);
+        }
+
+        [Test]
+        public void TheSapperKeepsItWhenNothingThreatensIt()
+        {
+            MatchState state = Match(CharacterKind.Sapper, new GridPos(4, 7), new GridPos(13, 13));
+            state.Players[0].Facing = Direction.Right;
+
+            Assert.That(BotAbilities.ShouldUse(state, state.Players[0]), Is.False);
+        }
+
+        [Test]
+        public void TheSapperKeepsItWhenTheWallWouldNotHelp()
+        {
+            MatchState state = Match(CharacterKind.Sapper, new GridPos(4, 7), new GridPos(13, 13));
+            state.Players[0].Facing = Direction.Left;
+            state.AddBomb(new ActiveBomb(new Bomb(new GridPos(7, 7), 1, 3, BombKind.Standard), 30));
+
+            Assert.That(BotAbilities.ShouldUse(state, state.Players[0]), Is.False);
+        }
+
+        [Test]
         public void TheBrainActsOnIt()
         {
             MatchState state = Match(new GridPos(1, 1), new GridPos(8, 7));

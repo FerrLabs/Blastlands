@@ -254,6 +254,114 @@ namespace Blastlands.Core.Tests
             Assert.That(state.Bombs[0].FuseRemaining, Is.EqualTo(Arena.FuseTicks - 1));
         }
 
+        private static MatchState Sapper()
+        {
+            MatchState state = Match(Arena, CharacterKind.Sapper, new GridPos(4, 7), new GridPos(13, 13));
+            state.Players[0].Facing = Direction.Right;
+            return state;
+        }
+
+        [Test]
+        public void TheSapperRaisesAWallInFrontOfItself()
+        {
+            MatchState state = Sapper();
+
+            Tick(state, PlayerInput.UsingAbility(), PlayerInput.None);
+
+            Assert.That(state.Arena[new GridPos(5, 7)], Is.EqualTo(TileKind.SoftBlock));
+            Assert.That(state.RaisedWalls.Count, Is.EqualTo(1));
+            Assert.That(state.Players[0].AbilityCooldownRemaining, Is.EqualTo(Arena.Abilities.WallCooldownTicks));
+        }
+
+        [Test]
+        public void TheWallCrumblesOnItsOwnAndNeverGrowsBack()
+        {
+            MatchState state = Sapper();
+
+            Tick(state, PlayerInput.UsingAbility(), PlayerInput.None);
+            for (int i = 0; i < Arena.Abilities.WallTicks; i++)
+            {
+                Tick(state, PlayerInput.None, PlayerInput.None);
+            }
+
+            Assert.That(state.Arena[new GridPos(5, 7)], Is.EqualTo(TileKind.Floor));
+            Assert.That(state.RaisedWalls.Count, Is.Zero);
+            Assert.That(state.RegrowingWalls.Count, Is.Zero);
+        }
+
+        [Test]
+        public void ABlastTakesTheWallDownForGood()
+        {
+            MatchState state = Sapper();
+            Tick(state, PlayerInput.UsingAbility(), PlayerInput.None);
+            Plant(state, new GridPos(7, 7), 1, 1);
+
+            Tick(state, PlayerInput.None, PlayerInput.None);
+
+            Assert.That(state.Arena[new GridPos(5, 7)], Is.EqualTo(TileKind.Floor));
+            Assert.That(state.RaisedWalls.Count, Is.Zero);
+            Assert.That(state.RegrowingWalls.Count, Is.Zero, "a raised wall does not come back");
+        }
+
+        [Test]
+        public void TheWallStopsTheFireItWasRaisedAgainst()
+        {
+            MatchState state = Sapper();
+            state.AddBomb(new ActiveBomb(new Bomb(new GridPos(7, 7), 1, 3, BombKind.Standard), 2));
+
+            Tick(state, PlayerInput.UsingAbility(), PlayerInput.None);
+            Tick(state, PlayerInput.None, PlayerInput.None);
+
+            Assert.That(state.Players[0].Alive, Is.True);
+        }
+
+        [Test]
+        public void NoWallGoesUpWhereSomeoneStands()
+        {
+            MatchState state = Match(Arena, CharacterKind.Sapper, new GridPos(4, 7), new GridPos(5, 7));
+            state.Players[0].Facing = Direction.Right;
+
+            Tick(state, PlayerInput.UsingAbility(), PlayerInput.None);
+
+            Assert.That(state.Arena[new GridPos(5, 7)], Is.EqualTo(TileKind.Floor));
+            Assert.That(state.Players[0].AbilityCooldownRemaining, Is.Zero);
+        }
+
+        [Test]
+        public void NoWallGoesUpOnABombABushOrAHealingWall()
+        {
+            MatchState onBomb = Sapper();
+            Plant(onBomb, new GridPos(5, 7), 1, 60);
+            MatchState onBush = Sapper();
+            onBush.Arena[new GridPos(5, 7)] = TileKind.Bush;
+            MatchState onRegrowth = Sapper();
+            onRegrowth.ScheduleRegrowth(new GridPos(5, 7), TileKind.SoftBlock, 100);
+
+            foreach (MatchState state in new[] { onBomb, onBush, onRegrowth })
+            {
+                Tick(state, PlayerInput.UsingAbility(), PlayerInput.None);
+                Assert.That(state.RaisedWalls.Count, Is.Zero);
+                Assert.That(state.Players[0].AbilityCooldownRemaining, Is.Zero);
+            }
+        }
+
+        [Test]
+        public void TheSnapshotCarriesRaisedWalls()
+        {
+            MatchState server = Sapper();
+            Tick(server, PlayerInput.UsingAbility(), PlayerInput.None);
+            MatchState client = Match(Arena, CharacterKind.None, new GridPos(4, 7), new GridPos(13, 13));
+
+            var buffer = new byte[SnapshotCodec.MaxSize];
+            int used = SnapshotCodec.Write(server, buffer);
+
+            Assert.That(SnapshotCodec.TryApply(buffer, used, client), Is.True);
+            Assert.That(client.RaisedWalls.Count, Is.EqualTo(1));
+            Assert.That(client.RaisedWalls[0].Tile, Is.EqualTo(new GridPos(5, 7)));
+            Assert.That(client.RaisedWalls[0].TicksRemaining, Is.EqualTo(server.RaisedWalls[0].TicksRemaining));
+            Assert.That(client.Arena[new GridPos(5, 7)], Is.EqualTo(TileKind.SoftBlock));
+        }
+
         [Test]
         public void ThrowIsOnlyReadyWithABombInHandAndSomewhereToLand()
         {

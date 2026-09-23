@@ -29,6 +29,7 @@ namespace Blastlands.Core.Net
         private const int MostPowerUps = 512;
         private const int MostLooseBombs = 512;
         private const int MostRegrowing = 1024;
+        private const int MostRaisedWalls = 256;
 
         public static int Write(MatchState state, byte[] buffer)
         {
@@ -46,6 +47,7 @@ namespace Blastlands.Core.Net
             WritePowerUps(ref writer, state.PowerUps);
             WriteLooseBombs(ref writer, state.LooseBombs);
             WriteRegrowing(ref writer, state.RegrowingWalls);
+            WriteRaisedWalls(ref writer, state.RaisedWalls);
 
             return writer.Ok ? writer.Length : 0;
         }
@@ -95,7 +97,8 @@ namespace Blastlands.Core.Net
                 || !ReadFlames(ref reader, state.Arena, scratch)
                 || !ReadPowerUps(ref reader, state.Arena, scratch)
                 || !ReadLooseBombs(ref reader, state.Arena, scratch)
-                || !ReadRegrowing(ref reader, state.Arena, scratch))
+                || !ReadRegrowing(ref reader, state.Arena, scratch)
+                || !ReadRaisedWalls(ref reader, state.Arena, scratch))
             {
                 return false;
             }
@@ -141,6 +144,11 @@ namespace Blastlands.Core.Net
             for (int i = 0; i < scratch.Regrowing.Count; i++)
             {
                 state.AddRegrowthFromSnapshot(scratch.Regrowing[i]);
+            }
+
+            for (int i = 0; i < scratch.RaisedWalls.Count; i++)
+            {
+                state.AddRaisedWallFromSnapshot(scratch.RaisedWalls[i]);
             }
 
             return true;
@@ -477,6 +485,43 @@ namespace Blastlands.Core.Net
             return reader.Ok;
         }
 
+        private static void WriteRaisedWalls(ref NetWriter writer, System.Collections.Generic.IReadOnlyList<RaisedWall> walls)
+        {
+            writer.Int32(walls.Count);
+
+            for (int i = 0; i < walls.Count; i++)
+            {
+                RaisedWall wall = walls[i];
+                writer.Int16(wall.Tile.X);
+                writer.Int16(wall.Tile.Y);
+                writer.Int16(wall.TicksRemaining);
+            }
+        }
+
+        private static bool ReadRaisedWalls(ref NetReader reader, Arena arena, Scratch scratch)
+        {
+            int count = reader.Count(MostRaisedWalls);
+            if (!reader.Ok)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < count; i++)
+            {
+                var tile = new GridPos(reader.Int16(), reader.Int16());
+                int ticks = reader.Int16();
+
+                if (!arena.Contains(tile))
+                {
+                    return false;
+                }
+
+                scratch.RaisedWalls.Add(new RaisedWall(tile, ticks));
+            }
+
+            return reader.Ok;
+        }
+
         // Range checks rather than Enum.IsDefined, which boxes and would run once per
         // tile: 525 of them per snapshot at thirty ticks a second. All four enums are
         // contiguous from zero, and a test pins these bounds against the real member
@@ -534,6 +579,9 @@ namespace Blastlands.Core.Net
 
             public readonly System.Collections.Generic.List<WallRegrowth> Regrowing =
                 new System.Collections.Generic.List<WallRegrowth>();
+
+            public readonly System.Collections.Generic.List<RaisedWall> RaisedWalls =
+                new System.Collections.Generic.List<RaisedWall>();
         }
 
         private struct FlameLine

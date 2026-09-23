@@ -8,13 +8,13 @@ namespace Blastlands.Core
 
         public static bool Has(CharacterKind character)
         {
-            return character == CharacterKind.Demolisher
-                || character == CharacterKind.Runner
-                || character == CharacterKind.Grenadier;
+            return character != CharacterKind.None;
         }
 
         public static void Resolve(MatchState state, IReadOnlyList<PlayerInput> inputs)
         {
+            Crumble(state);
+
             for (int i = 0; i < state.Players.Count; i++)
             {
                 PlayerState player = state.Players[i];
@@ -91,8 +91,70 @@ namespace Blastlands.Core
                     return Vanish(state, player);
                 case CharacterKind.Grenadier:
                     return Throw(state, player);
+                case CharacterKind.Sapper:
+                    return RaiseWall(state, player);
                 default:
                     return false;
+            }
+        }
+
+        public static bool TryWallTile(MatchState state, PlayerState player, out GridPos tile)
+        {
+            GridPos step = Directions.Delta(player.Facing);
+            tile = player.Tile.Offset(step.X, step.Y);
+            if ((step.X == 0 && step.Y == 0)
+                || !state.Arena.Contains(tile)
+                || state.Arena[tile] != TileKind.Floor
+                || state.HasBombAt(tile)
+                || state.HasFlameAt(tile)
+                || state.PowerUpIndexAt(tile) >= 0
+                || state.LooseBombIndexAt(tile) >= 0
+                || state.IsRegrowing(tile))
+            {
+                return false;
+            }
+
+            for (int i = 0; i < state.Players.Count; i++)
+            {
+                PlayerState other = state.Players[i];
+                if (other.Alive && PlayerBody.Covers(other.Position, state.Settings.PlayerRadius, tile))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static bool RaiseWall(MatchState state, PlayerState player)
+        {
+            if (!TryWallTile(state, player, out GridPos tile))
+            {
+                return false;
+            }
+
+            state.Arena[tile] = TileKind.SoftBlock;
+            state.AddRaisedWall(new RaisedWall(tile, state.Settings.Abilities.WallTicks));
+            return true;
+        }
+
+        private static void Crumble(MatchState state)
+        {
+            for (int i = state.RaisedWalls.Count - 1; i >= 0; i--)
+            {
+                RaisedWall wall = state.RaisedWalls[i];
+                wall.TicksRemaining--;
+                if (wall.TicksRemaining > 0)
+                {
+                    continue;
+                }
+
+                if (state.Arena[wall.Tile] == TileKind.SoftBlock)
+                {
+                    state.Arena[wall.Tile] = TileKind.Floor;
+                }
+
+                state.RemoveRaisedWallAt(i);
             }
         }
 

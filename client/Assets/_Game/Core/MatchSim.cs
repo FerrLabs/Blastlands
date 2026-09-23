@@ -385,6 +385,14 @@ namespace Blastlands.Core
                 GridPos cleared = result.DestroyedSoftBlocks[i];
                 TileKind was = state.Arena[cleared];
                 state.Arena[cleared] = TileKind.Floor;
+
+                int raised = state.RaisedWallIndexAt(cleared);
+                if (raised >= 0)
+                {
+                    state.RemoveRaisedWallAt(raised);
+                    continue;
+                }
+
                 state.ScheduleRegrowth(cleared, was, state.Settings.WallRegrowTicks);
 
                 PowerUpKind revealed;
