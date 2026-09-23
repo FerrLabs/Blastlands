@@ -245,7 +245,12 @@ namespace Blastlands.Core
                     break;
             }
 
-            return speed <= 0 ? distance : (distance + speed - 1) / speed;
+            // A tick of slack on top. Steer aims at the centre of the next tile, so a
+            // bot standing off the lane travels diagonally and covers less along this
+            // axis than its speed each tick. Reading the crossing as faster than it is
+            // would be fatal here: this feeds the check on whether the bot clears its
+            // own tile before the fire arrives.
+            return speed <= 0 ? distance : ((distance + speed - 1) / speed) + 1;
         }
 
         private static int WithinTile(int units)
@@ -538,8 +543,12 @@ namespace Blastlands.Core
                 System.Func<GridPos, int, bool> reachable;
                 if (settings.Planning == BotPlanning.Always)
                 {
+                    // The bomb being considered blocks the tile it sits on. Left out,
+                    // the victim's window relaxes straight through it and the bot reads
+                    // an escape that the bomb it is about to place has already closed.
+                    GridPos blocked = tile;
                     EscapeWindow theirs = EscapeWindow.From(
-                        state, after, targetTicksPerTile, next => Walkable(state, next));
+                        state, after, targetTicksPerTile, next => next != blocked && Walkable(state, next));
                     reachable = (candidate, depth) =>
                         candidate != tile && theirs.Allows(candidate, depth * targetTicksPerTile);
                 }

@@ -73,7 +73,12 @@ namespace Blastlands.Core
                 definitions.Add(bombs[i].Bomb);
             }
 
-            var lit = new HashSet<GridPos>();
+            // When it was lit, not merely that it was. A loose bomb reached later in one
+            // pass can be reached sooner in the next, and the flames it throws move with
+            // it: marking the tile once leaves those flames recorded at the old time,
+            // which reads to a bot as seconds of clear ground it does not have.
+            var lit = new Dictionary<GridPos, int>();
+            var placed = new Dictionary<GridPos, int>();
             var trigger = new int[1];
             bool changed = true;
             while (changed)
@@ -83,15 +88,31 @@ namespace Blastlands.Core
                 {
                     GridPos tile = state.LooseBombs[i];
                     int reached;
-                    if (lit.Contains(tile) || !times.TryGetValue(tile, out reached) || HasBombAt(bombs, tile))
+                    if (!times.TryGetValue(tile, out reached) || HasBombAt(bombs, tile))
                     {
                         continue;
                     }
 
-                    lit.Add(tile);
+                    int already;
+                    if (lit.TryGetValue(tile, out already) && already <= reached)
+                    {
+                        continue;
+                    }
+
+                    lit[tile] = reached;
                     changed = true;
-                    trigger[0] = definitions.Count;
-                    definitions.Add(new Bomb(tile, -1, state.Settings.StartingFireRange, BombKind.Standard));
+
+                    // One definition per tile however often it is re-lit, or the same
+                    // bomb chains with itself and the list grows on every pass.
+                    int at;
+                    if (!placed.TryGetValue(tile, out at))
+                    {
+                        at = definitions.Count;
+                        placed[tile] = at;
+                        definitions.Add(new Bomb(tile, -1, state.Settings.StartingFireRange, BombKind.Standard));
+                    }
+
+                    trigger[0] = at;
 
                     int fuse = reached + state.Settings.LooseBombFuseTicks;
                     ExplosionResult result = ExplosionResolver.Resolve(state.Arena, definitions, trigger);
