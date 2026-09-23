@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.78] - 2026-09-23
+
+### Bug Fixes
+
+- fix(lobby): make the name screen readable (#47)
+
 ## [26.9.77] - 2026-09-23
 
 ### Bug Fixes
