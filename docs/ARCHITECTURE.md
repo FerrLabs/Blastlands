@@ -38,14 +38,22 @@ The lobby signs a game ticket for every player it admits: the host gets one in
 `game_ticket` when creating the match, a joining player gets one in `ticket`. The `ticket`
 returned by create is something else, the host's key for `POST /v1/matches/{id}/start`.
 
-A game ticket is six dot-separated fields:
+A game ticket is six dot-separated fields, or seven when the player chose a character:
 
 ```
 v1.<match id>.<player name, hex of its UTF-8>.<expiry, unix seconds>.<nonce>.<HMAC-SHA256, hex>
+v2.<match id>.<player name, hex of its UTF-8>.<character>.<expiry, unix seconds>.<nonce>.<HMAC-SHA256, hex>
 ```
 
-The HMAC covers the first five fields and uses `BLASTLANDS_TICKET_SECRET` (at least 32
+The HMAC covers every field before it and uses `BLASTLANDS_TICKET_SECRET` (at least 32
 bytes), which the lobby and every game server instance share.
+
+The character is optional in both `POST /v1/matches` and `POST /v1/matches/{id}/join`
+(`"character": "demolisher" | "runner" | "grenadier" | "sapper"`). Without one the lobby
+still signs a `v1` ticket, so a game server that only reads `v1` keeps admitting everybody
+whichever image rolls out first. Being signed, the character cannot be swapped between the
+lobby and the door. The instance hands it to the seat the connection takes, before the first
+tick only and only in a mode with characters; a reconnect mid-match keeps the kit it had.
 
 A ticket is issued when its holder joins but spent when the match starts, so its lifetime
 is tied to the match rather than to the player: a match that has not started within

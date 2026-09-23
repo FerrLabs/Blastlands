@@ -6,10 +6,12 @@ use serde::Serialize;
 use sha2::Sha256;
 use uuid::Uuid;
 
+use crate::characters::Character;
 use crate::matches::MatchId;
 use crate::names::DisplayName;
 
 const FORMAT: &str = "v1";
+const FORMAT_WITH_CHARACTER: &str = "v2";
 pub const MIN_KEY_BYTES: usize = 32;
 pub const CONNECT_GRACE: Duration = Duration::from_secs(120);
 
@@ -49,17 +51,34 @@ impl TicketSigner {
         Self { key, lifetime }
     }
 
-    pub fn issue(&self, id: MatchId, player: &DisplayName, since_epoch: Duration) -> GameTicket {
+    pub fn issue(
+        &self,
+        id: MatchId,
+        player: &DisplayName,
+        character: Option<Character>,
+        since_epoch: Duration,
+    ) -> GameTicket {
         let expires = (since_epoch + self.lifetime).as_secs();
-        self.sign(id, player, expires, Uuid::new_v4())
+        self.sign(id, player, character, expires, Uuid::new_v4())
     }
 
-    fn sign(&self, id: MatchId, player: &DisplayName, expires: u64, nonce: Uuid) -> GameTicket {
-        let payload = format!(
-            "{FORMAT}.{id}.{}.{expires}.{}",
-            hex(player.as_str().as_bytes()),
-            nonce.simple()
-        );
+    fn sign(
+        &self,
+        id: MatchId,
+        player: &DisplayName,
+        character: Option<Character>,
+        expires: u64,
+        nonce: Uuid,
+    ) -> GameTicket {
+        let name = hex(player.as_str().as_bytes());
+        let nonce = nonce.simple();
+        let payload = match character {
+            None => format!("{FORMAT}.{id}.{name}.{expires}.{nonce}"),
+            Some(character) => format!(
+                "{FORMAT_WITH_CHARACTER}.{id}.{name}.{}.{expires}.{nonce}",
+                character.token()
+            ),
+        };
 
         let mut mac =
             Hmac::<Sha256>::new_from_slice(&self.key.0).expect("HMAC accepts a key of any length");
@@ -98,7 +117,7 @@ mod tests {
         let nonce: Uuid = "00112233-4455-6677-8899-aabbccddeeff".parse().unwrap();
 
         let ticket =
-            signer(Duration::ZERO).sign(match_id(), &player("Bryan"), 1_790_000_000, nonce);
+            signer(Duration::ZERO).sign(match_id(), &player("Bryan"), None, 1_790_000_000, nonce);
 
         assert_eq!(
             ticket.as_str(),
@@ -109,10 +128,62 @@ mod tests {
     }
 
     #[test]
+    fn signs_the_character_vector_the_game_server_tests_verify() {
+        let nonce: Uuid = "00112233-4455-6677-8899-aabbccddeeff".parse().unwrap();
+
+        let ticket = signer(Duration::ZERO).sign(
+            match_id(),
+            &player("Bryan"),
+            Some(Character::Sapper),
+            1_790_000_000,
+            nonce,
+        );
+
+        assert_eq!(
+            ticket.as_str(),
+            concat!(
+                "v2.0b7f3f5a-1c2d-4e5f-8a9b-0c1d2e3f4a5b.427279616e.sapper.1790000000.",
+                "00112233445566778899aabbccddeeff.",
+                "b01f619427dcf2953c0d0c9a36b7c285eb94944e142194d37bf67d4674a73418"
+            )
+        );
+    }
+
+    #[test]
+    fn a_character_is_inside_what_the_signature_covers() {
+        let nonce: Uuid = "00112233-4455-6677-8899-aabbccddeeff".parse().unwrap();
+        let signer = signer(Duration::ZERO);
+
+        let sapper = signer.sign(
+            match_id(),
+            &player("Bryan"),
+            Some(Character::Sapper),
+            1,
+            nonce,
+        );
+        let runner = signer.sign(
+            match_id(),
+            &player("Bryan"),
+            Some(Character::Runner),
+            1,
+            nonce,
+        );
+
+        let signature =
+            |ticket: &GameTicket| ticket.as_str().rsplit('.').next().unwrap().to_owned();
+        assert_ne!(
+            signature(&sapper),
+            signature(&runner),
+            "a character outside the signature could be swapped at the door"
+        );
+    }
+
+    #[test]
     fn expires_one_lifetime_after_it_is_issued() {
         let ticket = signer(Duration::from_secs(300)).issue(
             match_id(),
             &player("Bryan"),
+            None,
             Duration::from_secs(1_000),
         );
 
@@ -125,8 +196,8 @@ mod tests {
         let signer = signer(Duration::from_secs(300));
         let now = Duration::from_secs(1_000);
 
-        let first = signer.issue(match_id(), &player("Bryan"), now);
-        let second = signer.issue(match_id(), &player("Bryan"), now);
+        let first = signer.issue(match_id(), &player("Bryan"), None, now);
+        let second = signer.issue(match_id(), &player("Bryan"), None, now);
 
         assert_ne!(
             first, second,

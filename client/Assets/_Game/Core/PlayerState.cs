@@ -10,21 +10,26 @@ namespace Blastlands.Core
         public PlayerState(int id, SubPos position, MatchSettings settings, CharacterKind character)
         {
             Id = id;
-            Character = character;
             Position = position;
             Alive = true;
             BombsHeld = settings.StartingHeldBombs;
             CarryCapacity = settings.StartingCarryCapacity;
-            FireRange = settings.StartingFireRange;
-            SpeedSteps = 0;
-            NextBombKind = BombKind.Standard;
             Facing = Direction.Down;
-            CharacterKits.Apply(this, character, settings);
+            Rekit(character, settings);
         }
 
         public int Id { get; }
 
-        public CharacterKind Character { get; }
+        public void Rekit(CharacterKind character, MatchSettings settings)
+        {
+            Character = character;
+            FireRange = settings.StartingFireRange;
+            SpeedSteps = 0;
+            NextBombKind = BombKind.Standard;
+            CharacterKits.Apply(this, character, settings);
+        }
+
+        public CharacterKind Character { get; private set; }
 
         public SubPos Position { get; set; }
 

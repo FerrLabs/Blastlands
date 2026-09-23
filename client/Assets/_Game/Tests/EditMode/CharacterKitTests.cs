@@ -124,5 +124,50 @@ namespace Blastlands.Core.Tests
                 Assert.That(player.Character, Is.EqualTo(CharacterKind.None));
             }
         }
+
+        [Test]
+        public void AChosenCharacterReplacesTheSeatsKitBeforeKickoff()
+        {
+            MatchState state = MatchFactory.Create(ArenaSettings.Default, Arena, 4, 3u, CharacterKits.ForSeat);
+
+            Assert.That(state.ChooseCharacter(0, CharacterKind.Runner), Is.True);
+
+            PlayerState seat = state.Players[0];
+            Assert.That(seat.Character, Is.EqualTo(CharacterKind.Runner));
+            Assert.That(seat.FireRange, Is.EqualTo(Arena.StartingFireRange), "the Demolisher's reach goes with its kit");
+            Assert.That(seat.SpeedSteps, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void NoCharacterIsChosenOnceTheMatchIsRunning()
+        {
+            MatchState state = MatchFactory.Create(ArenaSettings.Default, Arena, 4, 3u, CharacterKits.ForSeat);
+            state.Players[1].FireRange = Arena.StartingFireRange + 3;
+            state.Tick = 1;
+
+            Assert.That(state.ChooseCharacter(1, CharacterKind.Demolisher), Is.False);
+            Assert.That(state.Players[1].Character, Is.EqualTo(CharacterKind.Runner));
+            Assert.That(state.Players[1].FireRange, Is.EqualTo(Arena.StartingFireRange + 3), "what was picked up stays");
+        }
+
+        [Test]
+        public void ClassicIgnoresAChosenCharacter()
+        {
+            MatchSettings classic = MatchSettings.Classic.WithSuddenDeath(SuddenDeathSettings.Off);
+            MatchState state = MatchFactory.Create(ArenaSettings.Classic, classic, 4, 3u, CharacterKits.ForSeat);
+
+            Assert.That(state.ChooseCharacter(0, CharacterKind.Sapper), Is.False);
+            Assert.That(state.Players[0].NextBombKind, Is.EqualTo(BombKind.Standard));
+        }
+
+        [Test]
+        public void ATicketWithoutAChoiceKeepsTheSeatsKit()
+        {
+            MatchState state = MatchFactory.Create(ArenaSettings.Default, Arena, 4, 3u, CharacterKits.ForSeat);
+
+            Assert.That(state.ChooseCharacter(3, CharacterKind.None), Is.False);
+            Assert.That(state.ChooseCharacter(4, CharacterKind.Runner), Is.False);
+            Assert.That(state.Players[3].Character, Is.EqualTo(CharacterKind.Sapper));
+        }
     }
 }

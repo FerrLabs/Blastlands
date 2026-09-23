@@ -56,6 +56,7 @@ namespace Blastlands.Runtime
         private InputBuffer[] buffers;
         private GameTicketVerifier tickets;
         private readonly Dictionary<ulong, string> ticketOf = new Dictionary<ulong, string>();
+        private readonly Dictionary<ulong, CharacterKind> chosenBy = new Dictionary<ulong, CharacterKind>();
         private InputRateGate gate;
         private float gateClock;
         private PlayerInput[] applied;
@@ -130,6 +131,7 @@ namespace Blastlands.Runtime
             served = state;
             tickets = ticketVerifier;
             ticketOf.Clear();
+            chosenBy.Clear();
             seats = new SeatTable(expectedPlayers);
             buffers = new InputBuffer[expectedPlayers];
             gate = new InputRateGate(expectedPlayers);
@@ -373,7 +375,7 @@ namespace Blastlands.Runtime
         {
             string ticket = request.Payload == null ? null : Encoding.UTF8.GetString(request.Payload);
             TicketVerdict verdict = tickets.Admit(
-                ticket, DateTimeOffset.UtcNow.ToUnixTimeSeconds(), out string player, out string nonce);
+                ticket, DateTimeOffset.UtcNow.ToUnixTimeSeconds(), out string player, out string nonce, out CharacterKind character);
 
             response.CreatePlayerObject = false;
             response.Approved = verdict == TicketVerdict.Admitted;
@@ -381,6 +383,7 @@ namespace Blastlands.Runtime
             if (response.Approved)
             {
                 ticketOf[request.ClientNetworkId] = nonce;
+                chosenBy[request.ClientNetworkId] = character;
                 Debug.Log("Blastlands server: admitting " + player);
                 return;
             }
@@ -406,6 +409,15 @@ namespace Blastlands.Runtime
 
             gate.Reset(seat);
             Debug.Log("Blastlands server: seat " + seat + " taken");
+
+            if (chosenBy.TryGetValue(connection, out CharacterKind character))
+            {
+                chosenBy.Remove(connection);
+                if (served.ChooseCharacter(seat, character))
+                {
+                    Debug.Log("Blastlands server: seat " + seat + " plays " + character);
+                }
+            }
 
             // Reliably and once. Losing it would leave that client watching somebody
             // else for the rest of the match with nothing to say why.
@@ -444,6 +456,7 @@ namespace Blastlands.Runtime
 
         private void OnClientDisconnected(ulong connection)
         {
+            chosenBy.Remove(connection);
             if (ticketOf.TryGetValue(connection, out string nonce))
             {
                 ticketOf.Remove(connection);
