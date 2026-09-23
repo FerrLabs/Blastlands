@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.80] - 2026-09-23
+
+### Bug Fixes
+
+- fix(client): wire the Match scene to actually play a lobby match (#51)
+
 ## [26.9.79] - 2026-09-23
 
 ### Features
