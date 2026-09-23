@@ -431,7 +431,14 @@ kit by chance. A local series turns the roster by one each round, so the same pa
 the same kit for the whole series. A player who chose a character in the lobby gets it instead: the choice rides in the
 signed game ticket and the instance applies it to that seat before kickoff (see the join
 tickets in `ARCHITECTURE.md`). Clients do not need to know it up front, because every snapshot
-carries each player's reach, speed and bomb kind. The picker on the client is still to come.
+carries each player's reach, speed and bomb kind.
+
+**The pick** is made on the match list, above the matches, and remembered on that machine
+between matches and launches. Online it goes with the join or create request. In a local match
+it is seat 0's, the keyboard, for the whole series, while the other seats keep turning the
+roster. No pick means the seat decides, exactly as before. Two players may pick the same
+character: forbidding it would be a lobby rule with its own race, two players taking the last
+free one at once, and nothing has shown it is needed.
 
 **Balance, measured, and not guarded in CI.** Over 240 four-bot matches, every kit in every
 seat on each board so a strong spawn cannot pass for a strong kit:

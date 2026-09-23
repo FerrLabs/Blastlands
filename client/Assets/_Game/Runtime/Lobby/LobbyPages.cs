@@ -1,4 +1,5 @@
 using System;
+using Blastlands.Core;
 using Blastlands.Core.Lobby;
 using TMPro;
 using UnityEngine;
@@ -12,6 +13,7 @@ namespace Blastlands.Runtime
     {
         private static readonly Vector2 WideButton = new Vector2(420f, 90f);
         private static readonly Vector2 RowSize = new Vector2(860f, 84f);
+        private static readonly Vector2 CharacterButton = new Vector2(210f, 80f);
 
         public static TMP_InputField Name(RectTransform root, LobbyArt art, LobbyFlow flow, Action<string> submit)
         {
@@ -31,21 +33,24 @@ namespace Blastlands.Runtime
             RectTransform root,
             LobbyArt art,
             LobbyFlow flow,
+            CharacterKind picked,
+            Action<CharacterKind> pick,
             Action<MatchListing> join,
             Action create)
         {
-            RectTransform panel = LobbyChrome.Panel(root, art, "Browse", new Vector2(1000f, 760f));
-            LobbyChrome.Label(panel, art, "MATCHES", true, new Vector2(0f, 320f), 900f);
-            LobbyChrome.Press(panel, art, "Host a match", new Vector2(0f, -300f), WideButton, create);
-            Notice(panel, art, flow, new Vector2(0f, -370f));
+            RectTransform panel = LobbyChrome.Panel(root, art, "Browse", new Vector2(1000f, 1000f));
+            LobbyChrome.Label(panel, art, "MATCHES", true, new Vector2(0f, 450f), 900f);
+            Characters(panel, art, picked, pick, new Vector2(0f, 370f));
+            LobbyChrome.Press(panel, art, "Host a match", new Vector2(0f, -380f), WideButton, create);
+            Notice(panel, art, flow, new Vector2(0f, -445f));
 
             if (flow.Matches.Count == 0)
             {
-                LobbyChrome.Label(panel, art, "Nobody is hosting. Be the first.", false, Vector2.zero, 800f);
+                LobbyChrome.Label(panel, art, "Nobody is hosting. Be the first.", false, new Vector2(0f, -40f), 800f);
                 return;
             }
 
-            float top = 220f;
+            float top = 200f;
             for (int i = 0; i < flow.Matches.Count && i < 6; i++)
             {
                 MatchListing listing = flow.Matches[i];
@@ -62,6 +67,40 @@ namespace Blastlands.Runtime
 
                 MatchListing chosen = listing;
                 LobbyChrome.Press(panel, art, text, offset, RowSize, () => join(chosen));
+            }
+        }
+
+        private static void Characters(
+            RectTransform panel, LobbyArt art, CharacterKind picked, Action<CharacterKind> pick, Vector2 offset)
+        {
+            float step = CharacterButton.x + 20f;
+            float left = -step * (CharacterKits.All.Count - 1) / 2f;
+
+            for (int i = 0; i < CharacterKits.All.Count; i++)
+            {
+                CharacterKind character = CharacterKits.All[i];
+                var at = new Vector2(offset.x + left + i * step, offset.y);
+                LobbyChrome.Press(panel, art, character.ToString(), at, CharacterButton, () => pick(character))
+                    .interactable = character != picked;
+            }
+
+            LobbyChrome.Label(panel, art, Describes(picked), false, offset + new Vector2(0f, -70f), 900f);
+        }
+
+        private static string Describes(CharacterKind character)
+        {
+            switch (character)
+            {
+                case CharacterKind.Demolisher:
+                    return "Demolisher starts with one more tile of reach.";
+                case CharacterKind.Runner:
+                    return "Runner starts two speed steps faster.";
+                case CharacterKind.Grenadier:
+                    return "Grenadier starts with bombs that flare at the tip of each arm.";
+                case CharacterKind.Sapper:
+                    return "Sapper starts with bombs that go through soft blocks.";
+                default:
+                    return "Pick who you play. Until then your seat decides.";
             }
         }
 

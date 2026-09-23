@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Blastlands.Core;
 using Blastlands.Core.Lobby;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -189,11 +190,12 @@ namespace Blastlands.Runtime
             }
         }
 
-        public IEnumerator Create(string name, string host, int maxPlayers, Action<LobbyResult<MatchHosting>> done)
+        public IEnumerator Create(
+            string name, string host, int maxPlayers, CharacterKind character, Action<LobbyResult<MatchHosting>> done)
         {
             string body = "{\"name\":\"" + Escape(name)
                 + "\",\"host\":\"" + Escape(host)
-                + "\",\"max_players\":" + maxPlayers + "}";
+                + "\",\"max_players\":" + maxPlayers + Character(character) + "}";
 
             using (UnityWebRequest request = Post("/v1/matches", body))
             {
@@ -220,9 +222,9 @@ namespace Blastlands.Runtime
             }
         }
 
-        public IEnumerator Join(string id, string player, Action<LobbyResult<MatchInvite>> done)
+        public IEnumerator Join(string id, string player, CharacterKind character, Action<LobbyResult<MatchInvite>> done)
         {
-            string body = "{\"player\":\"" + Escape(player) + "\"}";
+            string body = "{\"player\":\"" + Escape(player) + "\"" + Character(character) + "}";
 
             using (UnityWebRequest request = Post("/v1/matches/" + id + "/join", body))
             {
@@ -378,6 +380,12 @@ namespace Blastlands.Runtime
         // too: a raw newline inside a JSON string is not merely ugly, it makes the whole
         // body unparseable, and the lobby would answer with something about the request
         // rather than about the name.
+        private static string Character(CharacterKind character)
+        {
+            string token = CharacterTokens.Write(character);
+            return token == null ? string.Empty : ",\"character\":\"" + token + "\"";
+        }
+
         private static string Escape(string value)
         {
             var builder = new System.Text.StringBuilder();
