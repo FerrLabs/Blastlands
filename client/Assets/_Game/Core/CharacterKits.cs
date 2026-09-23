@@ -8,7 +8,7 @@ namespace Blastlands.Core
         {
             CharacterKind.Demolisher,
             CharacterKind.Runner,
-            CharacterKind.Hoarder,
+            CharacterKind.Grenadier,
             CharacterKind.Sapper
         };
 
@@ -29,6 +29,12 @@ namespace Blastlands.Core
 
         // Applied once, at spawn. Capped at the same ceilings the pickups respect, so a
         // kit is a head start on a power-up and never a way past what one can reach.
+        //
+        // Carry capacity is not on the list, and that is deliberate. Starting at one is
+        // what keeps a player from having two blasts live at once, which is how a player
+        // walls themselves into their own fire: MatchSettings.Default withholds it on
+        // purpose and makes BombUp the way to earn it. A kit that handed it out would
+        // undo that guard for one seat in every match from the first tick.
         public static void Apply(PlayerState player, CharacterKind kind, MatchSettings settings)
         {
             switch (kind)
@@ -39,9 +45,8 @@ namespace Blastlands.Core
                 case CharacterKind.Runner:
                     player.SpeedSteps = System.Math.Min(player.SpeedSteps + 2, settings.MaxSpeedSteps);
                     break;
-                case CharacterKind.Hoarder:
-                    player.CarryCapacity = System.Math.Min(player.CarryCapacity + 1, settings.MaxCarryCapacity);
-                    player.BombsHeld = System.Math.Min(player.BombsHeld + 1, player.CarryCapacity);
+                case CharacterKind.Grenadier:
+                    player.NextBombKind = BombKind.Cluster;
                     break;
                 case CharacterKind.Sapper:
                     player.NextBombKind = BombKind.Pierce;

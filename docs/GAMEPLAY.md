@@ -413,15 +413,22 @@ simulation rule, a netcode surface, a UI surface and a balance problem at once.
 |---|---|
 | Demolisher | one more tile of reach |
 | Runner | two speed steps |
-| Hoarder | room for a second bomb, and the bomb to fill it |
+| Grenadier | bombs that flare around the tip of each arm |
 | Sapper | bombs that go through soft blocks |
 
 Every head start stops at the ceiling the pickups respect, so a kit is never a way past what a
 player could reach by picking things up. Only Arena has characters. Classic is one verb and the
 same tools for everybody, and a match built with characters in Classic ignores them.
 
+**No character starts with room for a second bomb.** Carry capacity starts at one because two
+live blasts are how a player walls themselves into their own fire, and `MatchSettings.Default`
+withholds it on purpose so BombUp is the way to earn it. The first roster had a Hoarder that
+started with it, which undid that guard for one seat in every match from the first tick. A test
+now holds every kit to the plain player's capacity.
+
 **Seats take the roster in turn**, so four players are one of each and nobody lands the strong
-kit by chance. The server and every client apply the same rule, which is why the choice does
+kit by chance. A local series turns the roster by one each round, so the same pad does not keep
+the same kit for the whole series. The server and every client apply the same rule, which is why the choice does
 not travel on the wire. Choosing a character is a later step: a picker on the client, and the
 lobby carrying the choice to the instance.
 
@@ -430,15 +437,15 @@ seat on each board so a strong spawn cannot pass for a strong kit:
 
 | | survived | won |
 |---|---|---|
-| Demolisher | 116 | 19 |
-| Runner | 103 | 12 |
-| Hoarder | 119 | 20 |
-| Sapper | 131 | 27 |
+| Demolisher | 125 | 20 |
+| Runner | 111 | 21 |
+| Grenadier | 124 | 20 |
+| Sapper | 127 | 16 |
 
-Hoarder started with room alone and won 9: room pays only once a bomb is found, so it got the
-bomb as well. Runner went from one step to two and moved from 10 to 12, and was left there on
-purpose. Bots gain little from mobility, which this project already measured for the dash, so
-tuning Runner up on bot numbers would tune it for bots rather than for people.
+Nineteen wins each would be even, over 77 decided matches. The roster with the Hoarder in it
+read 19, 12, 20 and 27: two live bombs from the start pulled the match towards the kits that
+shape a blast. Runner reads lowest on survival, and bots gain little from mobility, which this
+project already measured for the dash, so it is likely no weaker against people.
 
 There is no test that pins these. Survival saturates: a Demolisher given the maximum of
 everything still survived 22 of 48 matches against 23 for the real one, and only its wins moved.

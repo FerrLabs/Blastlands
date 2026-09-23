@@ -15,8 +15,8 @@ namespace Blastlands.Core
         // Starts one step faster.
         Runner,
 
-        // Starts able to carry a second bomb.
-        Hoarder,
+        // Starts with bombs that flare around the tip of each arm.
+        Grenadier,
 
         // Starts with bombs that go through soft blocks.
         Sapper

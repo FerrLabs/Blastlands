@@ -20,12 +20,23 @@ namespace Blastlands.Core.Tests
             Assert.That(Spawned(CharacterKind.Demolisher, Arena).FireRange, Is.EqualTo(plain.FireRange + 1));
             Assert.That(Spawned(CharacterKind.Runner, Arena).SpeedSteps, Is.EqualTo(plain.SpeedSteps + 2));
             Assert.That(Spawned(CharacterKind.Sapper, Arena).NextBombKind, Is.EqualTo(BombKind.Pierce));
+            Assert.That(Spawned(CharacterKind.Grenadier, Arena).NextBombKind, Is.EqualTo(BombKind.Cluster));
+        }
 
-            // Room for a second bomb and the bomb to fill it. Room alone was measured as
-            // the weakest kit by far, since it pays only once a bomb is found.
-            PlayerState hoarder = Spawned(CharacterKind.Hoarder, Arena);
-            Assert.That(hoarder.CarryCapacity, Is.EqualTo(plain.CarryCapacity + 1));
-            Assert.That(hoarder.BombsHeld, Is.EqualTo(plain.BombsHeld + 1));
+        // Starting with room for one bomb is what stops a player having two blasts live
+        // at once and walling themselves in. It is withheld on purpose and earned through
+        // BombUp, so no kit may hand it out, now or when the roster grows.
+        [Test]
+        public void NoKitStartsAPlayerWithTwoBombsToHand()
+        {
+            PlayerState plain = Spawned(CharacterKind.None, Arena);
+
+            foreach (CharacterKind kind in CharacterKits.All)
+            {
+                PlayerState kitted = Spawned(kind, Arena);
+                Assert.That(kitted.CarryCapacity, Is.EqualTo(plain.CarryCapacity), kind.ToString());
+                Assert.That(kitted.BombsHeld, Is.EqualTo(plain.BombsHeld), kind.ToString());
+            }
         }
 
         // One head start each, and nothing else. A kit that quietly moved a second stat
@@ -42,18 +53,6 @@ namespace Blastlands.Core.Tests
             Assert.That(demolisher.NextBombKind, Is.EqualTo(plain.NextBombKind));
         }
 
-        [Test]
-        public void AHoarderNeverHoldsMoreThanItCanCarry()
-        {
-            PlayerState player = Spawned(CharacterKind.None, Arena);
-            player.CarryCapacity = Arena.MaxCarryCapacity;
-            player.BombsHeld = Arena.MaxCarryCapacity;
-
-            CharacterKits.Apply(player, CharacterKind.Hoarder, Arena);
-
-            Assert.That(player.BombsHeld, Is.LessThanOrEqualTo(player.CarryCapacity));
-        }
-
         // A head start on a pickup, never a way past what the pickups can reach.
         [Test]
         public void AKitStopsAtTheSameCeilingThePickupsDo()
@@ -61,15 +60,12 @@ namespace Blastlands.Core.Tests
             PlayerState player = Spawned(CharacterKind.None, Arena);
             player.FireRange = Arena.MaxFireRange;
             player.SpeedSteps = Arena.MaxSpeedSteps;
-            player.CarryCapacity = Arena.MaxCarryCapacity;
 
             CharacterKits.Apply(player, CharacterKind.Demolisher, Arena);
             CharacterKits.Apply(player, CharacterKind.Runner, Arena);
-            CharacterKits.Apply(player, CharacterKind.Hoarder, Arena);
 
             Assert.That(player.FireRange, Is.EqualTo(Arena.MaxFireRange));
             Assert.That(player.SpeedSteps, Is.EqualTo(Arena.MaxSpeedSteps));
-            Assert.That(player.CarryCapacity, Is.EqualTo(Arena.MaxCarryCapacity));
         }
 
         [Test]
