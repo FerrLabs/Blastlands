@@ -154,8 +154,7 @@ namespace Blastlands.Core
                 }
             }
 
-            EscapeWindow window = EscapeWindow.From(state, blast, ticksPerTile, next => Walkable(state, next));
-            Direction toward = StepTowardTarget(state, window, player, tile, ticksPerTile);
+            Direction toward = StepTowardTarget(state, blast, player, tile, ticksPerTile);
 
             // Standing still is never the safe option, whatever the blast map currently
             // says. A bot with nothing to walk towards that plants itself is a bot
@@ -190,6 +189,11 @@ namespace Blastlands.Core
 
         private Direction Escape(MatchState state, BlastMap blast, PlayerState player, int ticksPerTile)
         {
+            if (settings.Planning == BotPlanning.OnArrival)
+            {
+                return StepToSafety(state, blast, player.Tile, ticksPerTile);
+            }
+
             EscapeWindow window = EscapeWindow.From(state, blast, ticksPerTile, next => Walkable(state, next));
             int here = blast.TicksUntilFire(player.Tile);
 
@@ -289,10 +293,22 @@ namespace Blastlands.Core
         // its own fuse is how it dies — which is exactly what happened when this picked
         // one target set instead of trying both.
         private Direction StepTowardTarget(
-            MatchState state, EscapeWindow window, PlayerState player, GridPos from, int ticksPerTile)
+            MatchState state, BlastMap blast, PlayerState player, GridPos from, int ticksPerTile)
         {
-            System.Func<GridPos, int, bool> leavable =
-                (tile, depth) => window.Allows(tile, (depth * ticksPerTile) + settings.SafetyMarginTicks);
+            // Only the level that plans everywhere pays for the window here. The others
+            // judge an errand by whether the fire has arrived yet, which is what lets
+            // them walk somewhere they cannot leave.
+            System.Func<GridPos, int, bool> leavable;
+            if (settings.Planning == BotPlanning.Always)
+            {
+                EscapeWindow window = EscapeWindow.From(state, blast, ticksPerTile, next => Walkable(state, next));
+                leavable = (tile, depth) => window.Allows(tile, (depth * ticksPerTile) + settings.SafetyMarginTicks);
+            }
+            else
+            {
+                leavable = (tile, depth) =>
+                    blast.SurvivesArrival(tile, depth * ticksPerTile, settings.SafetyMarginTicks);
+            }
 
             if (player.CanCarryMore)
             {
@@ -514,21 +530,64 @@ namespace Blastlands.Core
                 // difference turns a trap into an escape or the other way about.
                 int targetTicksPerTile = TicksPerTileFor(state, sightings[i].PlayerId, ticksPerTile);
 
+                // Judged the same way the bot judges its own escapes. On arrival safety
+                // alone a target looks like it gets away whenever the fire has not
+                // reached the next tile yet, even when that tile is a pocket closing
+                // behind it, so the bot talks itself out of bombs that would have
+                // landed. The level that plans its own way out plans the victim's too.
+                System.Func<GridPos, int, bool> reachable;
+                if (settings.Planning == BotPlanning.Always)
+                {
+                    EscapeWindow theirs = EscapeWindow.From(
+                        state, after, targetTicksPerTile, next => Walkable(state, next));
+                    reachable = (candidate, depth) =>
+                        candidate != tile && theirs.Allows(candidate, depth * targetTicksPerTile);
+                }
+                else
+                {
+                    reachable = (candidate, depth) =>
+                        candidate != tile && after.SurvivesArrival(candidate, depth * targetTicksPerTile, 0);
+                }
+
                 bool escapes = FirstStepToward(
                     state,
                     target,
                     (candidate, depth) => after.TicksUntilFire(candidate) == BlastMap.Never,
-                    (candidate, depth) => candidate != tile
-                                          && after.SurvivesArrival(candidate, depth * targetTicksPerTile, 0))
+                    reachable)
                     != Direction.None;
 
                 if (!escapes)
                 {
                     return true;
                 }
+
+                // A bomb that leaves one way out is worth placing too, for the level
+                // that can see that far: the target has to guess right first time and
+                // cannot double back. Anything looser than one door is not pressure, it
+                // is a bomb somebody strolls away from.
+                if (settings.Planning == BotPlanning.Always && WaysOut(state, after, target, targetTicksPerTile) <= 1)
+                {
+                    return true;
+                }
             }
 
             return false;
+        }
+
+        private static int WaysOut(MatchState state, BlastMap after, GridPos target, int ticksPerTile)
+        {
+            int doors = 0;
+            for (int i = 0; i < Order.Length; i++)
+            {
+                GridPos delta = Directions.Delta(Order[i]);
+                GridPos next = target.Offset(delta.X, delta.Y);
+                if (Walkable(state, next) && after.SurvivesArrival(next, ticksPerTile, 0))
+                {
+                    doors++;
+                }
+            }
+
+            return doors;
         }
 
         private static int TicksPerTileFor(MatchState state, int playerId, int fallback)

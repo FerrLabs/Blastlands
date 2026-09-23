@@ -346,13 +346,22 @@ namespace Blastlands.Core.Tests
         public void BotsStillFightWithTheLightsOff()
         {
             // Blinded changes what a bot knows, not what it can do, so it needs its own
-            // bar: the others measure bots that can see. Measured over twelve four-bot
-            // matches with sudden death off, 22 deaths of 48 against Classic's 23, so the
-            // bar sits at 16.
+            // bar: the others measure bots that can see.
+            //
+            // Twenty-four matches rather than twelve, and the bar moved with the escape
+            // window. Deaths here count suicides as well as kills, and a bot that plans
+            // its way out of its own blast stops supplying the first kind: over twelve
+            // matches this fell from 22 to 13 without a single bot becoming less
+            // willing to fight, since they bomb 2.6 times more than they did.
+            //
+            // So the figure is re-measured rather than kept: 22 of 96 over twenty-four
+            // matches. Against 15 for the same bots with their hunting disabled, which
+            // is what this is here to catch, so the bar sits at 18. At twelve matches
+            // the two readings were 13 and 8, too close together to tell apart.
             MatchSettings settings = MatchSettings.ClassicBlinded.WithSuddenDeath(SuddenDeathSettings.Off);
             int deaths = 0;
 
-            for (uint seed = 1; seed <= 12; seed++)
+            for (uint seed = 1; seed <= 24; seed++)
             {
                 MatchState state = MatchFactory.Create(ArenaSettings.Classic, settings, 4, seed);
                 var brains = new BotBrain[4];
@@ -375,7 +384,7 @@ namespace Blastlands.Core.Tests
                 deaths += 4 - state.AliveCount;
             }
 
-            Assert.That(deaths, Is.GreaterThanOrEqualTo(16), "blinded bots have stopped finding each other at all");
+            Assert.That(deaths, Is.GreaterThanOrEqualTo(18), "blinded bots have stopped finding each other at all");
         }
 
         [Test]
