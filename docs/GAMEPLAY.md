@@ -508,8 +508,10 @@ wall only when a bomb would reach them and a wall on the tile they face would st
 rare, since a bot running from a bomb is usually facing away from it.
 
 **Balance, measured.** 240 four-bot Hard matches, every kit in every seat, with the default
-settings, sudden death included, so nearly every match ends with one survivor. Not comparable with
-the kits table above, which was measured without sudden death. Wins per character:
+settings, sudden death included. About five matches in six end with one survivor; the rest end in a
+draw or hit the harness's five-minute cap, which is why the wins sum to 196 to 201 rather
+than 240. Not comparable with the kits table above, which was measured without sudden death. Wins
+per character:
 
 | | kits only | trigger added | all four abilities |
 |---|---|---|---|

@@ -8,7 +8,10 @@ namespace Blastlands.Core
 
         public static bool Has(CharacterKind character)
         {
-            return character != CharacterKind.None;
+            return character == CharacterKind.Demolisher
+                || character == CharacterKind.Runner
+                || character == CharacterKind.Grenadier
+                || character == CharacterKind.Sapper;
         }
 
         public static void Resolve(MatchState state, IReadOnlyList<PlayerInput> inputs)

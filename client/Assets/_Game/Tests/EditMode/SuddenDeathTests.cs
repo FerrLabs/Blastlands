@@ -156,5 +156,19 @@ namespace Blastlands.Core.Tests
                 Assert.That(state.Outcome, Is.Not.EqualTo(RoundOutcome.Running), $"seed {seed} never ended");
             }
         }
+
+        [Test]
+        public void AClosingRingTakesARaisedWallWithIt()
+        {
+            MatchState state = Open(new GridPos(7, 7), new GridPos(6, 7));
+            var tile = new GridPos(0, 5);
+            state.Arena[tile] = TileKind.SoftBlock;
+            state.AddRaisedWall(new RaisedWall(tile, 200));
+
+            Run(state, 11);
+
+            Assert.That(state.Arena[tile], Is.EqualTo(TileKind.HardBlock));
+            Assert.That(state.RaisedWalls.Count, Is.Zero);
+        }
     }
 }
