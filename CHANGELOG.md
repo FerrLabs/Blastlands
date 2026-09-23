@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.69] - 2026-09-23
+
+### Features
+
+- feat(sim): give each player a character with a head start (#31)
+
 ## [26.9.68] - 2026-09-23
 
 ### Features
