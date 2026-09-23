@@ -9,6 +9,10 @@ namespace Blastlands.Runtime
     // Drives a match locally: player 0 is the keyboard, the rest stand still until
     // bots exist. The simulation advances on a fixed tick, never on frame time, so
     // the same inputs produce the same match at 30 or 240 FPS.
+    //
+    // Stands down for a match the lobby actually hosted, which NetworkedMatchDriver
+    // drives instead. This one is what runs when the Match scene is opened on its own,
+    // which is how a local practice session against bots and a bug's seed are played.
     public sealed class LocalMatchDriver : MonoBehaviour
     {
         [SerializeField] private MatchView view;
@@ -37,8 +41,9 @@ namespace Blastlands.Runtime
         // Which game the match is. Arena is the open island with cover you stand in,
         // found bombs, dash and shove; Classic is the pillar lattice, bombs you own and
         // nothing else; Classic Blinded is that same board played without sight of
-        // anyone you have no line to. Serialized here rather than chosen in a lobby
-        // because there is no lobby screen yet, which is #7.
+        // anyone you have no line to. Serialized here rather than chosen anywhere,
+        // since this driver never plays a lobby match: the lobby itself has no mode
+        // picker yet, and every match it hosts runs Arena.
         [SerializeField] private GameMode mode = GameMode.Arena;
 
         // Best of five. Long enough that one unlucky round does not decide it, short
@@ -91,6 +96,16 @@ namespace Blastlands.Runtime
 
         private void Start()
         {
+            // The lobby leaves an invite for NetworkedMatchDriver when it hands a real
+            // match over. Starting a fresh local one on top of that would build its own
+            // arena and its own bots and fight NetworkedMatchDriver for the same view,
+            // camera and HUD once the seat lands.
+            if (MatchHandoff.Waiting)
+            {
+                enabled = false;
+                return;
+            }
+
             StartMatch();
         }
 

@@ -14,10 +14,10 @@ namespace Blastlands.Runtime
     // state it renders is written entirely by snapshots, which is what makes editing it
     // pointless rather than difficult.
     //
-    // Where it stops short is the join. There is no lobby screen yet (#7), so the
-    // endpoint and the shape of the match are serialized here instead of being learned
-    // from the lobby, and the arena has to be told the same size the server built. That
-    // is a development harness, not the finished flow.
+    // The lobby hands off an invite through MatchHandoff, which is the ordinary way this
+    // starts. Without one waiting, it dials the serialized host, port and ticket instead:
+    // opening the Match scene on its own against a server started by hand, with no lobby
+    // in between. Either way the arena has to be told the same size the server built.
     public sealed class NetworkedMatchDriver : MonoBehaviour
     {
         private const int MaxCatchUpTicks = 5;
