@@ -255,6 +255,34 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
+        public void ThrowIsOnlyReadyWithABombInHandAndSomewhereToLand()
+        {
+            MatchState ready = Grenadier(Direction.Right);
+            MatchState emptyHanded = Grenadier(Direction.Right);
+            emptyHanded.Players[0].BombsHeld = 0;
+            MatchState blocked = Grenadier(Direction.Right);
+            blocked.Arena[new GridPos(5, 7)] = TileKind.HardBlock;
+
+            Assert.That(Abilities.CanUseNow(ready, ready.Players[0]), Is.True);
+            Assert.That(Abilities.CanUseNow(emptyHanded, emptyHanded.Players[0]), Is.False);
+            Assert.That(Abilities.CanUseNow(blocked, blocked.Players[0]), Is.False);
+        }
+
+        [Test]
+        public void TriggerIsOnlyReadyWithABombOfYoursOnTheBoard()
+        {
+            MatchState state = Match(Arena, CharacterKind.Demolisher, new GridPos(1, 1), new GridPos(13, 13));
+            Plant(state, new GridPos(7, 7), 1, 60);
+            Assert.That(Abilities.CanUseNow(state, state.Players[0]), Is.False);
+
+            Plant(state, new GridPos(3, 11), 0, 60);
+            Assert.That(Abilities.CanUseNow(state, state.Players[0]), Is.True);
+
+            state.Players[0].AbilityCooldownRemaining = 5;
+            Assert.That(Abilities.CanUseNow(state, state.Players[0]), Is.False, "cooling down");
+        }
+
+        [Test]
         public void ACharacterWithoutAnAbilityPressesForNothing()
         {
             MatchState state = Match(Arena, CharacterKind.None, new GridPos(1, 1), new GridPos(13, 13));

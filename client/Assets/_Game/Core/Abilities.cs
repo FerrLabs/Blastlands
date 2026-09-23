@@ -47,6 +47,26 @@ namespace Blastlands.Core
             }
         }
 
+        public static bool CanUseNow(MatchState state, PlayerState player)
+        {
+            if (!player.CanUseAbility || !state.Settings.Rules.AllowsCharacters)
+            {
+                return false;
+            }
+
+            switch (player.Character)
+            {
+                case CharacterKind.Demolisher:
+                    return OldestLiveBomb(state, player.Id) != NoBomb;
+                case CharacterKind.Runner:
+                    return true;
+                case CharacterKind.Grenadier:
+                    return player.CanDropBomb && TryLanding(state, player, out _);
+                default:
+                    return false;
+            }
+        }
+
         public static int OldestLiveBomb(MatchState state, int playerId)
         {
             for (int i = 0; i < state.Bombs.Count; i++)
