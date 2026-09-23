@@ -402,6 +402,49 @@ the tile next door. On the centre alone that player lives and then walks around 
 inside the rock, which the movement code allows on purpose: it ignores the tiles you already
 overlap, so that a wall growing back under you cannot lock you in place.
 
+## Characters
+
+Each player is a character, and a character is a head start on one power-up the arena
+already hands out. No character has a verb of its own yet: that is the cheap half of #2,
+built first to find out whether choosing matters before paying for abilities that are each a
+simulation rule, a netcode surface, a UI surface and a balance problem at once.
+
+| Character | Starts with |
+|---|---|
+| Demolisher | one more tile of reach |
+| Runner | two speed steps |
+| Hoarder | room for a second bomb, and the bomb to fill it |
+| Sapper | bombs that go through soft blocks |
+
+Every head start stops at the ceiling the pickups respect, so a kit is never a way past what a
+player could reach by picking things up. Only Arena has characters. Classic is one verb and the
+same tools for everybody, and a match built with characters in Classic ignores them.
+
+**Seats take the roster in turn**, so four players are one of each and nobody lands the strong
+kit by chance. The server and every client apply the same rule, which is why the choice does
+not travel on the wire. Choosing a character is a later step: a picker on the client, and the
+lobby carrying the choice to the instance.
+
+**Balance, measured, and not guarded in CI.** Over 240 four-bot matches, every kit in every
+seat on each board so a strong spawn cannot pass for a strong kit:
+
+| | survived | won |
+|---|---|---|
+| Demolisher | 116 | 19 |
+| Runner | 103 | 12 |
+| Hoarder | 119 | 20 |
+| Sapper | 131 | 27 |
+
+Hoarder started with room alone and won 9: room pays only once a bomb is found, so it got the
+bomb as well. Runner went from one step to two and moved from 10 to 12, and was left there on
+purpose. Bots gain little from mobility, which this project already measured for the dash, so
+tuning Runner up on bot numbers would tune it for bots rather than for people.
+
+There is no test that pins these. Survival saturates: a Demolisher given the maximum of
+everything still survived 22 of 48 matches against 23 for the real one, and only its wins moved.
+Wins are rare enough that telling a strong kit from an absurd one takes around 240 matches, ten
+minutes, which is not a unit test. Measure it again after changing a kit or the bots.
+
 ## Bots
 
 Bots fill empty slots so a match starts without waiting for eight humans, and they replace

@@ -119,7 +119,7 @@ namespace Blastlands.Runtime
                 : ArenaSettings.Classic;
             MatchSettings matchSettings = MatchSettings.For(mode);
 
-            state = MatchFactory.Create(arenaSettings, matchSettings, playerCount, activeSeed);
+            state = MatchFactory.Create(arenaSettings, matchSettings, playerCount, activeSeed, CharacterKits.ForSeat);
 
             // Survives the rebuild the next round does. A series is only built when
             // there is none, or when the seat count changed under it and the old score

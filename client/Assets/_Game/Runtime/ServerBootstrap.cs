@@ -52,7 +52,7 @@ namespace Blastlands.Runtime
             try
             {
                 state = MatchFactory.Create(
-                    ArenaSettings.Default, MatchSettings.Default, options.ExpectedPlayers, Seed());
+                    ArenaSettings.Default, MatchSettings.Default, options.ExpectedPlayers, Seed(), CharacterKits.ForSeat);
             }
             catch (ArgumentOutOfRangeException bad)
             {

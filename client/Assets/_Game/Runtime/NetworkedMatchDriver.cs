@@ -165,7 +165,7 @@ namespace Blastlands.Runtime
             // was given and stops rather than throwing out of a message handler.
             try
             {
-                state = MatchFactory.Create(arena, MatchSettings.For(mode), assignment.Players, 1u);
+                state = MatchFactory.Create(arena, MatchSettings.For(mode), assignment.Players, 1u, CharacterKits.ForSeat);
             }
             catch (ArgumentOutOfRangeException error)
             {

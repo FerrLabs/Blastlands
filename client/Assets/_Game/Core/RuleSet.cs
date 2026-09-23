@@ -12,12 +12,13 @@ namespace Blastlands.Core
     // carries the corner assist that exists so one-tile corridors feel right without it.
     public readonly struct RuleSet
     {
-        public RuleSet(bool bombsReturn, bool allowsDash, bool allowsShove, bool hidesTheUnseen)
+        public RuleSet(bool bombsReturn, bool allowsDash, bool allowsShove, bool hidesTheUnseen, bool allowsCharacters)
         {
             BombsReturn = bombsReturn;
             AllowsDash = allowsDash;
             AllowsShove = allowsShove;
             HidesTheUnseen = hidesTheUnseen;
+            AllowsCharacters = allowsCharacters;
         }
 
         // Whether a bomb comes back to whoever placed it once it has gone off. False is
@@ -34,16 +35,21 @@ namespace Blastlands.Core
         // generate any.
         public bool HidesTheUnseen { get; }
 
+        // Whether players start with the kit of the character they are. False puts
+        // everyone on the same footing, which is part of what Classic is: one verb and
+        // the same tools for all.
+        public bool AllowsCharacters { get; }
+
         public static RuleSet Arena
         {
-            get { return new RuleSet(false, true, true, true); }
+            get { return new RuleSet(false, true, true, true, true); }
         }
 
         // Everything the arena added, off. What is left is the board, the fuse and one
         // verb, which is the whole of what makes a match read as classic.
         public static RuleSet Classic
         {
-            get { return new RuleSet(true, false, false, false); }
+            get { return new RuleSet(true, false, false, false, false); }
         }
 
         // The classic board and the classic bombs, with the lights off.
@@ -53,7 +59,7 @@ namespace Blastlands.Core
         // switching sight off changes how it plays far more than it would on open ground.
         public static RuleSet ClassicBlinded
         {
-            get { return new RuleSet(true, false, false, true); }
+            get { return new RuleSet(true, false, false, true, false); }
         }
 
         public static RuleSet For(GameMode mode)
