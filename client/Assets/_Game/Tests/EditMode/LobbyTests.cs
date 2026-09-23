@@ -123,12 +123,21 @@ namespace Blastlands.Core.Tests
         [Test]
         public void AFullListingKnowsItIsFull()
         {
-            var full = new MatchListing("1", "Night raid", "Bryan", 4, 4);
-            var open = new MatchListing("2", "Dust bowl", "Sam", 2, 4);
+            var full = new MatchListing("1", "Night raid", "Bryan", 4, 0, 4);
+            var open = new MatchListing("2", "Dust bowl", "Sam", 2, 0, 4);
 
             Assert.That(full.IsFull, Is.True);
             Assert.That(open.IsFull, Is.False);
             Assert.That(open.Occupancy, Is.EqualTo("2/4"));
+        }
+
+        [Test]
+        public void ABotClaimsASeatTheSameAsAPlayerWould()
+        {
+            var seatedByBots = new MatchListing("1", "Solo run", "Bryan", 1, 3, 4);
+
+            Assert.That(seatedByBots.IsFull, Is.True, "the host plus three bots is a full table");
+            Assert.That(seatedByBots.Occupancy, Is.EqualTo("4/4"));
         }
     }
 }

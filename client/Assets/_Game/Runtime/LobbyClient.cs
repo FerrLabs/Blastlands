@@ -57,6 +57,7 @@ namespace Blastlands.Runtime
             public string name;
             public string host;
             public int players;
+            public int bots;
             public int max_players;
             public EndpointDto endpoint;
             public string game_ticket;
@@ -77,6 +78,7 @@ namespace Blastlands.Runtime
             public string name;
             public string host;
             public int players;
+            public int bots;
             public int max_players;
             public string state;
         }
@@ -88,6 +90,7 @@ namespace Blastlands.Runtime
             public string name;
             public string host;
             public int players;
+            public int bots;
             public int max_players;
         }
 
@@ -183,7 +186,7 @@ namespace Blastlands.Runtime
                 var listings = new List<MatchListing>(parsed.items.Length);
                 foreach (MatchSummaryDto dto in parsed.items)
                 {
-                    listings.Add(new MatchListing(dto.id, dto.name, dto.host, dto.players, dto.max_players));
+                    listings.Add(new MatchListing(dto.id, dto.name, dto.host, dto.players, dto.bots, dto.max_players));
                 }
 
                 done(LobbyResult<IReadOnlyList<MatchListing>>.Success(listings));
@@ -216,7 +219,7 @@ namespace Blastlands.Runtime
                 }
 
                 done(LobbyResult<MatchHosting>.Success(new MatchHosting(
-                    new MatchListing(dto.id, dto.name, dto.host, dto.players, dto.max_players),
+                    new MatchListing(dto.id, dto.name, dto.host, dto.players, dto.bots, dto.max_players),
                     new MatchInvite(dto.id, dto.endpoint.host, dto.endpoint.port, dto.game_ticket),
                     dto.ticket)));
             }
@@ -272,7 +275,37 @@ namespace Blastlands.Runtime
                 }
 
                 done(LobbyResult<MatchProgress>.Success(new MatchProgress(
-                    new MatchListing(dto.id, dto.name, dto.host, dto.players, dto.max_players),
+                    new MatchListing(dto.id, dto.name, dto.host, dto.players, dto.bots, dto.max_players),
+                    MatchProgress.Reads(dto.state))));
+            }
+        }
+
+        // Claims an open seat for a bot instead of waiting for somebody to join it.
+        // Host-only, the same ticket StartMatch takes and for the same reason.
+        public IEnumerator AddBot(string id, string ticket, Action<LobbyResult<MatchProgress>> done)
+        {
+            string body = "{\"ticket\":\"" + Escape(ticket) + "\"}";
+
+            using (UnityWebRequest request = Post("/v1/matches/" + id + "/bots", body))
+            {
+                yield return request.SendWebRequest();
+
+                LobbyFailure failure;
+                if (!Succeeded(request, out failure))
+                {
+                    done(LobbyResult<MatchProgress>.Failed(failure));
+                    yield break;
+                }
+
+                MatchStatusDto dto = Read<MatchStatusDto>(request);
+                if (dto == null || string.IsNullOrEmpty(dto.id))
+                {
+                    done(LobbyResult<MatchProgress>.Failed(LobbyFailure.Unreadable));
+                    yield break;
+                }
+
+                done(LobbyResult<MatchProgress>.Success(new MatchProgress(
+                    new MatchListing(dto.id, dto.name, dto.host, dto.players, dto.bots, dto.max_players),
                     MatchProgress.Reads(dto.state))));
             }
         }

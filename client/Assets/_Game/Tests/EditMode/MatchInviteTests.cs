@@ -21,7 +21,7 @@ namespace Blastlands.Core.Tests
         [Test]
         public void HostingTakesBothTickets()
         {
-            var listing = new MatchListing("m", "Name", "Host", 1, 4);
+            var listing = new MatchListing("m", "Name", "Host", 1, 0, 4);
             var invite = new MatchInvite("m", "10.0.0.5", 7777, "game");
 
             Assert.That(new MatchHosting(listing, invite, "host").CanStart, Is.True);

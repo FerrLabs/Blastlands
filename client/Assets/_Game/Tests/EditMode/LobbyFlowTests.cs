@@ -17,8 +17,8 @@ namespace Blastlands.Core.Tests
             Assert.That(flow.Named("Bryan"), Is.True);
             flow.Listed(new List<MatchListing>
             {
-                new MatchListing("a", "First", "Ana", 1, 4),
-                new MatchListing("b", "Second", "Ben", 3, 4),
+                new MatchListing("a", "First", "Ana", 1, 0, 4),
+                new MatchListing("b", "Second", "Ben", 3, 0, 4),
             });
             return flow;
         }
@@ -132,7 +132,7 @@ namespace Blastlands.Core.Tests
         {
             LobbyFlow flow = Browsing();
 
-            flow.Listed(new List<MatchListing> { new MatchListing("c", "Third", "Cleo", 2, 8) });
+            flow.Listed(new List<MatchListing> { new MatchListing("c", "Third", "Cleo", 2, 0, 8) });
 
             Assert.That(flow.Matches.Count, Is.EqualTo(1));
             Assert.That(flow.Matches[0].Id, Is.EqualTo("c"));

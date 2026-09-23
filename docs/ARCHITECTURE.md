@@ -28,6 +28,10 @@ Responsibilities:
 - `GET /v1/matches` — public list of matches accepting players.
 - `POST /v1/matches` — create a match, allocate a game server instance, return its endpoint.
 - `POST /v1/matches/{id}/join` — reserve a slot, return the endpoint and a join ticket.
+- `POST /v1/matches/{id}/bots` — host-only, claims an open seat for a bot instead of
+  waiting for someone to join it. A game server instance already fills every seat nobody
+  human took, so this only narrows who may still join and lets a solo host clear the
+  `MIN_PLAYERS` floor without a second human.
 - `GET /v1/matches/{id}` — one match and whether it has started, which is how a player
   who joined learns the host pressed start: a started match leaves the listing.
 - Reap matches whose game server stopped heartbeating.
