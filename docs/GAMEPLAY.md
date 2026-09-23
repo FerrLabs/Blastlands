@@ -470,16 +470,25 @@ thing that does. Using one gives a hider away, exactly as dashing out of a bush 
 | Character | Ability | Cooldown |
 |---|---|---|
 | Demolisher | **Trigger**: sets off your oldest live bomb now | 6 s |
+| Runner | **Vanish**: hidden for 2 s wherever you stand | 10 s |
 
-The rest of the roster follows one ability per change: Runner vanishes (#35), Grenadier throws
-(#36), Sapper raises a wall (#37).
+The rest of the roster follows one ability per change: Grenadier throws (#36), Sapper raises a
+wall (#37).
 
 **Trigger** turns the fuse from a warning into a choice. A bomb you placed is a threat everybody
 reads the same way, two and a half seconds and then fire; being able to cut that short is what
 makes standing next to a Demolisher's bomb a different decision from standing next to anyone
 else's. It needs a bomb of yours on the board, which in Arena is the scarce part.
 
+**Vanish** is a bush you carry. It hides you exactly the way cover does, from sight and from the
+bots' memory, and it breaks exactly the way cover does: dash, shove, drop a bomb or use the
+ability and you are seen for the usual moment. It is the only ability that does not give you away
+by being used, since giving you away would undo it, and it wipes out any giveaway still running
+from what you did just before. It does not blind you and it does not hide your bombs, for the same
+reason a bush does not.
+
 Bots trigger when a rival they can see stands in the blast, chains included, and they do not.
+They vanish when a rival they can see is within three tiles and they are not already hidden.
 
 ## Bots
 

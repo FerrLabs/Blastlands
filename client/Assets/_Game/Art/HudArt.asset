@@ -40,3 +40,4 @@ MonoBehaviour:
   playStationShoulder: {fileID: 21300000, guid: 4def63e4b1471854089a515ebaeba3f6, type: 3}
   playStationNorth: {fileID: 21300000, guid: eb0cde2977b60124094994d9785245f5, type: 3}
   triggerAbility: {fileID: 21300000, guid: 489366355da6cce40b755a44cc0ef1b6, type: 3}
+  vanishAbility: {fileID: 21300000, guid: 3cf26c52673ce3e4b9ebc78c95a81ac5, type: 3}

@@ -85,6 +85,8 @@ namespace Blastlands.Core
 
         public int AbilityCooldownRemaining { get; set; }
 
+        public int VanishTicksRemaining { get; set; }
+
         public bool Shoved
         {
             get { return ShoveTicksRemaining > 0; }

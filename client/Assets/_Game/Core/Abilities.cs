@@ -8,7 +8,7 @@ namespace Blastlands.Core
 
         public static bool Has(CharacterKind character)
         {
-            return character == CharacterKind.Demolisher;
+            return character == CharacterKind.Demolisher || character == CharacterKind.Runner;
         }
 
         public static void Resolve(MatchState state, IReadOnlyList<PlayerInput> inputs)
@@ -26,6 +26,11 @@ namespace Blastlands.Core
                     player.AbilityCooldownRemaining--;
                 }
 
+                if (player.VanishTicksRemaining > 0)
+                {
+                    player.VanishTicksRemaining--;
+                }
+
                 bool wants = i < inputs.Count && inputs[i].Ability;
                 if (!wants || !player.CanUseAbility || !state.Settings.Rules.AllowsCharacters || !Use(state, player))
                 {
@@ -33,7 +38,10 @@ namespace Blastlands.Core
                 }
 
                 player.AbilityCooldownRemaining = state.Settings.Abilities.CooldownFor(player.Character);
-                player.RevealTicksRemaining = state.Settings.Vision.RevealTicks;
+                if (player.Character != CharacterKind.Runner)
+                {
+                    player.RevealTicksRemaining = state.Settings.Vision.RevealTicks;
+                }
             }
         }
 
@@ -57,9 +65,18 @@ namespace Blastlands.Core
             {
                 case CharacterKind.Demolisher:
                     return Trigger(state, player);
+                case CharacterKind.Runner:
+                    return Vanish(state, player);
                 default:
                     return false;
             }
+        }
+
+        private static bool Vanish(MatchState state, PlayerState player)
+        {
+            player.VanishTicksRemaining = state.Settings.Abilities.VanishTicks;
+            player.RevealTicksRemaining = 0;
+            return true;
         }
 
         private static bool Trigger(MatchState state, PlayerState player)

@@ -10,8 +10,13 @@ namespace Blastlands.Core.Tests
 
         private static MatchState Match(GridPos bot, GridPos rival)
         {
+            return Match(CharacterKind.Demolisher, bot, rival);
+        }
+
+        private static MatchState Match(CharacterKind character, GridPos bot, GridPos rival)
+        {
             var state = new MatchState(new Arena(15, 15), Arena, 3u);
-            state.AddPlayer(bot, CharacterKind.Demolisher);
+            state.AddPlayer(bot, character);
             state.AddPlayer(rival, CharacterKind.None);
             return state;
         }
@@ -73,6 +78,31 @@ namespace Blastlands.Core.Tests
         {
             MatchState state = Match(new GridPos(1, 1), new GridPos(8, 7));
             Plant(state, new GridPos(7, 7), 1);
+
+            Assert.That(BotAbilities.ShouldUse(state, state.Players[0]), Is.False);
+        }
+
+        [Test]
+        public void TheRunnerVanishesWhenARivalItCanSeeIsClose()
+        {
+            MatchState state = Match(CharacterKind.Runner, new GridPos(5, 7), new GridPos(7, 7));
+
+            Assert.That(BotAbilities.ShouldUse(state, state.Players[0]), Is.True);
+        }
+
+        [Test]
+        public void TheRunnerKeepsItWhileEveryoneIsFarAway()
+        {
+            MatchState state = Match(CharacterKind.Runner, new GridPos(1, 1), new GridPos(13, 13));
+
+            Assert.That(BotAbilities.ShouldUse(state, state.Players[0]), Is.False);
+        }
+
+        [Test]
+        public void TheRunnerDoesNotVanishWhereItIsAlreadyHidden()
+        {
+            MatchState state = Match(CharacterKind.Runner, new GridPos(5, 7), new GridPos(7, 7));
+            state.Arena[new GridPos(5, 7)] = TileKind.Bush;
 
             Assert.That(BotAbilities.ShouldUse(state, state.Players[0]), Is.False);
         }
