@@ -8,7 +8,9 @@ namespace Blastlands.Core
 
         public static bool Has(CharacterKind character)
         {
-            return character == CharacterKind.Demolisher || character == CharacterKind.Runner;
+            return character == CharacterKind.Demolisher
+                || character == CharacterKind.Runner
+                || character == CharacterKind.Grenadier;
         }
 
         public static void Resolve(MatchState state, IReadOnlyList<PlayerInput> inputs)
@@ -67,9 +69,47 @@ namespace Blastlands.Core
                     return Trigger(state, player);
                 case CharacterKind.Runner:
                     return Vanish(state, player);
+                case CharacterKind.Grenadier:
+                    return Throw(state, player);
                 default:
                     return false;
             }
+        }
+
+        public static bool TryLanding(MatchState state, PlayerState player, out GridPos landing)
+        {
+            landing = player.Tile;
+            GridPos step = Directions.Delta(player.Facing);
+            if (step.X == 0 && step.Y == 0)
+            {
+                return false;
+            }
+
+            for (int distance = 1; distance <= state.Settings.Abilities.ThrowRange; distance++)
+            {
+                GridPos next = player.Tile.Offset(step.X * distance, step.Y * distance);
+                if (!state.Arena.Contains(next) || !Tiles.CanBeStoodOn(state.Arena[next]) || state.HasBombAt(next))
+                {
+                    break;
+                }
+
+                landing = next;
+            }
+
+            return landing != player.Tile;
+        }
+
+        private static bool Throw(MatchState state, PlayerState player)
+        {
+            if (!player.CanDropBomb || !TryLanding(state, player, out GridPos landing))
+            {
+                return false;
+            }
+
+            var bomb = new Bomb(landing, player.Id, player.FireRange, player.NextBombKind);
+            state.AddBomb(new ActiveBomb(bomb, state.Settings.FuseTicks));
+            player.BombsHeld--;
+            return true;
         }
 
         private static bool Vanish(MatchState state, PlayerState player)

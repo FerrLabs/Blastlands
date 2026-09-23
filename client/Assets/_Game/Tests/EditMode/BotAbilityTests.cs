@@ -108,6 +108,37 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
+        public void TheGrenadierThrowsWhenTheLandingCatchesARival()
+        {
+            MatchState state = Match(CharacterKind.Grenadier, new GridPos(3, 7), new GridPos(7, 7));
+            state.Players[0].Facing = Direction.Right;
+            state.Players[0].NextBombKind = BombKind.Standard;
+
+            Assert.That(BotAbilities.ShouldUse(state, state.Players[0]), Is.True);
+        }
+
+        [Test]
+        public void TheGrenadierHoldsWhenTheThrowWouldBurnItToo()
+        {
+            MatchState state = Match(CharacterKind.Grenadier, new GridPos(3, 7), new GridPos(5, 7));
+            state.Players[0].Facing = Direction.Right;
+            state.Arena[new GridPos(5, 7)] = TileKind.Floor;
+            state.Arena[new GridPos(6, 7)] = TileKind.HardBlock;
+            state.Players[0].NextBombKind = BombKind.Standard;
+
+            Assert.That(BotAbilities.ShouldUse(state, state.Players[0]), Is.False);
+        }
+
+        [Test]
+        public void TheGrenadierHoldsWhenItFacesAwayFromEveryone()
+        {
+            MatchState state = Match(CharacterKind.Grenadier, new GridPos(3, 7), new GridPos(7, 7));
+            state.Players[0].Facing = Direction.Left;
+
+            Assert.That(BotAbilities.ShouldUse(state, state.Players[0]), Is.False);
+        }
+
+        [Test]
         public void TheBrainActsOnIt()
         {
             MatchState state = Match(new GridPos(1, 1), new GridPos(8, 7));

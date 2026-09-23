@@ -471,9 +471,9 @@ thing that does. Using one gives a hider away, exactly as dashing out of a bush 
 |---|---|---|
 | Demolisher | **Trigger**: sets off your oldest live bomb now | 6 s |
 | Runner | **Vanish**: hidden for 2 s wherever you stand | 10 s |
+| Grenadier | **Throw**: your next bomb lands up to three tiles ahead | 5 s |
 
-The rest of the roster follows one ability per change: Grenadier throws (#36), Sapper raises a
-wall (#37).
+The Sapper's wall follows in its own change (#37).
 
 **Trigger** turns the fuse from a warning into a choice. A bomb you placed is a threat everybody
 reads the same way, two and a half seconds and then fire; being able to cut that short is what
@@ -486,10 +486,17 @@ usual moment. It is the only ability that does not give you away by being used, 
 away would undo it, and it wipes out any giveaway still running from what you did just before. It does not blind you and it does not hide your bombs, for the same
 reason a bush does not.
 
+**Throw** puts a bomb where you are facing rather than where you stand: the farthest free tile
+within three, stopping short of anything solid, a drop or another bomb, so nothing is lobbed over a
+wall or a gap. It spends a bomb from your pocket like dropping one does and keeps your reach and
+your bomb kind, Cluster included, and the fuse is the ordinary one. With nothing in hand or the way
+ahead blocked the press does nothing and costs nothing.
+
 Bots trigger when a rival they can see stands in the blast, chains included, and hold when the
 blast would reach them too. Having triggered, they stand still until their next decision rather
 than walk on into the fire they just lit: the tile they are on is the one the check proved safe.
-They vanish when a rival they can see is within three tiles and they are not already hidden.
+They vanish when a rival they can see is within three tiles and they are not already hidden, and
+throw when the landing tile's blast catches a rival they can see and not themselves.
 
 ## Bots
 

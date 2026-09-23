@@ -92,6 +92,8 @@ namespace Blastlands.Runtime
                     return "Trigger";
                 case CharacterKind.Runner:
                     return "Vanish";
+                case CharacterKind.Grenadier:
+                    return "Throw";
                 default:
                     return "Ability";
             }

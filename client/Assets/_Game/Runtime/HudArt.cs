@@ -36,6 +36,7 @@ namespace Blastlands.Runtime
         [SerializeField] private Sprite playStationNorth;
         [SerializeField] private Sprite triggerAbility;
         [SerializeField] private Sprite vanishAbility;
+        [SerializeField] private Sprite throwAbility;
 
         public GameObject Clock
         {
@@ -135,6 +136,8 @@ namespace Blastlands.Runtime
                     return triggerAbility;
                 case CharacterKind.Runner:
                     return vanishAbility;
+                case CharacterKind.Grenadier:
+                    return throwAbility;
                 default:
                     return null;
             }
