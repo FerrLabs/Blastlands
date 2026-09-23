@@ -120,7 +120,7 @@ namespace Blastlands.Runtime
                     LobbyPages.Browse(root, art, flow, CharacterChoice.Current, Pick, Join, Create);
                     break;
                 case LobbyScreen.Host:
-                    LobbyPages.Room(root, art, flow, true, Start, AddBot, Leave);
+                    LobbyPages.Room(root, art, flow, true, Begin, AddBot, Leave);
                     break;
                 case LobbyScreen.Wait:
                     LobbyPages.Room(root, art, flow, false, null, null, Leave);
@@ -156,7 +156,11 @@ namespace Blastlands.Runtime
             Asked(Joining(listing));
         }
 
-        private void Start()
+        // Never Start: Unity calls any method with that exact signature as the
+        // MonoBehaviour message of the same name, whether or not it means to override
+        // it. Named that, this fired on its own the moment the lobby loaded, posting
+        // StartMatch with an empty invite before the player had done anything.
+        private void Begin()
         {
             Asked(Starting());
         }
