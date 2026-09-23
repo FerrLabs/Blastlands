@@ -364,6 +364,13 @@ namespace Blastlands.Core.Tests
                     client.RegrowingWalls[i].TicksRemaining,
                     Is.EqualTo(server.RegrowingWalls[i].TicksRemaining));
             }
+
+            Assert.That(client.RaisedWalls.Count, Is.EqualTo(server.RaisedWalls.Count), $"raised walls, depth {depth}");
+            for (int i = 0; i < server.RaisedWalls.Count; i++)
+            {
+                Assert.That(client.RaisedWalls[i].Tile, Is.EqualTo(server.RaisedWalls[i].Tile));
+                Assert.That(client.RaisedWalls[i].TicksRemaining, Is.EqualTo(server.RaisedWalls[i].TicksRemaining));
+            }
         }
     }
 }

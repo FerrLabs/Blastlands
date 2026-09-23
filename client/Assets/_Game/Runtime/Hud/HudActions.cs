@@ -94,6 +94,8 @@ namespace Blastlands.Runtime
                     return "Vanish";
                 case CharacterKind.Grenadier:
                     return "Throw";
+                case CharacterKind.Sapper:
+                    return "Wall";
                 default:
                     return "Ability";
             }

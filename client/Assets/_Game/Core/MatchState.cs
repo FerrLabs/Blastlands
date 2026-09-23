@@ -79,6 +79,7 @@ namespace Blastlands.Core
         private readonly Dictionary<GridPos, PowerUpKind> hiddenPowerUps = new Dictionary<GridPos, PowerUpKind>();
         private readonly List<GridPos> looseBombs = new List<GridPos>();
         private readonly List<WallRegrowth> regrowingWalls = new List<WallRegrowth>();
+        private readonly List<RaisedWall> raisedWalls = new List<RaisedWall>();
         private int[] coastDistance;
 
         public MatchState(Arena arena, MatchSettings settings, uint seed)
@@ -141,6 +142,7 @@ namespace Blastlands.Core
             powerUps.Clear();
             looseBombs.Clear();
             regrowingWalls.Clear();
+            raisedWalls.Clear();
         }
 
         internal void AddPowerUpFromSnapshot(PowerUp powerUp)
@@ -151,6 +153,11 @@ namespace Blastlands.Core
         internal void AddRegrowthFromSnapshot(WallRegrowth regrowth)
         {
             regrowingWalls.Add(regrowth);
+        }
+
+        internal void AddRaisedWallFromSnapshot(RaisedWall wall)
+        {
+            raisedWalls.Add(wall);
         }
 
         public IReadOnlyList<PlayerState> Players
@@ -317,6 +324,47 @@ namespace Blastlands.Core
         public void RemoveRegrowthAt(int index)
         {
             regrowingWalls.RemoveAt(index);
+        }
+
+        public bool IsRegrowing(GridPos tile)
+        {
+            for (int i = 0; i < regrowingWalls.Count; i++)
+            {
+                if (regrowingWalls[i].Tile == tile)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        public IReadOnlyList<RaisedWall> RaisedWalls
+        {
+            get { return raisedWalls; }
+        }
+
+        public void AddRaisedWall(RaisedWall wall)
+        {
+            raisedWalls.Add(wall);
+        }
+
+        public int RaisedWallIndexAt(GridPos tile)
+        {
+            for (int i = 0; i < raisedWalls.Count; i++)
+            {
+                if (raisedWalls[i].Tile == tile)
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
+        public void RemoveRaisedWallAt(int index)
+        {
+            raisedWalls.RemoveAt(index);
         }
 
         public bool HasBombAt(GridPos tile)

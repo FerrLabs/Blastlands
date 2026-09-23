@@ -172,6 +172,11 @@ namespace Blastlands.Core.Tests
                     .Append(wall.TicksRemaining).Append('\n');
             }
 
+            foreach (RaisedWall wall in state.RaisedWalls)
+            {
+                text.Append(wall.Tile).Append(' ').Append(wall.TicksRemaining).Append('\n');
+            }
+
             return text.ToString();
         }
 

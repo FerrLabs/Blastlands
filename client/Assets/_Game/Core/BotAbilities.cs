@@ -21,6 +21,8 @@ namespace Blastlands.Core
                     return !Vision.IsHidden(state, bot) && ARivalIsClose(state, bot);
                 case CharacterKind.Grenadier:
                     return ThrowCatchesARival(state, bot);
+                case CharacterKind.Sapper:
+                    return WallShields(state, bot);
                 default:
                     return false;
             }
@@ -63,6 +65,57 @@ namespace Blastlands.Core
             List<Bomb> bombs = BombsOnBoard(state);
             bombs.Add(new Bomb(landing, bot.Id, bot.FireRange, bot.NextBombKind));
             return CatchesARival(state, bot, bombs, bombs.Count - 1);
+        }
+
+        private static bool WallShields(MatchState state, PlayerState bot)
+        {
+            if (state.HasFlameAt(bot.Tile) || !Abilities.TryWallTile(state, bot, out GridPos wall))
+            {
+                return false;
+            }
+
+            List<Bomb> bombs = BombsOnBoard(state);
+            if (!Burns(state.Arena, bombs, bot.Tile))
+            {
+                return false;
+            }
+
+            return !Burns(WithWall(state.Arena, wall), bombs, bot.Tile);
+        }
+
+        private static bool Burns(Arena arena, List<Bomb> bombs, GridPos tile)
+        {
+            var trigger = new int[1];
+            for (int i = 0; i < bombs.Count; i++)
+            {
+                trigger[0] = i;
+                IReadOnlyList<GridPos> flames = ExplosionResolver.Resolve(arena, bombs, trigger).FlameTiles;
+                for (int f = 0; f < flames.Count; f++)
+                {
+                    if (flames[f] == tile)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        private static Arena WithWall(Arena arena, GridPos wall)
+        {
+            var copy = new Arena(arena.Width, arena.Height);
+            for (int y = 0; y < arena.Height; y++)
+            {
+                for (int x = 0; x < arena.Width; x++)
+                {
+                    var tile = new GridPos(x, y);
+                    copy[tile] = arena[tile];
+                }
+            }
+
+            copy[wall] = TileKind.SoftBlock;
+            return copy;
         }
 
         private static List<Bomb> BombsOnBoard(MatchState state)
