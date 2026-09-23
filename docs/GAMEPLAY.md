@@ -418,8 +418,25 @@ Behaviour, roughly in priority order:
 4. Otherwise path toward the nearest power-up or the nearest enemy.
 
 Danger evaluation is a flood fill over tiles reachable before each live bomb's fuse expires.
-Difficulty is a reaction-delay knob plus how far ahead the danger map is computed — not
-cheating with hidden information.
+Difficulty never cheats with hidden information: a Hard bot sees exactly what an Easy one
+does, tile for tile.
+
+**Difficulty is how far ahead a bot plans, not how slowly it reacts.** A tile that is not on
+fire when you arrive can still be one you cannot leave, because the way out burns first. The
+escape window answers the second question: for each tile, the latest tick you can still be
+standing on it and get away, computed through its neighbours rather than from the fuse alone.
+
+The three levels differ in where they use it. Easy never does, and dies the way a beginner
+does, walking back into its own blast on an errand it started while safe. Normal uses it when
+fleeing but not when choosing where to go, so it still corners itself on the way to a
+power-up. Hard uses it everywhere, including against you: it judges whether a bomb traps
+somebody by the escape window the victim has, which is why it places bombs an arrival-safety
+reading would have talked it out of.
+
+Reaction delay, lookahead and memory still separate them, but they had stopped doing the
+work: once every level escapes its own bombs properly, a slow bot and a quick one survive
+about equally. Measured over sixty solo seeds, the ladder was Normal 56 against Hard 60
+before this and reads as a real gap after it.
 
 They have less than complete information, too. A bot reads its beliefs about the arena rather
 than the arena itself: enemies it has seen, where they were, and how long ago. Cover works
