@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.77] - 2026-09-23
+
+### Bug Fixes
+
+- fix(lobby): stop hosting a match from failing on every player's name (#45)
+
 ## [26.9.76] - 2026-09-23
 
 ### Bug Fixes
