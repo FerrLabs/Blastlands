@@ -116,5 +116,22 @@ namespace Blastlands.Core.Tests
 
             Assert.That(brain.Think(state).Ability, Is.True);
         }
+
+        [Test]
+        public void AfterTriggeringItStaysOnTheTileItProvedSafe()
+        {
+            MatchState state = Match(new GridPos(1, 1), new GridPos(8, 7));
+            var brain = new BotBrain(0, BotSettings.Easy);
+            Assert.That(brain.Think(state).IsMoving, Is.True, "it was already walking somewhere");
+            for (int i = 0; i < BotSettings.Easy.ReactionTicks; i++)
+            {
+                brain.Think(state);
+            }
+
+            Plant(state, new GridPos(7, 7), 0);
+
+            Assert.That(brain.Think(state).Ability, Is.True);
+            Assert.That(brain.Think(state).IsMoving, Is.False);
+        }
     }
 }

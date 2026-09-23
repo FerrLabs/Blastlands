@@ -481,13 +481,14 @@ makes standing next to a Demolisher's bomb a different decision from standing ne
 else's. It needs a bomb of yours on the board, which in Arena is the scarce part.
 
 **Vanish** is a bush you carry. It hides you exactly the way cover does, from sight and from the
-bots' memory, and it breaks exactly the way cover does: dash, shove, drop a bomb or use the
-ability and you are seen for the usual moment. It is the only ability that does not give you away
-by being used, since giving you away would undo it, and it wipes out any giveaway still running
-from what you did just before. It does not blind you and it does not hide your bombs, for the same
+bots' memory, and it breaks exactly the way cover does: dash or shove and you are seen for the
+usual moment. It is the only ability that does not give you away by being used, since giving you
+away would undo it, and it wipes out any giveaway still running from what you did just before. It does not blind you and it does not hide your bombs, for the same
 reason a bush does not.
 
-Bots trigger when a rival they can see stands in the blast, chains included, and they do not.
+Bots trigger when a rival they can see stands in the blast, chains included, and hold when the
+blast would reach them too. Having triggered, they stand still until their next decision rather
+than walk on into the fire they just lit: the tile they are on is the one the check proved safe.
 They vanish when a rival they can see is within three tiles and they are not already hidden.
 
 ## Bots

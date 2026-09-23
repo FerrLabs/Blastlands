@@ -58,7 +58,11 @@ namespace Blastlands.Core
             // Dropping carries no direction, so taking the heading from it would leave
             // the bot standing on its own bomb for the whole reaction delay. It leaves
             // along the route the escape check already proved was open.
-            if (!decision.Ability)
+            if (decision.Ability)
+            {
+                heading = Direction.None;
+            }
+            else
             {
                 heading = decision.DropBomb ? plannedEscape : decision.Move;
             }
