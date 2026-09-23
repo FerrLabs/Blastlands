@@ -61,13 +61,13 @@ namespace Blastlands.Runtime
             bomb.Show(player.BombsHeld / (float)capacity, player.BombsHeld > 0, player.BombsHeld.ToString());
             dash.Show(Recovered(player.DashCooldownRemaining, settings.DashCooldownTicks + settings.DashTicks), player.DashCooldownRemaining <= 0, null);
             shove.Show(Recovered(player.PushCooldownRemaining, settings.Push.CooldownTicks), player.PushCooldownRemaining <= 0, null);
-            RenderAbility(player, settings);
+            RenderAbility(state, player, settings);
 
             bool won = state.Outcome == RoundOutcome.Winner && state.WinnerId == player.Id;
             group.alpha = PanelMood.AlphaFor(player.Alive, state.Outcome, won);
         }
 
-        private void RenderAbility(PlayerState player, MatchSettings settings)
+        private void RenderAbility(MatchState state, PlayerState player, MatchSettings settings)
         {
             bool has = settings.Rules.AllowsCharacters && Abilities.Has(player.Character);
             if (player.Character != dressedAs)
@@ -80,7 +80,7 @@ namespace Blastlands.Runtime
             if (has)
             {
                 int total = settings.Abilities.CooldownFor(player.Character);
-                ability.Show(Recovered(player.AbilityCooldownRemaining, total), player.AbilityCooldownRemaining <= 0, null);
+                ability.Show(Recovered(player.AbilityCooldownRemaining, total), Abilities.CanUseNow(state, player), null);
             }
         }
 
@@ -92,6 +92,8 @@ namespace Blastlands.Runtime
                     return "Trigger";
                 case CharacterKind.Runner:
                     return "Vanish";
+                case CharacterKind.Grenadier:
+                    return "Throw";
                 default:
                     return "Ability";
             }

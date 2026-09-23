@@ -172,6 +172,116 @@ namespace Blastlands.Core.Tests
             Assert.That(Vision.IsHidden(state, state.Players[0]), Is.True);
         }
 
+        private static MatchState Grenadier(Direction facing)
+        {
+            MatchState state = Match(Arena, CharacterKind.Grenadier, new GridPos(4, 7), new GridPos(13, 13));
+            state.Players[0].Facing = facing;
+            return state;
+        }
+
+        [Test]
+        public void TheGrenadierThrowsItsBombThreeTilesAhead()
+        {
+            MatchState state = Grenadier(Direction.Right);
+
+            Tick(state, PlayerInput.UsingAbility(), PlayerInput.None);
+
+            Assert.That(state.HasBombAt(new GridPos(7, 7)), Is.True);
+            Assert.That(state.HasBombAt(new GridPos(4, 7)), Is.False);
+            Assert.That(state.Players[0].BombsHeld, Is.Zero, "the thrown bomb came out of the pocket");
+            Assert.That(state.Players[0].AbilityCooldownRemaining, Is.EqualTo(Arena.Abilities.ThrowCooldownTicks));
+        }
+
+        [Test]
+        public void AThrowStopsShortOfAWall()
+        {
+            MatchState state = Grenadier(Direction.Right);
+            state.Arena[new GridPos(6, 7)] = TileKind.SoftBlock;
+
+            Tick(state, PlayerInput.UsingAbility(), PlayerInput.None);
+
+            Assert.That(state.HasBombAt(new GridPos(5, 7)), Is.True);
+            Assert.That(state.HasBombAt(new GridPos(7, 7)), Is.False, "nothing goes over a wall");
+        }
+
+        [Test]
+        public void AThrowStopsShortOfAnotherBomb()
+        {
+            MatchState state = Grenadier(Direction.Right);
+            Plant(state, new GridPos(6, 7), 1, 60);
+
+            Tick(state, PlayerInput.UsingAbility(), PlayerInput.None);
+
+            Assert.That(state.HasBombAt(new GridPos(5, 7)), Is.True);
+        }
+
+        [Test]
+        public void WithTheWayAheadBlockedTheThrowIsNotSpent()
+        {
+            MatchState state = Grenadier(Direction.Right);
+            state.Arena[new GridPos(5, 7)] = TileKind.HardBlock;
+
+            Tick(state, PlayerInput.UsingAbility(), PlayerInput.None);
+
+            Assert.That(state.Bombs.Count, Is.Zero);
+            Assert.That(state.Players[0].BombsHeld, Is.EqualTo(1));
+            Assert.That(state.Players[0].AbilityCooldownRemaining, Is.Zero);
+        }
+
+        [Test]
+        public void WithNothingInHandThereIsNothingToThrow()
+        {
+            MatchState state = Grenadier(Direction.Right);
+            state.Players[0].BombsHeld = 0;
+
+            Tick(state, PlayerInput.UsingAbility(), PlayerInput.None);
+
+            Assert.That(state.Bombs.Count, Is.Zero);
+            Assert.That(state.Players[0].AbilityCooldownRemaining, Is.Zero);
+        }
+
+        [Test]
+        public void AThrownBombKeepsTheThrowersReachAndKind()
+        {
+            MatchState state = Grenadier(Direction.Up);
+
+            Tick(state, PlayerInput.UsingAbility(), PlayerInput.None);
+
+            Bomb thrown = state.Bombs[0].Bomb;
+            Assert.That(thrown.Position, Is.EqualTo(new GridPos(4, 4)));
+            Assert.That(thrown.Kind, Is.EqualTo(BombKind.Cluster), "the Grenadier's kit");
+            Assert.That(thrown.FireRange, Is.EqualTo(state.Players[0].FireRange));
+            Assert.That(state.Bombs[0].FuseRemaining, Is.EqualTo(Arena.FuseTicks - 1));
+        }
+
+        [Test]
+        public void ThrowIsOnlyReadyWithABombInHandAndSomewhereToLand()
+        {
+            MatchState ready = Grenadier(Direction.Right);
+            MatchState emptyHanded = Grenadier(Direction.Right);
+            emptyHanded.Players[0].BombsHeld = 0;
+            MatchState blocked = Grenadier(Direction.Right);
+            blocked.Arena[new GridPos(5, 7)] = TileKind.HardBlock;
+
+            Assert.That(Abilities.CanUseNow(ready, ready.Players[0]), Is.True);
+            Assert.That(Abilities.CanUseNow(emptyHanded, emptyHanded.Players[0]), Is.False);
+            Assert.That(Abilities.CanUseNow(blocked, blocked.Players[0]), Is.False);
+        }
+
+        [Test]
+        public void TriggerIsOnlyReadyWithABombOfYoursOnTheBoard()
+        {
+            MatchState state = Match(Arena, CharacterKind.Demolisher, new GridPos(1, 1), new GridPos(13, 13));
+            Plant(state, new GridPos(7, 7), 1, 60);
+            Assert.That(Abilities.CanUseNow(state, state.Players[0]), Is.False);
+
+            Plant(state, new GridPos(3, 11), 0, 60);
+            Assert.That(Abilities.CanUseNow(state, state.Players[0]), Is.True);
+
+            state.Players[0].AbilityCooldownRemaining = 5;
+            Assert.That(Abilities.CanUseNow(state, state.Players[0]), Is.False, "cooling down");
+        }
+
         [Test]
         public void ACharacterWithoutAnAbilityPressesForNothing()
         {

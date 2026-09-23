@@ -108,6 +108,37 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
+        public void TheGrenadierThrowsWhenTheLandingCatchesARival()
+        {
+            MatchState state = Match(CharacterKind.Grenadier, new GridPos(3, 7), new GridPos(7, 7));
+            state.Players[0].Facing = Direction.Right;
+            state.Players[0].NextBombKind = BombKind.Standard;
+
+            Assert.That(BotAbilities.ShouldUse(state, state.Players[0]), Is.True);
+        }
+
+        [Test]
+        public void TheGrenadierHoldsWhenTheThrowWouldBurnItToo()
+        {
+            MatchState state = Match(CharacterKind.Grenadier, new GridPos(3, 7), new GridPos(5, 7));
+            state.Players[0].Facing = Direction.Right;
+            state.Arena[new GridPos(5, 7)] = TileKind.Floor;
+            state.Arena[new GridPos(6, 7)] = TileKind.HardBlock;
+            state.Players[0].NextBombKind = BombKind.Standard;
+
+            Assert.That(BotAbilities.ShouldUse(state, state.Players[0]), Is.False);
+        }
+
+        [Test]
+        public void TheGrenadierHoldsWhenItFacesAwayFromEveryone()
+        {
+            MatchState state = Match(CharacterKind.Grenadier, new GridPos(3, 7), new GridPos(7, 7));
+            state.Players[0].Facing = Direction.Left;
+
+            Assert.That(BotAbilities.ShouldUse(state, state.Players[0]), Is.False);
+        }
+
+        [Test]
         public void TheBrainActsOnIt()
         {
             MatchState state = Match(new GridPos(1, 1), new GridPos(8, 7));
@@ -115,6 +146,23 @@ namespace Blastlands.Core.Tests
             var brain = new BotBrain(0, BotSettings.Hard);
 
             Assert.That(brain.Think(state).Ability, Is.True);
+        }
+
+        [Test]
+        public void AfterTriggeringItStaysOnTheTileItProvedSafe()
+        {
+            MatchState state = Match(new GridPos(1, 1), new GridPos(8, 7));
+            var brain = new BotBrain(0, BotSettings.Easy);
+            Assert.That(brain.Think(state).IsMoving, Is.True, "it was already walking somewhere");
+            for (int i = 0; i < BotSettings.Easy.ReactionTicks; i++)
+            {
+                brain.Think(state);
+            }
+
+            Plant(state, new GridPos(7, 7), 0);
+
+            Assert.That(brain.Think(state).Ability, Is.True);
+            Assert.That(brain.Think(state).IsMoving, Is.False);
         }
     }
 }

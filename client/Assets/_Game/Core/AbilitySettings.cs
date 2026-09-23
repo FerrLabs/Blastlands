@@ -2,11 +2,18 @@ namespace Blastlands.Core
 {
     public readonly struct AbilitySettings
     {
-        public AbilitySettings(int triggerCooldownTicks, int vanishTicks, int vanishCooldownTicks)
+        public AbilitySettings(
+            int triggerCooldownTicks,
+            int vanishTicks,
+            int vanishCooldownTicks,
+            int throwRange,
+            int throwCooldownTicks)
         {
             TriggerCooldownTicks = triggerCooldownTicks;
             VanishTicks = vanishTicks;
             VanishCooldownTicks = vanishCooldownTicks;
+            ThrowRange = throwRange;
+            ThrowCooldownTicks = throwCooldownTicks;
         }
 
         public int TriggerCooldownTicks { get; }
@@ -14,6 +21,10 @@ namespace Blastlands.Core
         public int VanishTicks { get; }
 
         public int VanishCooldownTicks { get; }
+
+        public int ThrowRange { get; }
+
+        public int ThrowCooldownTicks { get; }
 
         public int CooldownFor(CharacterKind character)
         {
@@ -23,6 +34,8 @@ namespace Blastlands.Core
                     return TriggerCooldownTicks;
                 case CharacterKind.Runner:
                     return VanishCooldownTicks;
+                case CharacterKind.Grenadier:
+                    return ThrowCooldownTicks;
                 default:
                     return 0;
             }
@@ -30,7 +43,7 @@ namespace Blastlands.Core
 
         public static AbilitySettings Default
         {
-            get { return new AbilitySettings(180, 60, 300); }
+            get { return new AbilitySettings(180, 60, 300, 3, 150); }
         }
     }
 }

@@ -19,6 +19,8 @@ namespace Blastlands.Core
                     return TriggerCatchesARival(state, bot);
                 case CharacterKind.Runner:
                     return !Vision.IsHidden(state, bot) && ARivalIsClose(state, bot);
+                case CharacterKind.Grenadier:
+                    return ThrowCatchesARival(state, bot);
                 default:
                     return false;
             }
@@ -48,19 +50,36 @@ namespace Blastlands.Core
         private static bool TriggerCatchesARival(MatchState state, PlayerState bot)
         {
             int oldest = Abilities.OldestLiveBomb(state, bot.Id);
-            if (oldest == Abilities.NoBomb)
+            return oldest != Abilities.NoBomb && CatchesARival(state, bot, BombsOnBoard(state), oldest);
+        }
+
+        private static bool ThrowCatchesARival(MatchState state, PlayerState bot)
+        {
+            if (!bot.CanDropBomb || !Abilities.TryLanding(state, bot, out GridPos landing))
             {
                 return false;
             }
 
-            var bombs = new List<Bomb>(state.Bombs.Count);
+            List<Bomb> bombs = BombsOnBoard(state);
+            bombs.Add(new Bomb(landing, bot.Id, bot.FireRange, bot.NextBombKind));
+            return CatchesARival(state, bot, bombs, bombs.Count - 1);
+        }
+
+        private static List<Bomb> BombsOnBoard(MatchState state)
+        {
+            var bombs = new List<Bomb>(state.Bombs.Count + 1);
             for (int i = 0; i < state.Bombs.Count; i++)
             {
                 bombs.Add(state.Bombs[i].Bomb);
             }
 
+            return bombs;
+        }
+
+        private static bool CatchesARival(MatchState state, PlayerState bot, List<Bomb> bombs, int triggered)
+        {
             var burning = new HashSet<GridPos>(
-                ExplosionResolver.Resolve(state.Arena, bombs, new[] { oldest }).FlameTiles);
+                ExplosionResolver.Resolve(state.Arena, bombs, new[] { triggered }).FlameTiles);
             if (burning.Contains(bot.Tile))
             {
                 return false;
