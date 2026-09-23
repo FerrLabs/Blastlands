@@ -170,7 +170,12 @@ namespace Blastlands.Core
 
         public PlayerState AddPlayer(GridPos spawn)
         {
-            var player = new PlayerState(players.Count, SubPos.AtTileCentre(spawn), Settings);
+            return AddPlayer(spawn, CharacterKind.None);
+        }
+
+        public PlayerState AddPlayer(GridPos spawn, CharacterKind character)
+        {
+            var player = new PlayerState(players.Count, SubPos.AtTileCentre(spawn), Settings, character);
             players.Add(player);
             return player;
         }

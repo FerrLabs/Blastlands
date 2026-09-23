@@ -7,6 +7,18 @@ namespace Blastlands.Core
     {
         public static MatchState Create(ArenaSettings arenaSettings, MatchSettings matchSettings, int playerCount, uint seed)
         {
+            return Create(arenaSettings, matchSettings, playerCount, seed, _ => CharacterKind.None);
+        }
+
+        // Who sits in each seat. Ignored in a mode whose rules have no room for kits, so
+        // a caller cannot hand Classic a character by passing one in.
+        public static MatchState Create(
+            ArenaSettings arenaSettings,
+            MatchSettings matchSettings,
+            int playerCount,
+            uint seed,
+            Func<int, CharacterKind> characterOf)
+        {
             // Generated first, because the island decides where its own spawns are.
             GeneratedArena generated = ArenaGenerator.Generate(arenaSettings, seed);
             Arena arena = generated.Arena;
@@ -28,7 +40,8 @@ namespace Blastlands.Core
 
             for (int i = 0; i < playerCount; i++)
             {
-                state.AddPlayer(spawns[i]);
+                CharacterKind character = matchSettings.Rules.AllowsCharacters ? characterOf(i) : CharacterKind.None;
+                state.AddPlayer(spawns[i], character);
             }
 
             // After the players, so seeding never drops a bomb onto a spawn.

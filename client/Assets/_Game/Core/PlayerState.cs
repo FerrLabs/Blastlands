@@ -3,8 +3,14 @@ namespace Blastlands.Core
     public sealed class PlayerState
     {
         public PlayerState(int id, SubPos position, MatchSettings settings)
+            : this(id, position, settings, CharacterKind.None)
+        {
+        }
+
+        public PlayerState(int id, SubPos position, MatchSettings settings, CharacterKind character)
         {
             Id = id;
+            Character = character;
             Position = position;
             Alive = true;
             BombsHeld = settings.StartingHeldBombs;
@@ -13,9 +19,12 @@ namespace Blastlands.Core
             SpeedSteps = 0;
             NextBombKind = BombKind.Standard;
             Facing = Direction.Down;
+            CharacterKits.Apply(this, character, settings);
         }
 
         public int Id { get; }
+
+        public CharacterKind Character { get; }
 
         public SubPos Position { get; set; }
 

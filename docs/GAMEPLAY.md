@@ -402,6 +402,56 @@ the tile next door. On the centre alone that player lives and then walks around 
 inside the rock, which the movement code allows on purpose: it ignores the tiles you already
 overlap, so that a wall growing back under you cannot lock you in place.
 
+## Characters
+
+Each player is a character, and a character is a head start on one power-up the arena
+already hands out. No character has a verb of its own yet: that is the cheap half of #2,
+built first to find out whether choosing matters before paying for abilities that are each a
+simulation rule, a netcode surface, a UI surface and a balance problem at once.
+
+| Character | Starts with |
+|---|---|
+| Demolisher | one more tile of reach |
+| Runner | two speed steps |
+| Grenadier | bombs that flare around the tip of each arm |
+| Sapper | bombs that go through soft blocks |
+
+Every head start stops at the ceiling the pickups respect, so a kit is never a way past what a
+player could reach by picking things up. Only Arena has characters. Classic is one verb and the
+same tools for everybody, and a match built with characters in Classic ignores them.
+
+**No character starts with room for a second bomb.** Carry capacity starts at one because two
+live blasts are how a player walls themselves into their own fire, and `MatchSettings.Default`
+withholds it on purpose so BombUp is the way to earn it. The first roster had a Hoarder that
+started with it, which undid that guard for one seat in every match from the first tick. A test
+now holds every kit to the plain player's capacity.
+
+**Seats take the roster in turn**, so four players are one of each and nobody lands the strong
+kit by chance. A local series turns the roster by one each round, so the same pad does not keep
+the same kit for the whole series. The server and every client apply the same rule, which is why the choice does
+not travel on the wire. Choosing a character is a later step: a picker on the client, and the
+lobby carrying the choice to the instance.
+
+**Balance, measured, and not guarded in CI.** Over 240 four-bot matches, every kit in every
+seat on each board so a strong spawn cannot pass for a strong kit:
+
+| | survived | won |
+|---|---|---|
+| Demolisher | 125 | 20 |
+| Runner | 111 | 21 |
+| Grenadier | 124 | 20 |
+| Sapper | 127 | 16 |
+
+Nineteen wins each would be even, over 77 decided matches. The roster with the Hoarder in it
+read 19, 12, 20 and 27: two live bombs from the start pulled the match towards the kits that
+shape a blast. Runner reads lowest on survival, and bots gain little from mobility, which this
+project already measured for the dash, so it is likely no weaker against people.
+
+There is no test that pins these. Survival saturates: a Demolisher given the maximum of
+everything still survived 22 of 48 matches against 23 for the real one, and only its wins moved.
+Wins are rare enough that telling a strong kit from an absurd one takes around 240 matches, ten
+minutes, which is not a unit test. Measure it again after changing a kit or the bots.
+
 ## Bots
 
 Bots fill empty slots so a match starts without waiting for eight humans, and they replace
