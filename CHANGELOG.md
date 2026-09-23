@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.70] - 2026-09-23
+
+### Features
+
+- feat(lobby): carry the chosen character in the signed game ticket (#32)
+
 ## [26.9.69] - 2026-09-23
 
 ### Features
