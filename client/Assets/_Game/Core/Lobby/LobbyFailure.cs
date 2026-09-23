@@ -38,6 +38,11 @@ namespace Blastlands.Core.Lobby
         // refusal the host fixes by waiting rather than by re-reading the listing.
         NotEnoughPlayers = 14,
 
+        // The body the lobby received did not parse into what the endpoint expects.
+        // Most often a name that failed the lobby's own rule, so it is worth another
+        // look before trying again, but the lobby does not say which field it was.
+        InvalidRequest = 15,
+
         // The lobby refused with a code this build has never heard of, which happens
         // when the server is ahead of the client.
         Unknown = 11
@@ -73,6 +78,8 @@ namespace Blastlands.Core.Lobby
                     return LobbyFailure.TooManyMatches;
                 case "not_enough_players":
                     return LobbyFailure.NotEnoughPlayers;
+                case "invalid_request":
+                    return LobbyFailure.InvalidRequest;
                 default:
                     return LobbyFailure.Unknown;
             }
@@ -93,7 +100,8 @@ namespace Blastlands.Core.Lobby
         {
             return failure == LobbyFailure.InvalidName
                 || failure == LobbyFailure.InvalidPlayerCount
-                || failure == LobbyFailure.TooManyMatches;
+                || failure == LobbyFailure.TooManyMatches
+                || failure == LobbyFailure.InvalidRequest;
         }
     }
 }

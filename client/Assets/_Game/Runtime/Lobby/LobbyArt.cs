@@ -5,18 +5,12 @@ namespace Blastlands.Runtime
     [CreateAssetMenu(fileName = "LobbyArt", menuName = "Blastlands/Lobby Art")]
     public sealed class LobbyArt : ScriptableObject
     {
-        [SerializeField] private GameObject button;
         [SerializeField] private GameObject header;
         [SerializeField] private GameObject body;
 
         [SerializeField] private Sprite panel;
         [SerializeField] private Sprite row;
         [SerializeField] private Sprite field;
-
-        public GameObject Button
-        {
-            get { return button; }
-        }
 
         public GameObject Header
         {
@@ -47,7 +41,7 @@ namespace Blastlands.Runtime
         {
             get
             {
-                return button != null && header != null && body != null
+                return header != null && body != null
                     && panel != null && row != null && field != null;
             }
         }

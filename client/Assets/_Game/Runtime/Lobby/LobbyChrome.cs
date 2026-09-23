@@ -6,10 +6,12 @@ using UnityEngine.UI;
 namespace Blastlands.Runtime
 {
     // Builds the lobby out of the same Synty pieces the match HUD uses. Nothing here
-    // draws: a panel is a pack sprite stretched, a button is the pack's button prefab,
-    // and text is the pack's label prefab, which carries its font and its colour.
+    // draws: a panel or a button is a pack sprite sliced to size, and text is the
+    // pack's label prefab, which carries its font and its colour.
     public static class LobbyChrome
     {
+        private static readonly Color FieldTextColor = new Color(0.12f, 0.11f, 0.10f);
+
         public static RectTransform Panel(Transform parent, LobbyArt art, string name, Vector2 size)
         {
             var host = new GameObject(name, typeof(RectTransform), typeof(Image));
@@ -53,30 +55,24 @@ namespace Blastlands.Runtime
 
         public static Button Press(Transform parent, LobbyArt art, string text, Vector2 offset, Vector2 size, Action clicked)
         {
-            GameObject instance = UnityEngine.Object.Instantiate(art.Button, parent, false);
-            instance.name = "Button " + text;
+            var host = new GameObject("Button " + text, typeof(RectTransform), typeof(Image), typeof(Button));
+            host.transform.SetParent(parent, false);
 
-            var rect = (RectTransform)instance.transform;
+            var rect = (RectTransform)host.transform;
             rect.anchorMin = new Vector2(0.5f, 0.5f);
             rect.anchorMax = new Vector2(0.5f, 0.5f);
             rect.pivot = new Vector2(0.5f, 0.5f);
             rect.anchoredPosition = offset;
             rect.sizeDelta = size;
 
-            TMP_Text label = instance.GetComponentInChildren<TMP_Text>(true);
-            if (label != null)
-            {
-                label.text = text;
-                label.alignment = TextAlignmentOptions.Center;
-            }
+            Image background = host.GetComponent<Image>();
+            background.sprite = art.Panel;
+            background.type = Image.Type.Sliced;
 
-            Button press = instance.GetComponentInChildren<Button>(true);
-            if (press == null)
-            {
-                press = instance.AddComponent<Button>();
-                press.targetGraphic = instance.GetComponentInChildren<Image>(true);
-            }
+            Label(host.transform, art, text, false, Vector2.zero, size.x - 40f);
 
+            Button press = host.GetComponent<Button>();
+            press.targetGraphic = background;
             press.onClick.AddListener(() => clicked());
             return press;
         }
@@ -108,7 +104,8 @@ namespace Blastlands.Runtime
             TMP_Text hint = Label(viewport.transform, art, placeholder, false, Vector2.zero, size.x - 32f);
             Stretch(typed.gameObject, 0f);
             Stretch(hint.gameObject, 0f);
-            hint.color = new Color(hint.color.r, hint.color.g, hint.color.b, 0.4f);
+            typed.color = FieldTextColor;
+            hint.color = new Color(FieldTextColor.r, FieldTextColor.g, FieldTextColor.b, 0.4f);
 
             TMP_InputField field = host.GetComponent<TMP_InputField>();
             field.textViewport = area;

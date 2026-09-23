@@ -185,6 +185,8 @@ namespace Blastlands.Runtime
                     return "That many players is not a match.";
                 case LobbyFailure.Unauthorized:
                     return "The lobby did not take your word for that.";
+                case LobbyFailure.InvalidRequest:
+                    return "The lobby refused that. Check your name and try again.";
                 default:
                     return "The lobby said something this build did not understand.";
             }
