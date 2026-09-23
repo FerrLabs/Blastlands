@@ -123,7 +123,7 @@ namespace Blastlands.Runtime
             // for a whole series, and the kits are not equal enough for that to be fair.
             int round = series == null ? 0 : series.RoundsPlayed;
             state = MatchFactory.Create(
-                arenaSettings, matchSettings, playerCount, activeSeed, seat => CharacterKits.ForSeat(seat + round));
+                arenaSettings, matchSettings, playerCount, activeSeed, CharacterKits.Seating(CharacterChoice.Current, round));
 
             // Survives the rebuild the next round does. A series is only built when
             // there is none, or when the seat count changed under it and the old score

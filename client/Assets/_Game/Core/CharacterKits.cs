@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace Blastlands.Core
@@ -18,13 +19,16 @@ namespace Blastlands.Core
         }
 
         // Round the roster by seat, so a full match of four has one of each and nobody
-        // can end up with the only strong kit by chance. The same rule on the server and
-        // on every client, which is what keeps them agreeing without the choice having
-        // to travel.
+        // can end up with the only strong kit by chance.
         public static CharacterKind ForSeat(int seat)
         {
             int index = seat % Roster.Length;
             return Roster[index < 0 ? index + Roster.Length : index];
+        }
+
+        public static Func<int, CharacterKind> Seating(CharacterKind pick, int turn)
+        {
+            return seat => seat == 0 && pick != CharacterKind.None ? pick : ForSeat(seat + turn);
         }
 
         // Applied once, at spawn. Capped at the same ceilings the pickups respect, so a

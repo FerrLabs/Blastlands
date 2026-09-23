@@ -16,15 +16,6 @@ namespace Blastlands.Core.Net
         private const int FieldCount = 6;
         private const int SignatureBytes = 32;
 
-        private static readonly Dictionary<string, CharacterKind> CharacterTokens =
-            new Dictionary<string, CharacterKind>(StringComparer.Ordinal)
-            {
-                { "demolisher", CharacterKind.Demolisher },
-                { "runner", CharacterKind.Runner },
-                { "grenadier", CharacterKind.Grenadier },
-                { "sapper", CharacterKind.Sapper }
-            };
-
         private readonly byte[] key;
         private readonly string matchId;
         private readonly Dictionary<string, long> spent = new Dictionary<string, long>(StringComparer.Ordinal);
@@ -101,7 +92,7 @@ namespace Blastlands.Core.Net
             CharacterKind chosen = CharacterKind.None;
             if (!long.TryParse(fields[3 + extra], NumberStyles.None, CultureInfo.InvariantCulture, out long expires)
                 || !TryHex(fields[2], out byte[] name)
-                || (extra == 1 && !CharacterTokens.TryGetValue(fields[3], out chosen)))
+                || (extra == 1 && !CharacterTokens.TryRead(fields[3], out chosen)))
             {
                 return TicketVerdict.Malformed;
             }

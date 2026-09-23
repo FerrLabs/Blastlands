@@ -202,5 +202,38 @@ namespace Blastlands.Core.Tests
             Assert.That(state.Players[2].Character, Is.EqualTo(CharacterKind.None));
             Assert.That(state.Players[2].SpeedSteps, Is.EqualTo(0), "the Runner's legs go with the Runner");
         }
+
+        [Test]
+        public void ThePickedCharacterHoldsItsSeatEveryRound()
+        {
+            for (int turn = 0; turn < CharacterKits.All.Count; turn++)
+            {
+                Assert.That(CharacterKits.Seating(CharacterKind.Sapper, turn)(0), Is.EqualTo(CharacterKind.Sapper), "turn " + turn);
+            }
+        }
+
+        [Test]
+        public void APickLeavesTheOtherSeatsOnTheRoster()
+        {
+            for (int turn = 0; turn < CharacterKits.All.Count; turn++)
+            {
+                for (int seat = 1; seat < 4; seat++)
+                {
+                    Assert.That(
+                        CharacterKits.Seating(CharacterKind.Sapper, turn)(seat),
+                        Is.EqualTo(CharacterKits.ForSeat(seat + turn)),
+                        "seat " + seat + " turn " + turn);
+                }
+            }
+        }
+
+        [Test]
+        public void WithoutAPickEverySeatTakesTheRosterInTurn()
+        {
+            for (int seat = 0; seat < 4; seat++)
+            {
+                Assert.That(CharacterKits.Seating(CharacterKind.None, 2)(seat), Is.EqualTo(CharacterKits.ForSeat(seat + 2)));
+            }
+        }
     }
 }

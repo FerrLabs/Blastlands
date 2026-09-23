@@ -109,7 +109,7 @@ namespace Blastlands.Runtime
                     LobbyPages.Name(root, art, flow, Named);
                     break;
                 case LobbyScreen.Browse:
-                    LobbyPages.Browse(root, art, flow, Join, Create);
+                    LobbyPages.Browse(root, art, flow, CharacterChoice.Current, Pick, Join, Create);
                     break;
                 case LobbyScreen.Host:
                     LobbyPages.Room(root, art, flow, true, Start, Leave);
@@ -130,6 +130,12 @@ namespace Blastlands.Runtime
             {
                 Asked(Listing());
             }
+        }
+
+        private void Pick(CharacterKind character)
+        {
+            CharacterChoice.Choose(character);
+            Redraw();
         }
 
         private void Create()
@@ -180,7 +186,7 @@ namespace Blastlands.Runtime
 
         private IEnumerator Creating()
         {
-            yield return lobby.Create(flow.Player + "'s match", flow.Player, maxPlayers, result =>
+            yield return lobby.Create(flow.Player + "'s match", flow.Player, maxPlayers, CharacterChoice.Current, result =>
             {
                 if (result.Ok && result.Value.CanStart)
                 {
@@ -198,7 +204,7 @@ namespace Blastlands.Runtime
 
         private IEnumerator Joining(MatchListing listing)
         {
-            yield return lobby.Join(listing.Id, flow.Player, result =>
+            yield return lobby.Join(listing.Id, flow.Player, CharacterChoice.Current, result =>
             {
                 if (result.Ok && result.Value.CanConnect)
                 {
