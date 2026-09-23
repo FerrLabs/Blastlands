@@ -218,6 +218,7 @@ namespace Blastlands.Core.Net
                 writer.Int16(player.RevealTicksRemaining);
                 writer.Byte((byte)player.Character);
                 writer.Int16(player.AbilityCooldownRemaining);
+                writer.Int16(player.VanishTicksRemaining);
             }
         }
 
@@ -251,7 +252,8 @@ namespace Blastlands.Core.Net
                     PushCooldownRemaining = reader.Int16(),
                     RevealTicksRemaining = reader.Int16(),
                     Character = reader.Byte(),
-                    AbilityCooldownRemaining = reader.Int16()
+                    AbilityCooldownRemaining = reader.Int16(),
+                    VanishTicksRemaining = reader.Int16()
                 };
 
                 if (!line.IsSane())
@@ -562,6 +564,7 @@ namespace Blastlands.Core.Net
             public int RevealTicksRemaining;
             public byte Character;
             public int AbilityCooldownRemaining;
+            public int VanishTicksRemaining;
 
             public bool IsSane()
             {
@@ -593,6 +596,7 @@ namespace Blastlands.Core.Net
                 player.RevealTicksRemaining = RevealTicksRemaining;
                 player.Character = (CharacterKind)Character;
                 player.AbilityCooldownRemaining = AbilityCooldownRemaining;
+                player.VanishTicksRemaining = VanishTicksRemaining;
             }
         }
     }

@@ -35,6 +35,7 @@ namespace Blastlands.Runtime
         [SerializeField] private Sprite playStationShoulder;
         [SerializeField] private Sprite playStationNorth;
         [SerializeField] private Sprite triggerAbility;
+        [SerializeField] private Sprite vanishAbility;
 
         public GameObject Clock
         {
@@ -128,7 +129,15 @@ namespace Blastlands.Runtime
 
         public Sprite AbilityOf(CharacterKind character)
         {
-            return character == CharacterKind.Demolisher ? triggerAbility : null;
+            switch (character)
+            {
+                case CharacterKind.Demolisher:
+                    return triggerAbility;
+                case CharacterKind.Runner:
+                    return vanishAbility;
+                default:
+                    return null;
+            }
         }
 
         public Sprite PadGlyph(InputDeviceKind device, PromptGlyph glyph)

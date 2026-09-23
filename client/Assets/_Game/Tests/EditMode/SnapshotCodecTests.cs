@@ -316,6 +316,7 @@ namespace Blastlands.Core.Tests
                     got.AbilityCooldownRemaining,
                     Is.EqualTo(sent.AbilityCooldownRemaining),
                     $"player {i} ability cooldown, depth {depth}");
+                Assert.That(got.VanishTicksRemaining, Is.EqualTo(sent.VanishTicksRemaining), $"player {i} vanish, depth {depth}");
             }
 
             Assert.That(client.Bombs.Count, Is.EqualTo(server.Bombs.Count), $"bombs, depth {depth}");

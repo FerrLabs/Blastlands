@@ -138,6 +138,7 @@ namespace Blastlands.Core.Tests
                     .Append((int)player.Facing).Append(' ').Append(player.DashTicksRemaining).Append(' ')
                     .Append(player.StunTicksRemaining).Append(' ').Append(player.RevealTicksRemaining).Append(' ')
                     .Append((int)player.Character).Append(' ').Append(player.AbilityCooldownRemaining)
+                    .Append(' ').Append(player.VanishTicksRemaining)
                     .Append('\n');
             }
 

@@ -86,7 +86,15 @@ namespace Blastlands.Runtime
 
         private static string NameOf(CharacterKind character)
         {
-            return character == CharacterKind.Demolisher ? "Trigger" : "Ability";
+            switch (character)
+            {
+                case CharacterKind.Demolisher:
+                    return "Trigger";
+                case CharacterKind.Runner:
+                    return "Vanish";
+                default:
+                    return "Ability";
+            }
         }
 
         public static float Recovered(int remaining, int total)

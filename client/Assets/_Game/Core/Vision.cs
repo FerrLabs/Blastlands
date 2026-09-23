@@ -40,8 +40,12 @@ namespace Blastlands.Core
         public static bool IsHidden(MatchState state, PlayerState player)
         {
             return player.RevealTicksRemaining <= 0
-                && state.Arena.Contains(player.Tile)
-                && state.Arena[player.Tile] == TileKind.Bush;
+                && (player.VanishTicksRemaining > 0 || InBush(state, player));
+        }
+
+        private static bool InBush(MatchState state, PlayerState player)
+        {
+            return state.Arena.Contains(player.Tile) && state.Arena[player.Tile] == TileKind.Bush;
         }
 
         // Whether the viewer can see a tile well enough to conclude nobody is standing

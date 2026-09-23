@@ -124,6 +124,55 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
+        public void TheRunnerVanishesOnOpenGround()
+        {
+            MatchState state = Match(Arena, CharacterKind.Runner, new GridPos(4, 7), new GridPos(10, 7));
+            Assert.That(Vision.CanSee(state, state.Players[1], state.Players[0]), Is.True);
+
+            Tick(state, PlayerInput.UsingAbility(), PlayerInput.None);
+
+            Assert.That(Vision.CanSee(state, state.Players[1], state.Players[0]), Is.False);
+            Assert.That(Vision.CanSee(state, state.Players[0], state.Players[1]), Is.True, "vanishing does not blind");
+            Assert.That(state.Players[0].AbilityCooldownRemaining, Is.EqualTo(Arena.Abilities.VanishCooldownTicks));
+        }
+
+        [Test]
+        public void TheRunnerComesBackIntoViewWhenItRunsOut()
+        {
+            MatchState state = Match(Arena, CharacterKind.Runner, new GridPos(4, 7), new GridPos(10, 7));
+
+            Tick(state, PlayerInput.UsingAbility(), PlayerInput.None);
+            for (int i = 0; i < Arena.Abilities.VanishTicks; i++)
+            {
+                Tick(state, PlayerInput.None, PlayerInput.None);
+            }
+
+            Assert.That(Vision.CanSee(state, state.Players[1], state.Players[0]), Is.True);
+        }
+
+        [Test]
+        public void ActingWhileVanishedGivesTheRunnerAway()
+        {
+            MatchState state = Match(Arena, CharacterKind.Runner, new GridPos(4, 7), new GridPos(10, 7));
+
+            Tick(state, PlayerInput.UsingAbility(), PlayerInput.None);
+            Tick(state, PlayerInput.Dashing(Direction.Up), PlayerInput.None);
+
+            Assert.That(Vision.CanSee(state, state.Players[1], state.Players[0]), Is.True);
+        }
+
+        [Test]
+        public void VanishingWipesOutTheGiveawayOfWhatCameBefore()
+        {
+            MatchState state = Match(Arena, CharacterKind.Runner, new GridPos(4, 7), new GridPos(10, 7));
+            state.Players[0].RevealTicksRemaining = 20;
+
+            Tick(state, PlayerInput.UsingAbility(), PlayerInput.None);
+
+            Assert.That(Vision.IsHidden(state, state.Players[0]), Is.True);
+        }
+
+        [Test]
         public void ACharacterWithoutAnAbilityPressesForNothing()
         {
             MatchState state = Match(Arena, CharacterKind.None, new GridPos(1, 1), new GridPos(13, 13));
@@ -152,6 +201,7 @@ namespace Blastlands.Core.Tests
         {
             MatchState server = Match(Arena, CharacterKind.Demolisher, new GridPos(1, 1), new GridPos(13, 13));
             server.Players[0].AbilityCooldownRemaining = 42;
+            server.Players[0].VanishTicksRemaining = 17;
             MatchState client = Match(Arena, CharacterKind.None, new GridPos(1, 1), new GridPos(13, 13));
 
             var buffer = new byte[SnapshotCodec.MaxSize];
@@ -160,6 +210,7 @@ namespace Blastlands.Core.Tests
             Assert.That(SnapshotCodec.TryApply(buffer, used, client), Is.True);
             Assert.That(client.Players[0].Character, Is.EqualTo(CharacterKind.Demolisher));
             Assert.That(client.Players[0].AbilityCooldownRemaining, Is.EqualTo(42));
+            Assert.That(client.Players[0].VanishTicksRemaining, Is.EqualTo(17));
         }
     }
 }
