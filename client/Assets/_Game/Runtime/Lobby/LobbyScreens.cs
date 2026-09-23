@@ -120,10 +120,10 @@ namespace Blastlands.Runtime
                     LobbyPages.Browse(root, art, flow, CharacterChoice.Current, Pick, Join, Create);
                     break;
                 case LobbyScreen.Host:
-                    LobbyPages.Room(root, art, flow, true, Start, Leave);
+                    LobbyPages.Room(root, art, flow, true, Start, AddBot, Leave);
                     break;
                 case LobbyScreen.Wait:
-                    LobbyPages.Room(root, art, flow, false, null, Leave);
+                    LobbyPages.Room(root, art, flow, false, null, null, Leave);
                     break;
             }
 
@@ -159,6 +159,11 @@ namespace Blastlands.Runtime
         private void Start()
         {
             Asked(Starting());
+        }
+
+        private void AddBot()
+        {
+            Asked(AddingBot());
         }
 
         private void Leave()
@@ -234,6 +239,23 @@ namespace Blastlands.Runtime
                 if (result.Ok)
                 {
                     flow.Running();
+                }
+                else
+                {
+                    flow.Refused(result.Failure, flow.Invite.MatchId);
+                }
+
+                Redraw();
+            });
+        }
+
+        private IEnumerator AddingBot()
+        {
+            yield return lobby.AddBot(flow.Invite.MatchId, flow.HostTicket, result =>
+            {
+                if (result.Ok)
+                {
+                    flow.Listed(new List<MatchListing> { result.Value.Listing });
                 }
                 else
                 {

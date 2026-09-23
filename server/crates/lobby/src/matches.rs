@@ -48,6 +48,10 @@ pub struct Match {
     pub host: DisplayName,
     pub players: Vec<DisplayName>,
     pub max_players: u8,
+    /// Seats the host claimed for a bot ahead of start, so a human cannot join into
+    /// one. The instance already fills every unclaimed seat with a bot regardless,
+    /// so this only ever narrows who may still join, never who runs the match.
+    pub bots: u8,
     pub state: MatchState,
     pub endpoint: GameServerEndpoint,
     /// Who asked for it, so one address cannot hold the whole port pool.
@@ -63,7 +67,7 @@ pub struct Match {
 
 impl Match {
     pub fn is_full(&self) -> bool {
-        self.players.len() >= usize::from(self.max_players)
+        self.players.len() + usize::from(self.bots) >= usize::from(self.max_players)
     }
 }
 
@@ -180,6 +184,7 @@ impl MatchDirectory {
             players: vec![request.host.clone()],
             host: request.host,
             max_players: request.max_players,
+            bots: 0,
             state: MatchState::WaitingForPlayers,
             endpoint: GameServerEndpoint {
                 host: self.game_server_host.clone(),
@@ -235,6 +240,34 @@ impl MatchDirectory {
         })
     }
 
+    /// Claims an open seat for a bot instead of waiting for someone to join it.
+    ///
+    /// Host-only for the same reason `start` is: match ids are public, so without the
+    /// ticket a stranger could fill every open match with bots and lock everyone else
+    /// out. Refused once the match is full, the same as a human trying to join it.
+    pub fn add_bot(&self, id: MatchId, ticket: HostTicket) -> Result<Match, LobbyError> {
+        let mut state = self.write();
+        let entry = state
+            .matches
+            .get_mut(&id)
+            .ok_or(LobbyError::MatchNotFound)?;
+
+        if entry.host_ticket != ticket {
+            return Err(LobbyError::Unauthorized);
+        }
+
+        if entry.state == MatchState::InProgress {
+            return Err(LobbyError::MatchAlreadyStarted);
+        }
+
+        if entry.is_full() {
+            return Err(LobbyError::MatchFull);
+        }
+
+        entry.bots += 1;
+        Ok(entry.clone())
+    }
+
     /// Starting is the host's call, so it has to be proved to come from the host.
     ///
     /// Match ids are public: `GET /v1/matches` hands them to anyone. Without this check
@@ -258,12 +291,15 @@ impl MatchDirectory {
             return Err(LobbyError::MatchAlreadyStarted);
         }
 
-        // The instance builds its arena from the joined count, so starting below the
-        // minimum would hand it a degenerate match rather than a short one.
-        if entry.players.len() < usize::from(MIN_PLAYERS) {
+        // The instance builds its arena from the seated count, so starting below the
+        // minimum would hand it a degenerate match rather than a short one. A bot the
+        // host added counts towards it same as a human: both are a seat the instance
+        // will actually run.
+        let seated = entry.players.len() + usize::from(entry.bots);
+        if seated < usize::from(MIN_PLAYERS) {
             return Err(LobbyError::NotEnoughPlayers {
                 min: MIN_PLAYERS,
-                joined: entry.players.len(),
+                joined: seated,
             });
         }
 
@@ -527,6 +563,87 @@ mod tests {
             Some(LobbyError::MatchFull)
         );
         assert!(directory.open_matches().is_empty());
+    }
+
+    #[test]
+    fn adding_a_bot_claims_a_seat_a_human_can_no_longer_join() {
+        let directory = directory();
+        let entry = create(&directory, 2);
+
+        let updated = directory
+            .add_bot(entry.id, entry.host_ticket)
+            .expect("a seat is free");
+
+        assert_eq!(updated.bots, 1);
+        assert_eq!(
+            directory.join(entry.id, name("Alex")).err(),
+            Some(LobbyError::MatchFull)
+        );
+        assert!(directory.open_matches().is_empty());
+    }
+
+    #[test]
+    fn a_bot_lets_a_solo_host_start() {
+        let directory = directory();
+        let entry = create(&directory, 4);
+
+        assert_eq!(
+            directory
+                .start(entry.id, entry.host_ticket, Instant::now())
+                .err(),
+            Some(LobbyError::NotEnoughPlayers {
+                min: MIN_PLAYERS,
+                joined: 1
+            })
+        );
+
+        directory
+            .add_bot(entry.id, entry.host_ticket)
+            .expect("a seat is free");
+
+        directory
+            .start(entry.id, entry.host_ticket, Instant::now())
+            .expect("the host plus a bot meets the minimum");
+    }
+
+    #[test]
+    fn a_full_match_refuses_another_bot() {
+        let directory = directory();
+        let entry = create(&directory, 2);
+        directory
+            .add_bot(entry.id, entry.host_ticket)
+            .expect("a seat is free");
+
+        assert_eq!(
+            directory.add_bot(entry.id, entry.host_ticket).err(),
+            Some(LobbyError::MatchFull)
+        );
+    }
+
+    #[test]
+    fn only_the_host_may_add_a_bot() {
+        let directory = directory();
+        let entry = create(&directory, 4);
+
+        assert_eq!(
+            directory.add_bot(entry.id, stranger_ticket()).err(),
+            Some(LobbyError::Unauthorized)
+        );
+    }
+
+    #[test]
+    fn a_bot_cannot_be_added_once_the_match_has_started() {
+        let directory = directory();
+        let entry = create(&directory, 4);
+        seat_a_guest(&directory, entry.id);
+        directory
+            .start(entry.id, entry.host_ticket, Instant::now())
+            .expect("start should succeed");
+
+        assert_eq!(
+            directory.add_bot(entry.id, entry.host_ticket).err(),
+            Some(LobbyError::MatchAlreadyStarted)
+        );
     }
 
     /// `start` refuses a lobby below `MIN_PLAYERS`, so every test that wants a running

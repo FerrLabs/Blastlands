@@ -104,26 +104,32 @@ namespace Blastlands.Runtime
             }
         }
 
-        public static void Room(RectTransform root, LobbyArt art, LobbyFlow flow, bool hosting, Action start, Action leave)
+        public static void Room(
+            RectTransform root, LobbyArt art, LobbyFlow flow, bool hosting, Action start, Action addBot, Action leave)
         {
-            RectTransform panel = LobbyChrome.Panel(root, art, "Room", new Vector2(900f, 560f));
-            LobbyChrome.Label(panel, art, hosting ? "YOUR MATCH" : "WAITING", true, new Vector2(0f, 200f), 800f);
+            RectTransform panel = LobbyChrome.Panel(root, art, "Room", new Vector2(900f, 700f));
+            LobbyChrome.Label(panel, art, hosting ? "YOUR MATCH" : "WAITING", true, new Vector2(0f, 240f), 800f);
 
             MatchListing listing = Current(flow);
-            LobbyChrome.Label(panel, art, listing.Name, false, new Vector2(0f, 110f), 800f);
-            LobbyChrome.Label(panel, art, listing.Occupancy + " players", false, new Vector2(0f, 40f), 800f);
+            LobbyChrome.Label(panel, art, listing.Name, false, new Vector2(0f, 150f), 800f);
+            LobbyChrome.Label(panel, art, listing.Occupancy + " players", false, new Vector2(0f, 80f), 800f);
 
             if (hosting)
             {
-                LobbyChrome.Press(panel, art, "Start", new Vector2(0f, -70f), WideButton, start);
+                if (!listing.IsFull)
+                {
+                    LobbyChrome.Press(panel, art, "Add bot", new Vector2(0f, -10f), WideButton, addBot);
+                }
+
+                LobbyChrome.Press(panel, art, "Start", new Vector2(0f, -120f), WideButton, start);
             }
             else
             {
-                LobbyChrome.Label(panel, art, "Waiting for the host to start.", false, new Vector2(0f, -70f), 800f);
+                LobbyChrome.Label(panel, art, "Waiting for the host to start.", false, new Vector2(0f, -65f), 800f);
             }
 
-            LobbyChrome.Press(panel, art, "Leave", new Vector2(0f, -180f), WideButton, leave);
-            Notice(panel, art, flow, new Vector2(0f, -250f));
+            LobbyChrome.Press(panel, art, "Leave", new Vector2(0f, -230f), WideButton, leave);
+            Notice(panel, art, flow, new Vector2(0f, -300f));
         }
 
         private static MatchListing Current(LobbyFlow flow)
@@ -136,7 +142,7 @@ namespace Blastlands.Runtime
                 }
             }
 
-            return new MatchListing(flow.Invite.MatchId, "Match", flow.Player, 1, 1);
+            return new MatchListing(flow.Invite.MatchId, "Match", flow.Player, 1, 0, 1);
         }
 
         // One line, in the player's terms. Everything the lobby refuses ends up here,

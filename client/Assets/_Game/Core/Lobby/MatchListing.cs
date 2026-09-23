@@ -8,12 +8,13 @@ namespace Blastlands.Core.Lobby
     // fine.
     public readonly struct MatchListing
     {
-        public MatchListing(string id, string name, string host, int players, int maxPlayers)
+        public MatchListing(string id, string name, string host, int players, int bots, int maxPlayers)
         {
             Id = id;
             Name = name;
             Host = host;
             Players = players;
+            Bots = bots;
             MaxPlayers = maxPlayers;
         }
 
@@ -25,16 +26,19 @@ namespace Blastlands.Core.Lobby
 
         public int Players { get; }
 
+        // A seat the host claimed for a bot ahead of time. Nobody can join into it.
+        public int Bots { get; }
+
         public int MaxPlayers { get; }
 
         public bool IsFull
         {
-            get { return Players >= MaxPlayers; }
+            get { return Players + Bots >= MaxPlayers; }
         }
 
         public string Occupancy
         {
-            get { return Players + "/" + MaxPlayers; }
+            get { return (Players + Bots) + "/" + MaxPlayers; }
         }
     }
 }

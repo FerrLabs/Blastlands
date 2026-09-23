@@ -145,6 +145,7 @@ pub struct MatchSummary {
     pub name: DisplayName,
     pub host: DisplayName,
     pub players: u8,
+    pub bots: u8,
     pub max_players: u8,
 }
 
@@ -162,15 +163,16 @@ impl From<&Match> for MatchSummary {
             name: entry.name.clone(),
             host: entry.host.clone(),
             players: entry.players.len().min(usize::from(u8::MAX)) as u8,
+            bots: entry.bots,
             max_players: entry.max_players,
         }
     }
 }
 
 /// Proof that the caller is the one who created this match. Match ids are public, so
-/// without it anybody could start anybody else's.
+/// without it anybody could start or reshape anybody else's.
 #[derive(Debug, Deserialize)]
-pub struct StartRequest {
+pub struct HostRequest {
     pub ticket: HostTicket,
 }
 
@@ -198,6 +200,7 @@ pub fn app(state: AppState) -> Router {
         .route("/v1/matches/{id}", get(match_status))
         .route("/v1/matches/{id}/join", post(join_match))
         .route("/v1/matches/{id}/start", post(start_match))
+        .route("/v1/matches/{id}/bots", post(add_bot_to_match))
         .route("/internal/instances/{port}", get(instance_assignment))
         .route("/internal/matches/{id}", delete(finish_match))
         .route("/internal/matches/{id}/heartbeat", post(heartbeat_match))
@@ -330,10 +333,23 @@ fn since_epoch() -> Duration {
 async fn start_match(
     State(state): State<AppState>,
     Path(id): Path<MatchId>,
-    ValidatedJson(request): ValidatedJson<StartRequest>,
+    ValidatedJson(request): ValidatedJson<HostRequest>,
 ) -> Result<StatusCode, LobbyError> {
     state.directory.start(id, request.ticket, Instant::now())?;
     Ok(StatusCode::NO_CONTENT)
+}
+
+async fn add_bot_to_match(
+    State(state): State<AppState>,
+    Path(id): Path<MatchId>,
+    ValidatedJson(request): ValidatedJson<HostRequest>,
+) -> Result<Json<MatchStatus>, LobbyError> {
+    let entry = state.directory.add_bot(id, request.ticket)?;
+
+    Ok(Json(MatchStatus {
+        summary: MatchSummary::from(&entry),
+        state: entry.state,
+    }))
 }
 
 // What an instance asks for on boot. It knows its own port and nothing else: the match
@@ -961,6 +977,57 @@ mod tests {
             .unwrap();
 
         assert_eq!(joined.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn a_stranger_cannot_add_a_bot_to_somebody_elses_match() {
+        let router = router();
+        let created = create_match_on(&router, "Alice game").await;
+        let id = created["id"].as_str().expect("an id").to_owned();
+
+        let refused = router
+            .clone()
+            .oneshot(post_json(
+                &format!("/v1/matches/{id}/bots"),
+                json!({ "ticket": "0b7f3f5a-1c2d-4e5f-8a9b-0c1d2e3f4a5b" }),
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(refused.status(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn a_bot_lets_a_solo_host_start_without_anybody_joining() {
+        let router = router();
+        let created = create_match_on(&router, "Friday night").await;
+        let id = created["id"].as_str().expect("an id").to_owned();
+        let ticket = created["ticket"].as_str().expect("a ticket").to_owned();
+
+        let added = router
+            .clone()
+            .oneshot(post_json(
+                &format!("/v1/matches/{id}/bots"),
+                json!({ "ticket": ticket }),
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(added.status(), StatusCode::OK);
+        let body = body_json(added).await;
+        assert_eq!(body["players"], 1);
+        assert_eq!(body["bots"], 1);
+
+        let started = router
+            .clone()
+            .oneshot(post_json(
+                &format!("/v1/matches/{id}/start"),
+                json!({ "ticket": ticket }),
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(started.status(), StatusCode::NO_CONTENT);
     }
 
     #[tokio::test]
