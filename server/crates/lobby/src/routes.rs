@@ -2,7 +2,7 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use axum::extract::{ConnectInfo, Path, State};
+use axum::extract::{ConnectInfo, FromRequest, Path, Request, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Redirect, Response};
 use axum::routing::{delete, get, post};
@@ -58,6 +58,27 @@ pub struct AppState {
     pub joins: Arc<RateLimiter>,
     pub matches_per_address: usize,
     pub address_source: ClientAddress,
+}
+
+/// `Json<T>`, except a body axum itself refuses (malformed JSON, the wrong content
+/// type, an out-of-roster enum value) becomes a [`LobbyError::InvalidRequest`]
+/// instead of axum's own plain-text response, so every refusal this service makes
+/// carries the same `{"code": ...}` body a caller can act on.
+pub struct ValidatedJson<T>(pub T);
+
+impl<T, S> FromRequest<S> for ValidatedJson<T>
+where
+    T: serde::de::DeserializeOwned,
+    S: Send + Sync,
+{
+    type Rejection = LobbyError;
+
+    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
+        let Json(value) = Json::<T>::from_request(req, state)
+            .await
+            .map_err(LobbyError::from)?;
+        Ok(Self(value))
+    }
 }
 
 /// The address a request is attributed to for the per-address limits.
@@ -243,7 +264,7 @@ async fn create_match(
     State(state): State<AppState>,
     Caller(address): Caller,
     headers: HeaderMap,
-    Json(request): Json<CreateMatchRequest>,
+    ValidatedJson(request): ValidatedJson<CreateMatchRequest>,
 ) -> Result<(StatusCode, Json<MatchCreated>), LobbyError> {
     state.release.require_supported(&headers)?;
 
@@ -281,7 +302,7 @@ async fn join_match(
     Path(id): Path<MatchId>,
     Caller(address): Caller,
     headers: HeaderMap,
-    Json(request): Json<JoinRequest>,
+    ValidatedJson(request): ValidatedJson<JoinRequest>,
 ) -> Result<Json<JoinAccepted>, LobbyError> {
     state.release.require_supported(&headers)?;
 
@@ -309,7 +330,7 @@ fn since_epoch() -> Duration {
 async fn start_match(
     State(state): State<AppState>,
     Path(id): Path<MatchId>,
-    Json(request): Json<StartRequest>,
+    ValidatedJson(request): ValidatedJson<StartRequest>,
 ) -> Result<StatusCode, LobbyError> {
     state.directory.start(id, request.ticket, Instant::now())?;
     Ok(StatusCode::NO_CONTENT)
@@ -737,6 +758,49 @@ mod tests {
             .unwrap();
 
         assert!(response.status().is_client_error());
+    }
+
+    #[tokio::test]
+    async fn a_character_the_lobby_does_not_know_answers_with_the_usual_error_shape() {
+        let router = router();
+        let created = create_match_on(&router, "Friday night").await;
+        let id = created["id"].as_str().unwrap().to_owned();
+
+        let response = router
+            .clone()
+            .oneshot(post_json(
+                &format!("/v1/matches/{id}/join"),
+                json!({ "player": "Alex", "character": "hoarder" }),
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(
+            response.headers().get(header::CONTENT_TYPE).unwrap(),
+            "application/json"
+        );
+        assert_eq!(body_json(response).await["code"], "invalid_request");
+    }
+
+    #[tokio::test]
+    async fn a_body_that_is_not_json_answers_with_the_usual_error_shape() {
+        let request = Request::builder()
+            .method("POST")
+            .uri("/v1/matches")
+            .header(header::CONTENT_TYPE, "application/json")
+            .header(VERSION_HEADER, CURRENT)
+            .body(Body::from("{not json"))
+            .expect("request should build");
+
+        let response = router().oneshot(request).await.unwrap();
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(
+            response.headers().get(header::CONTENT_TYPE).unwrap(),
+            "application/json"
+        );
+        assert_eq!(body_json(response).await["code"], "invalid_request");
     }
 
     #[tokio::test]
