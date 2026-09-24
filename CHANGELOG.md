@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.91] - 2026-09-24
+
+### Features
+
+- feat(client): show the winner at the end of a match and offer to play again (#74)
+
 ## [26.9.90] - 2026-09-24
 
 ### Features
