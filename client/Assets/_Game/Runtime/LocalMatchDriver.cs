@@ -25,9 +25,6 @@ namespace Blastlands.Runtime
         // else about the layout, so the number that reproduces a bug reproduces what it
         // looked like too.
         [SerializeField] private ArenaTheme[] themes;
-        [SerializeField] private int arenaWidth = 15;
-        [SerializeField] private int arenaHeight = 13;
-        [SerializeField] private int softBlockPercent = 70;
         [SerializeField] private int playerCount = 4;
 
         // Zero means roll a fresh arena every match. Set it to reproduce a specific
@@ -43,9 +40,9 @@ namespace Blastlands.Runtime
         // Which game the match is. Arena is the open island with cover you stand in,
         // found bombs, dash and shove; Classic is the pillar lattice, bombs you own and
         // nothing else; Classic Blinded is that same board played without sight of
-        // anyone you have no line to. Serialized here rather than chosen anywhere,
-        // since this driver never plays a lobby match: the lobby itself has no mode
-        // picker yet, and every match it hosts runs Arena.
+        // anyone you have no line to. The serialized value is what a scene opened by
+        // hand runs; a practice match from the lobby overwrites it with the mode the
+        // selector showed.
         [SerializeField] private GameMode mode = GameMode.Arena;
 
         // Best of five. Long enough that one unlucky round does not decide it, short
@@ -66,6 +63,7 @@ namespace Blastlands.Runtime
         private TickPacer pacer;
         private uint activeSeed;
         private VictoryScreen victory;
+        private bool practising;
 
         public MatchState State
         {
@@ -109,7 +107,21 @@ namespace Blastlands.Runtime
                 return;
             }
 
+            if (MatchHandoff.TryTakePractice(out GameMode practised))
+            {
+                mode = practised;
+                practising = true;
+            }
+
             StartMatch();
+        }
+
+        private static bool LeavePressed()
+        {
+            Keyboard keyboard = Keyboard.current;
+            Gamepad pad = Gamepad.current;
+            return (keyboard != null && keyboard.escapeKey.wasPressedThisFrame)
+                || (pad != null && pad.selectButton.wasPressedThisFrame);
         }
 
         private void OnDestroy()
@@ -138,9 +150,7 @@ namespace Blastlands.Runtime
 
             activeSeed = seed != 0u ? seed : RollSeed();
 
-            ArenaSettings arenaSettings = mode == GameMode.Arena
-                ? new ArenaSettings(arenaWidth, arenaHeight, softBlockPercent)
-                : ArenaSettings.Classic;
+            ArenaSettings arenaSettings = ArenaSettings.For(mode);
             MatchSettings matchSettings = MatchSettings.For(mode);
 
             // Turned by one each round. Seats alone would give the same pad the same kit
@@ -224,6 +234,12 @@ namespace Blastlands.Runtime
         {
             if (state == null)
             {
+                return;
+            }
+
+            if (practising && LeavePressed())
+            {
+                SceneManager.LoadScene(LobbyScene);
                 return;
             }
 

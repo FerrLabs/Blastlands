@@ -95,6 +95,7 @@ namespace Blastlands.Runtime
             Action<GameMode> pickMode,
             Action<MatchListing> join,
             Action create,
+            Action practise,
             Action rename)
         {
             RectTransform panel = LobbyChrome.Panel(root, art, "Browse", new Vector2(1500f, 900f));
@@ -102,7 +103,8 @@ namespace Blastlands.Runtime
             Player(panel, art, flow.Player, rename);
             Roster(panel, art, picked, portrait, pick);
             Modes(panel, art, mode, pickMode, new Vector2(ListCentre, -245f));
-            LobbyChrome.Press(panel, art, "Host a match", new Vector2(ListCentre, -330f), WideButton, create);
+            LobbyChrome.Press(panel, art, "Host a match", new Vector2(ListCentre - 215f, -330f), WideButton, create);
+            LobbyChrome.Press(panel, art, "Practice vs bots", new Vector2(ListCentre + 215f, -330f), WideButton, practise);
             Notice(panel, art, flow, new Vector2(0f, -405f));
 
             if (flow.Matches.Count == 0)
