@@ -105,6 +105,22 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
+        public void WhenTheFireTakesOneAndTheRingTheOtherTheRingsVictimOutlastedTheFire()
+        {
+            MatchState state = Open(new GridPos(7, 7), new GridPos(0, 7));
+            Run(state, 10);
+            Assert.That(state.AliveCount, Is.EqualTo(2), "both reach the tick the first ring closes on");
+
+            state.AddFlame(new GridPos(7, 7), Settings.FlameTicks, state.Tick);
+            Run(state, 1);
+
+            Assert.That(state.Players[0].Alive, Is.False, "the fire took the one in the middle");
+            Assert.That(state.Players[1].Alive, Is.False, "the ring took the one on the coast");
+            Assert.That(state.Outcome, Is.EqualTo(RoundOutcome.Winner));
+            Assert.That(state.WinnerId, Is.EqualTo(1), "the fire lands before the ring, so the coast outlasted the middle");
+        }
+
+        [Test]
         public void ItTakesAnyoneWhoseBodyIsInIt()
         {
             // Movement is free, so the tile under a player's centre is not the whole of
