@@ -37,6 +37,29 @@ namespace Blastlands.Core.Tests
             Assert.That(flow.Player, Is.EqualTo("Bryan"));
         }
 
+        [Test]
+        public void RenamingFromTheListGoesBackToTheNameAndKeepsTheOldOneToEdit()
+        {
+            LobbyFlow flow = Browsing();
+            flow.Refused(LobbyFailure.MatchFull, "b");
+
+            Assert.That(flow.Rename(), Is.True);
+
+            Assert.That(flow.Screen, Is.EqualTo(LobbyScreen.Name));
+            Assert.That(flow.Player, Is.EqualTo("Bryan"));
+            Assert.That(flow.HasNotice, Is.False, "an old complaint does not follow the player back");
+        }
+
+        [Test]
+        public void NobodyRenamesThemselvesOnceTheyAreInAMatch()
+        {
+            LobbyFlow flow = Browsing();
+            flow.Created(Invite("a"), "host-ticket");
+
+            Assert.That(flow.Rename(), Is.False);
+            Assert.That(flow.Screen, Is.EqualTo(LobbyScreen.Host));
+        }
+
         // The case the issue calls the normal one: the row was fine when it was drawn
         // and is gone by the time it is clicked.
         [Test]

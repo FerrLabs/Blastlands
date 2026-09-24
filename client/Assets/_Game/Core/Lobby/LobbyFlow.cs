@@ -60,6 +60,18 @@ namespace Blastlands.Core.Lobby
             return true;
         }
 
+        public bool Rename()
+        {
+            if (Screen != LobbyScreen.Browse)
+            {
+                return false;
+            }
+
+            Clear();
+            Move(LobbyScreen.Name);
+            return true;
+        }
+
         public void Listed(IReadOnlyList<MatchListing> listed)
         {
             matches.Clear();

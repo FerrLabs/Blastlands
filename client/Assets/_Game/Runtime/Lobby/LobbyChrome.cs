@@ -73,7 +73,8 @@ namespace Blastlands.Runtime
 
             Button press = host.GetComponent<Button>();
             press.targetGraphic = background;
-            press.onClick.AddListener(() => clicked());
+            press.onClick.AddListener(() => clicked?.Invoke());
+            PressFeel.Attach(press);
             return press;
         }
 
@@ -114,7 +115,9 @@ namespace Blastlands.Runtime
             field.characterLimit = Core.Lobby.DisplayName.MaxLength;
             field.lineType = TMP_InputField.LineType.SingleLine;
             field.targetGraphic = background;
+            field.transition = Selectable.Transition.None;
             field.onFocusSelectAll = false;
+            FieldFocus.Attach(field, background);
 
             return field;
         }

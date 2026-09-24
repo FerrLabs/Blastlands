@@ -49,6 +49,7 @@ namespace Blastlands.Runtime
         private bool polling;
         private int generation;
         private float sinceStatus;
+        private string draft = string.Empty;
 
         private void Awake()
         {
@@ -83,7 +84,9 @@ namespace Blastlands.Runtime
 
             BuildCanvas();
 
-            if (!string.IsNullOrEmpty(MatchHandoff.Player) && flow.Named(MatchHandoff.Player))
+            string known = string.IsNullOrEmpty(MatchHandoff.Player) ? NameChoice.Saved : MatchHandoff.Player;
+            draft = known;
+            if (DisplayName.IsAcceptable(known) && flow.Named(known))
             {
                 Asked(Listing());
             }
@@ -137,10 +140,10 @@ namespace Blastlands.Runtime
             switch (flow.Screen)
             {
                 case LobbyScreen.Name:
-                    LobbyPages.Name(root, art, flow, Named);
+                    LobbyPages.Name(root, art, flow, draft, Drafted, Named);
                     break;
                 case LobbyScreen.Browse:
-                    LobbyPages.Browse(root, art, flow, CharacterChoice.Current, stage.Texture, ModeChoice.Current, Pick, PickMode, Join, Create);
+                    LobbyPages.Browse(root, art, flow, CharacterChoice.Current, stage.Texture, ModeChoice.Current, Pick, PickMode, Join, Create, Rename);
                     break;
                 case LobbyScreen.Host:
                     LobbyPages.Room(root, art, flow, true, Begin, AddBot, Leave);
@@ -185,12 +188,29 @@ namespace Blastlands.Runtime
             }
         }
 
+        private void Drafted(string typed)
+        {
+            draft = typed;
+        }
+
         private void Named(string typed)
         {
+            draft = typed;
             Redraw();
             if (flow.Named(typed))
             {
+                NameChoice.Remember(flow.Player);
+                draft = flow.Player;
                 Asked(Listing());
+            }
+        }
+
+        private void Rename()
+        {
+            if (flow.Rename())
+            {
+                draft = flow.Player;
+                Redraw();
             }
         }
 
