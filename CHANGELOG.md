@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.98] - 2026-09-24
+
+### Features
+
+- feat(lobby): rewrite the download page copy in a plainer voice (#94)
+
 ## [26.9.97] - 2026-09-24
 
 ### Features
