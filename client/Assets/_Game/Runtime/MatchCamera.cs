@@ -340,9 +340,9 @@ namespace Blastlands.Runtime
             }
 
             int seat = firstSeat + (mode == CameraMode.Split ? index : 0);
+            PlayerState watched = Spectate(index);
             if (!player.Alive)
             {
-                PlayerState watched = Spectate(index);
                 if (watched == null)
                 {
                     return MatchView.ToWorld(player.Position, 0f);
@@ -350,10 +350,6 @@ namespace Blastlands.Runtime
 
                 player = watched;
                 seat = watched.Id;
-            }
-            else
-            {
-                Spectate(index);
             }
 
             Vector3 at = drawn != null && drawn.TryShown(seat, out Vector3 shown)
