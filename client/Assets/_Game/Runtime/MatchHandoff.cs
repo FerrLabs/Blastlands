@@ -1,3 +1,4 @@
+using Blastlands.Core;
 using Blastlands.Core.Lobby;
 
 namespace Blastlands.Runtime
@@ -13,6 +14,7 @@ namespace Blastlands.Runtime
     public static class MatchHandoff
     {
         private static MatchInvite pending;
+        private static GameMode? practice;
 
         // Who the player was when they left the lobby, so coming back from a match
         // drops them on the match list rather than asking their name again.
@@ -27,6 +29,21 @@ namespace Blastlands.Runtime
         {
             pending = invite;
             Player = player ?? string.Empty;
+        }
+
+        public static void Practise(GameMode mode, string player)
+        {
+            pending = default;
+            practice = mode;
+            Player = player ?? string.Empty;
+        }
+
+        public static bool TryTakePractice(out GameMode mode)
+        {
+            mode = practice ?? GameMode.Arena;
+            bool asked = practice.HasValue;
+            practice = null;
+            return asked;
         }
 
         public static MatchInvite Take()

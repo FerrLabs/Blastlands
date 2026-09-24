@@ -143,7 +143,7 @@ namespace Blastlands.Runtime
                     LobbyPages.Name(root, art, flow, draft, Drafted, Named);
                     break;
                 case LobbyScreen.Browse:
-                    LobbyPages.Browse(root, art, flow, CharacterChoice.Current, stage.Texture, ModeChoice.Current, Pick, PickMode, Join, Create, Rename);
+                    LobbyPages.Browse(root, art, flow, CharacterChoice.Current, stage.Texture, ModeChoice.Current, Pick, PickMode, Join, Create, Practise, Rename);
                     break;
                 case LobbyScreen.Host:
                     LobbyPages.Room(root, art, flow, true, Begin, AddBot, Leave);
@@ -230,6 +230,18 @@ namespace Blastlands.Runtime
         private void Create()
         {
             Asked(Creating());
+        }
+
+        private void Practise()
+        {
+            if (busy)
+            {
+                return;
+            }
+
+            MatchHandoff.Practise(ModeChoice.Current, flow.Player);
+            enabled = false;
+            SceneManager.LoadScene(MatchScene);
         }
 
         private void Join(MatchListing listing)

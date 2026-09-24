@@ -25,9 +25,6 @@ namespace Blastlands.Runtime
         // else about the layout, so the number that reproduces a bug reproduces what it
         // looked like too.
         [SerializeField] private ArenaTheme[] themes;
-        [SerializeField] private int arenaWidth = 15;
-        [SerializeField] private int arenaHeight = 13;
-        [SerializeField] private int softBlockPercent = 70;
         [SerializeField] private int playerCount = 4;
 
         // Zero means roll a fresh arena every match. Set it to reproduce a specific
@@ -66,6 +63,7 @@ namespace Blastlands.Runtime
         private TickPacer pacer;
         private uint activeSeed;
         private VictoryScreen victory;
+        private bool practising;
 
         public MatchState State
         {
@@ -109,7 +107,21 @@ namespace Blastlands.Runtime
                 return;
             }
 
+            if (MatchHandoff.TryTakePractice(out GameMode practised))
+            {
+                mode = practised;
+                practising = true;
+            }
+
             StartMatch();
+        }
+
+        private static bool LeavePressed()
+        {
+            Keyboard keyboard = Keyboard.current;
+            Gamepad pad = Gamepad.current;
+            return (keyboard != null && keyboard.escapeKey.wasPressedThisFrame)
+                || (pad != null && pad.selectButton.wasPressedThisFrame);
         }
 
         private void OnDestroy()
@@ -138,9 +150,7 @@ namespace Blastlands.Runtime
 
             activeSeed = seed != 0u ? seed : RollSeed();
 
-            ArenaSettings arenaSettings = mode == GameMode.Arena
-                ? new ArenaSettings(arenaWidth, arenaHeight, softBlockPercent)
-                : ArenaSettings.Classic;
+            ArenaSettings arenaSettings = ArenaSettings.For(mode);
             MatchSettings matchSettings = MatchSettings.For(mode);
 
             // Turned by one each round. Seats alone would give the same pad the same kit
@@ -229,6 +239,12 @@ namespace Blastlands.Runtime
 
             // Rerolling the arena on demand is how the generator gets exercised: a
             // layout flaw only shows up across many maps, not one.
+            if (practising && LeavePressed())
+            {
+                SceneManager.LoadScene(LobbyScene);
+                return;
+            }
+
             if (devices.RerollPressed())
             {
                 Restart(0u);

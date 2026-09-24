@@ -81,13 +81,14 @@ their seat would see. A harder bot plans further ahead, reacts sooner and rememb
 it last saw you for longer. Every bot in an online match plays at Normal; the difficulty is
 an editor setting for local play.
 
-### Local play
+### Practice
 
-Opening the `Match` scene directly in the editor runs a couch match: one player per
-gamepad (the first also gets the keyboard), up to four, with bots in the other seats and
-the screen split between the people playing. The series is first to three rounds, the other seats' characters
-rotate between rounds, and R or Start rerolls the board. The built game does not offer it from the
-lobby yet.
+**Practice vs bots** on the match list starts a local match in the mode selected there,
+without a server or a connection: one player per gamepad (the first also gets the keyboard),
+up to four, with bots in the other seats and the screen split between the people playing. The
+series is first to three rounds, the other seats' characters rotate between rounds, R or Start
+rerolls the board, and Escape or Select goes back to the lobby. Opening the `Match` scene
+directly in the editor runs the same thing in Arena.
 
 ### Presentation
 
