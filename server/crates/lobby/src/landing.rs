@@ -1,6 +1,7 @@
 use crate::release::{InstallerInfo, ReleaseInfo};
 
 const TEMPLATE: &str = include_str!("landing.html");
+pub const LOGO: &str = include_str!("site/logo.svg");
 const ACTION_SLOT: &str = "{{action}}";
 const NOTE_SLOT: &str = "{{note}}";
 
