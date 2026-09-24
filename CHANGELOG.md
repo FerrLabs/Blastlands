@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.110] - 2026-09-24
+
+### Features
+
+- feat(client): practice against bots from the lobby (#119)
+
 ## [26.9.109] - 2026-09-24
 
 ### Features
