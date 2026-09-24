@@ -3,6 +3,7 @@ using Blastlands.Core.Update;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 namespace Blastlands.Runtime
@@ -12,6 +13,7 @@ namespace Blastlands.Runtime
         private const int Layer = 500;
         private const float Padding = 28f;
         private const float BadgeClearance = 170f;
+        private const string MatchScene = "Match";
 
         private static readonly Vector2 Reference = new Vector2(1920f, 1080f);
         private static readonly Vector2 BottomRight = new Vector2(1f, 0f);
@@ -58,6 +60,16 @@ namespace Blastlands.Runtime
                 Notice = UpdateNotice.For(
                     gate.Verdict, stage, updater == null ? null : updater.Failure, Application.version, gate.Release);
                 Render(Notice);
+            }
+
+            if (card != null)
+            {
+                bool inMatch = SceneManager.GetActiveScene().name == MatchScene;
+                bool wanted = Notice.Visible && Notice.Prominent && (Notice.BlocksPlay || !inMatch);
+                if (card.activeSelf != wanted)
+                {
+                    card.SetActive(wanted);
+                }
             }
 
             if (Notice.OffersUpdate && Accepted())
