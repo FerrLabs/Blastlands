@@ -10,19 +10,19 @@ namespace Blastlands.Core.Tests
         [Test]
         public void AnInviteNeedsAHostAPortAndATicket()
         {
-            Assert.That(new MatchInvite("m", "10.0.0.5", 7777, "t").CanConnect, Is.True);
-            Assert.That(new MatchInvite("m", "", 7777, "t").CanConnect, Is.False);
-            Assert.That(new MatchInvite("m", "10.0.0.5", 0, "t").CanConnect, Is.False);
-            Assert.That(new MatchInvite("m", "10.0.0.5", 70000, "t").CanConnect, Is.False);
-            Assert.That(new MatchInvite("m", "10.0.0.5", 7777, "").CanConnect, Is.False);
+            Assert.That(new MatchInvite("m", "10.0.0.5", 7777, "t", GameMode.Arena).CanConnect, Is.True);
+            Assert.That(new MatchInvite("m", "", 7777, "t", GameMode.Arena).CanConnect, Is.False);
+            Assert.That(new MatchInvite("m", "10.0.0.5", 0, "t", GameMode.Arena).CanConnect, Is.False);
+            Assert.That(new MatchInvite("m", "10.0.0.5", 70000, "t", GameMode.Arena).CanConnect, Is.False);
+            Assert.That(new MatchInvite("m", "10.0.0.5", 7777, "", GameMode.Arena).CanConnect, Is.False);
             Assert.That(default(MatchInvite).CanConnect, Is.False);
         }
 
         [Test]
         public void HostingTakesBothTickets()
         {
-            var listing = new MatchListing("m", "Name", "Host", 1, 0, 4);
-            var invite = new MatchInvite("m", "10.0.0.5", 7777, "game");
+            var listing = new MatchListing("m", "Name", "Host", 1, 0, 4, GameMode.Arena);
+            var invite = new MatchInvite("m", "10.0.0.5", 7777, "game", GameMode.Arena);
 
             Assert.That(new MatchHosting(listing, invite, "host").CanStart, Is.True);
             Assert.That(new MatchHosting(listing, invite, "").CanStart, Is.False);

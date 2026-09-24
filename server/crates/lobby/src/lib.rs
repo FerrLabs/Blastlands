@@ -6,6 +6,7 @@ pub mod error;
 pub mod github;
 pub mod landing;
 pub mod matches;
+pub mod modes;
 pub mod names;
 pub mod ports;
 pub mod release;

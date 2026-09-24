@@ -18,6 +18,7 @@ use crate::landing;
 use crate::matches::{
     CreateMatch, GameServerEndpoint, HostTicket, Match, MatchDirectory, MatchId, MatchState,
 };
+use crate::modes::GameMode;
 use crate::names::DisplayName;
 use crate::release::{ReleaseInfo, Releases};
 use crate::throttle::RateLimiter;
@@ -130,6 +131,8 @@ pub struct CreateMatchRequest {
     pub host: DisplayName,
     pub max_players: u8,
     #[serde(default)]
+    pub mode: GameMode,
+    #[serde(default)]
     pub character: Option<Character>,
 }
 
@@ -148,6 +151,7 @@ pub struct MatchSummary {
     pub players: u8,
     pub bots: u8,
     pub max_players: u8,
+    pub mode: GameMode,
 }
 
 #[derive(Debug, Serialize)]
@@ -166,6 +170,7 @@ impl From<&Match> for MatchSummary {
             players: entry.players.len().min(usize::from(u8::MAX)) as u8,
             bots: entry.bots,
             max_players: entry.max_players,
+            mode: entry.mode,
         }
     }
 }
@@ -308,6 +313,7 @@ async fn create_match(
             name: request.name,
             host: request.host,
             max_players: request.max_players,
+            mode: request.mode,
             host_address: address,
         },
         now,
@@ -1466,6 +1472,73 @@ mod tests {
             body["humans"], 2,
             "only the players who joined are waited for"
         );
+        assert_eq!(
+            body["mode"], "arena",
+            "a match created without a mode is Arena"
+        );
+    }
+
+    #[tokio::test]
+    async fn the_chosen_mode_reaches_the_listing_and_the_instance() {
+        let router = router();
+        let response = router
+            .clone()
+            .oneshot(post_json(
+                "/v1/matches",
+                json!({ "name": "Old school", "host": "Bryan", "max_players": 2, "mode": "classic" }),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::CREATED);
+        let created = body_json(response).await;
+        assert_eq!(created["mode"], "classic");
+
+        let id = created["id"].as_str().expect("an id").to_owned();
+        let ticket = created["ticket"].as_str().expect("a ticket").to_owned();
+        let port = created["endpoint"]["port"].as_u64().expect("a port");
+
+        let listed = body_json(
+            router
+                .clone()
+                .oneshot(get_request("/v1/matches"))
+                .await
+                .unwrap(),
+        )
+        .await;
+        assert_eq!(listed[0]["mode"], "classic");
+
+        join_match_on(&router, &id, "Sam").await;
+        router
+            .clone()
+            .oneshot(post_json(
+                &format!("/v1/matches/{id}/start"),
+                json!({ "ticket": ticket }),
+            ))
+            .await
+            .unwrap();
+
+        let assigned = body_json(
+            router
+                .oneshot(instance_get(&format!("/internal/instances/{port}")))
+                .await
+                .unwrap(),
+        )
+        .await;
+        assert_eq!(assigned["mode"], "classic");
+    }
+
+    #[tokio::test]
+    async fn a_mode_the_game_does_not_have_is_refused() {
+        let response = router()
+            .oneshot(post_json(
+                "/v1/matches",
+                json!({ "name": "Nope", "host": "Bryan", "max_players": 2, "mode": "bomberman" }),
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(body_json(response).await["code"], "invalid_request");
     }
 
     #[tokio::test]

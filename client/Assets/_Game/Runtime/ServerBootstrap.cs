@@ -46,13 +46,17 @@ namespace Blastlands.Runtime
             // first thing anybody reads off a failed instance.
             Debug.Log(
                 $"Blastlands server: match {options.MatchId}, port {options.ListenPort}, "
-                + $"{options.ExpectedPlayers} seats for {options.ExpectedHumans} players, lobby {options.LobbyUrl}");
+                + $"{options.ExpectedPlayers} seats for {options.ExpectedHumans} players, {options.Mode}, lobby {options.LobbyUrl}");
 
             MatchState state;
             try
             {
                 state = MatchFactory.Create(
-                    ArenaSettings.Default, MatchSettings.Default, options.ExpectedPlayers, Seed(), CharacterKits.ForSeat);
+                    ArenaSettings.For(options.Mode),
+                    MatchSettings.For(options.Mode),
+                    options.ExpectedPlayers,
+                    Seed(),
+                    CharacterKits.ForSeat);
             }
             catch (ArgumentOutOfRangeException bad)
             {

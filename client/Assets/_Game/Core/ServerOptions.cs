@@ -20,20 +20,29 @@ namespace Blastlands.Core
         public const string HumansFlag = "--humans";
         public const string LobbyFlag = "--lobby";
         public const string TokenFlag = "--token";
+        public const string ModeFlag = "--mode";
 
         public const string PortVariable = "BLASTLANDS_PORT";
         public const string MatchVariable = "BLASTLANDS_MATCH";
         public const string PlayersVariable = "BLASTLANDS_PLAYERS";
         public const string HumansVariable = "BLASTLANDS_HUMANS";
         public const string LobbyVariable = "BLASTLANDS_LOBBY";
+        public const string ModeVariable = "BLASTLANDS_MODE";
 
         // The same name the lobby reads it under, because it is the same secret. Two
         // names for one value is how they end up different on one host.
         public const string TokenVariable = "BLASTLANDS_INSTANCE_TOKEN";
 
         public ServerOptions(
-            int listenPort, string matchId, int expectedPlayers, int expectedHumans, string lobbyUrl, string instanceToken)
+            int listenPort,
+            string matchId,
+            int expectedPlayers,
+            int expectedHumans,
+            string lobbyUrl,
+            string instanceToken,
+            GameMode mode)
         {
+            Mode = mode;
             ListenPort = listenPort;
             MatchId = matchId;
             ExpectedPlayers = expectedPlayers;
@@ -57,6 +66,10 @@ namespace Blastlands.Core
         // restarts the lobby.
         public string InstanceToken { get; }
 
+        // The one option with a default. An entrypoint from before modes existed never
+        // passes it, and every match it could have been handed was an Arena one.
+        public GameMode Mode { get; }
+
         // Arguments win over the environment. The environment is how a host is
         // configured once; the arguments are how one instance out of several on that
         // host is told what it is, so the more specific of the two has to be the one
@@ -78,6 +91,7 @@ namespace Blastlands.Core
             string rawHumans = Read(arguments, environment, HumansFlag, HumansVariable);
             string rawLobby = Read(arguments, environment, LobbyFlag, LobbyVariable);
             string rawToken = Read(arguments, environment, TokenFlag, TokenVariable);
+            string rawMode = Read(arguments, environment, ModeFlag, ModeVariable);
 
             if (!TryPort(rawPort, out int port, out error))
             {
@@ -109,9 +123,32 @@ namespace Blastlands.Core
                 return false;
             }
 
-            options = new ServerOptions(port, matchId, players, humans, lobby, token);
+            if (!TryMode(rawMode, out GameMode mode, out error))
+            {
+                return false;
+            }
+
+            options = new ServerOptions(port, matchId, players, humans, lobby, token, mode);
             error = null;
             return true;
+        }
+
+        private static bool TryMode(string raw, out GameMode mode, out string error)
+        {
+            error = null;
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                mode = GameMode.Arena;
+                return true;
+            }
+
+            if (GameModeTokens.TryRead(raw.Trim(), out mode))
+            {
+                return true;
+            }
+
+            error = $"{ModeFlag} must be arena, classic or classic_blinded, not \"{raw.Trim()}\".";
+            return false;
         }
 
         private static bool TryPort(string raw, out int port, out string error)

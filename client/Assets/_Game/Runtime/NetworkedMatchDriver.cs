@@ -87,6 +87,7 @@ namespace Blastlands.Runtime
                 host = invite.Host;
                 port = invite.Port;
                 ticket = invite.Ticket;
+                mode = invite.Mode;
             }
 
             devices = new PlayerDevices(1);
@@ -155,8 +156,7 @@ namespace Blastlands.Runtime
             // chosen. The seed only decides the board drawn before the first snapshot
             // lands, and every snapshot carries every tile, so it does not have to match
             // the server's. The size and the player count do.
-            ArenaSettings arena = (mode == GameMode.Arena ? ArenaSettings.Default : ArenaSettings.Classic)
-                .Resized(assignment.Width, assignment.Height);
+            ArenaSettings arena = ArenaSettings.For(mode).Resized(assignment.Width, assignment.Height);
 
             // The codec refuses a player count no board could seat, but a board keeps
             // fewer spawns than it could when the island swallows one, and only

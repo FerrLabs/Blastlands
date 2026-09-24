@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::error::LobbyError;
+use crate::modes::GameMode;
 use crate::names::DisplayName;
 use crate::ports::PortPool;
 
@@ -48,6 +49,7 @@ pub struct Match {
     pub host: DisplayName,
     pub players: Vec<DisplayName>,
     pub max_players: u8,
+    pub mode: GameMode,
     /// Seats the host claimed for a bot ahead of start, so a human cannot join into
     /// one. The instance already fills every unclaimed seat with a bot regardless,
     /// so this only ever narrows who may still join, never who runs the match.
@@ -76,6 +78,7 @@ pub struct CreateMatch {
     pub name: DisplayName,
     pub host: DisplayName,
     pub max_players: u8,
+    pub mode: GameMode,
     pub host_address: IpAddr,
 }
 
@@ -111,6 +114,7 @@ pub struct Assignment {
     pub match_id: MatchId,
     pub players: u8,
     pub humans: u8,
+    pub mode: GameMode,
 }
 
 #[derive(Debug)]
@@ -184,6 +188,7 @@ impl MatchDirectory {
             players: vec![request.host.clone()],
             host: request.host,
             max_players: request.max_players,
+            mode: request.mode,
             bots: 0,
             state: MatchState::WaitingForPlayers,
             endpoint: GameServerEndpoint {
@@ -329,6 +334,7 @@ impl MatchDirectory {
                 // for the humans only and hands the other seats to bots.
                 players: entry.max_players,
                 humans: u8::try_from(entry.players.len()).unwrap_or(entry.max_players),
+                mode: entry.mode,
             })
     }
 
@@ -443,6 +449,7 @@ mod tests {
                     host: name("Bryan"),
                     max_players,
                     host_address: caller(1),
+                    mode: GameMode::Arena,
                 },
                 Instant::now(),
                 0,
@@ -484,6 +491,7 @@ mod tests {
                 host: name("Bryan"),
                 max_players: 2,
                 host_address: caller(1),
+                mode: GameMode::Arena,
             },
             Instant::now(),
             0,
@@ -503,6 +511,7 @@ mod tests {
                     host: name("Bryan"),
                     max_players: count,
                     host_address: caller(1),
+                    mode: GameMode::Arena,
                 },
                 Instant::now(),
                 0,
@@ -528,6 +537,7 @@ mod tests {
                 host: name("Bryan"),
                 max_players: 99,
                 host_address: caller(1),
+                mode: GameMode::Arena,
             },
             Instant::now(),
             0,
@@ -723,6 +733,7 @@ mod tests {
                 match_id: entry.id,
                 players: 4,
                 humans: 3,
+                mode: GameMode::Arena,
             }),
             "the fourth seat nobody took is built and left to a bot, and not waited for"
         );
@@ -785,6 +796,7 @@ mod tests {
                     host: name("Bryan"),
                     max_players: 4,
                     host_address: address,
+                    mode: GameMode::Arena,
                 },
                 now,
                 0,
@@ -915,6 +927,7 @@ mod tests {
                 match_id: id,
                 players: 4,
                 humans: 2,
+                mode: GameMode::Arena,
             }),
             "the instance builds every seat the host opened and waits for the joined players only"
         );
@@ -1010,6 +1023,7 @@ mod tests {
                         host: name("Bryan"),
                         max_players: 4,
                         host_address: caller(1),
+                        mode: GameMode::Arena,
                     },
                     now,
                     2,
@@ -1023,6 +1037,7 @@ mod tests {
                 host: name("Bryan"),
                 max_players: 4,
                 host_address: caller(1),
+                mode: GameMode::Arena,
             },
             now,
             2,
@@ -1036,6 +1051,7 @@ mod tests {
                     host: name("Sam"),
                     max_players: 4,
                     host_address: caller(2),
+                    mode: GameMode::Arena,
                 },
                 now,
                 2,
