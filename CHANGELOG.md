@@ -4,6 +4,16 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.95] - 2026-09-24
+
+### Features
+
+- feat(lobby): add a bomb logo to the download page and its tab (#88)
+
+### Bug Fixes
+
+- fix(sim): spend a picked-up bomb kind on the bomb it arms (#83)
+
 ## [26.9.94] - 2026-09-24
 
 ### Features
