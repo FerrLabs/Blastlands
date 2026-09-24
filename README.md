@@ -90,7 +90,7 @@ lobby yet.
 
 - Four arena themes (Wasteland, Desert, Scorched, Overgrown), one picked per match.
 - Low-poly Synty art, with a 3D preview of your character in the lobby.
-- A camera that follows your player online, and global or split views locally. `--no-shake`
+- One camera framing every living player, online and locally. `--no-shake`
   on the command line turns off the screen shake.
 - Positional sound: a fuse just off screen is heard from its side.
 
