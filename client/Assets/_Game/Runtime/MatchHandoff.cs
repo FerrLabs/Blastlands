@@ -14,14 +14,19 @@ namespace Blastlands.Runtime
     {
         private static MatchInvite pending;
 
+        // Who the player was when they left the lobby, so coming back from a match
+        // drops them on the match list rather than asking their name again.
+        public static string Player { get; private set; } = string.Empty;
+
         public static bool Waiting
         {
             get { return pending.CanConnect; }
         }
 
-        public static void Leave(MatchInvite invite)
+        public static void Leave(MatchInvite invite, string player)
         {
             pending = invite;
+            Player = player ?? string.Empty;
         }
 
         public static MatchInvite Take()

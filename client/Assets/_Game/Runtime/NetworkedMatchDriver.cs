@@ -3,6 +3,7 @@ using Blastlands.Core;
 using Blastlands.Core.Lobby;
 using Blastlands.Core.Net;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using PlayerInput = Blastlands.Core.PlayerInput;
 
 namespace Blastlands.Runtime
@@ -32,6 +33,11 @@ namespace Blastlands.Runtime
         private const int InterpolationDelayTicks = 3;
         private const int InterpolationSnapTicks = 15;
         private const int TrailLength = 32;
+        private const string LobbyScene = "Lobby";
+
+        // Long enough to watch the blast that ended it, short enough that nobody wonders
+        // whether the game has frozen.
+        private const float SecondsBeforeResult = 2f;
 
         [SerializeField] private MatchView view;
         [SerializeField] private MatchHud hud;
@@ -57,6 +63,8 @@ namespace Blastlands.Runtime
         private bool bound;
         private bool complained;
         private float waited;
+        private float sinceEnded;
+        private VictoryScreen victory;
 
         // Long enough that a slow connect is not called a fault.
         private const float SecondsBeforeComplaining = 8f;
@@ -285,6 +293,38 @@ namespace Blastlands.Runtime
             }
 
             Render();
+            ShowResult();
+        }
+
+        // An online match is a single round: the server announces the result and shuts
+        // down, so the only way on from here is back to the lobby for another one.
+        private void ShowResult()
+        {
+            if (victory != null || state.Outcome == RoundOutcome.Running)
+            {
+                return;
+            }
+
+            sinceEnded += Time.deltaTime;
+            if (sinceEnded < SecondsBeforeResult)
+            {
+                return;
+            }
+
+            victory = VictoryScreen.Open(
+                transform,
+                view == null ? null : view.Art,
+                VictoryCard.ForRound(state, transport.Seat),
+                "Play again",
+                BackToLobby,
+                null,
+                null);
+        }
+
+        private void BackToLobby()
+        {
+            transport.Stop();
+            SceneManager.LoadScene(LobbyScene);
         }
 
         // Said once, after long enough that a slow connection has had its chance. The

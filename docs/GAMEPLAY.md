@@ -11,6 +11,14 @@
 the match. Rounds are short on purpose (60–90 s) with a sudden-death timer, so a lobby of
 friends plays a lot of them in a sitting.
 
+**When it ends**, the winner is shown on a screen of its own, as the character they played,
+turning slowly under the result: VICTORY for whoever won, DEFEAT for everyone else, DRAW when
+nobody was left. Online a match is a single round, so the only way on is Play again, which goes
+back to the match list with the name already filled in. A local series gets the screen once
+somebody has taken it, with the score, Play again for a fresh series, and a way back to the
+lobby. The screen waits two seconds, or the usual pause between rounds, so the blast that
+settled it is seen first.
+
 ## Game modes
 
 Three, picked before the match starts.
