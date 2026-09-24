@@ -11,6 +11,7 @@ use crate::error::LobbyError;
 use crate::modes::GameMode;
 use crate::names::DisplayName;
 use crate::ports::PortPool;
+use crate::skills::BotSkill;
 
 pub const MIN_PLAYERS: u8 = 2;
 pub const MAX_PLAYERS: u8 = 8;
@@ -50,6 +51,7 @@ pub struct Match {
     pub players: Vec<DisplayName>,
     pub max_players: u8,
     pub mode: GameMode,
+    pub bot_skill: BotSkill,
     /// Seats the host claimed for a bot ahead of start, so a human cannot join into
     /// one. The instance already fills every unclaimed seat with a bot regardless,
     /// so this only ever narrows who may still join, never who runs the match.
@@ -79,6 +81,7 @@ pub struct CreateMatch {
     pub host: DisplayName,
     pub max_players: u8,
     pub mode: GameMode,
+    pub bot_skill: BotSkill,
     pub host_address: IpAddr,
 }
 
@@ -115,6 +118,7 @@ pub struct Assignment {
     pub players: u8,
     pub humans: u8,
     pub mode: GameMode,
+    pub bot_skill: BotSkill,
 }
 
 #[derive(Debug)]
@@ -189,6 +193,7 @@ impl MatchDirectory {
             host: request.host,
             max_players: request.max_players,
             mode: request.mode,
+            bot_skill: request.bot_skill,
             bots: 0,
             state: MatchState::WaitingForPlayers,
             endpoint: GameServerEndpoint {
@@ -339,6 +344,7 @@ impl MatchDirectory {
                 players: entry.max_players,
                 humans: u8::try_from(entry.players.len()).unwrap_or(entry.max_players),
                 mode: entry.mode,
+                bot_skill: entry.bot_skill,
             })
     }
 
@@ -460,6 +466,7 @@ mod tests {
                     max_players,
                     host_address: caller(1),
                     mode: GameMode::Arena,
+                    bot_skill: BotSkill::default(),
                 },
                 Instant::now(),
                 0,
@@ -502,6 +509,7 @@ mod tests {
                 max_players: 2,
                 host_address: caller(1),
                 mode: GameMode::Arena,
+                bot_skill: BotSkill::default(),
             },
             Instant::now(),
             0,
@@ -522,6 +530,7 @@ mod tests {
                     max_players: count,
                     host_address: caller(1),
                     mode: GameMode::Arena,
+                    bot_skill: BotSkill::default(),
                 },
                 Instant::now(),
                 0,
@@ -548,6 +557,7 @@ mod tests {
                 max_players: 99,
                 host_address: caller(1),
                 mode: GameMode::Arena,
+                bot_skill: BotSkill::default(),
             },
             Instant::now(),
             0,
@@ -744,6 +754,7 @@ mod tests {
                 players: 4,
                 humans: 3,
                 mode: GameMode::Arena,
+                bot_skill: BotSkill::Normal,
             }),
             "the fourth seat nobody took is built and left to a bot, and not waited for"
         );
@@ -807,6 +818,7 @@ mod tests {
                     max_players: 4,
                     host_address: address,
                     mode: GameMode::Arena,
+                    bot_skill: BotSkill::default(),
                 },
                 now,
                 0,
@@ -941,6 +953,7 @@ mod tests {
                 players: 4,
                 humans: 2,
                 mode: GameMode::Arena,
+                bot_skill: BotSkill::Normal,
             }),
             "the instance builds every seat the host opened and waits for the joined players only"
         );
@@ -1037,6 +1050,7 @@ mod tests {
                         max_players: 4,
                         host_address: caller(1),
                         mode: GameMode::Arena,
+                        bot_skill: BotSkill::default(),
                     },
                     now,
                     2,
@@ -1051,6 +1065,7 @@ mod tests {
                 max_players: 4,
                 host_address: caller(1),
                 mode: GameMode::Arena,
+                bot_skill: BotSkill::default(),
             },
             now,
             2,
@@ -1065,6 +1080,7 @@ mod tests {
                     max_players: 4,
                     host_address: caller(2),
                     mode: GameMode::Arena,
+                    bot_skill: BotSkill::default(),
                 },
                 now,
                 2,

@@ -21,6 +21,7 @@ namespace Blastlands.Core
         public const string LobbyFlag = "--lobby";
         public const string TokenFlag = "--token";
         public const string ModeFlag = "--mode";
+        public const string BotsFlag = "--bots";
 
         public const string PortVariable = "BLASTLANDS_PORT";
         public const string MatchVariable = "BLASTLANDS_MATCH";
@@ -28,6 +29,7 @@ namespace Blastlands.Core
         public const string HumansVariable = "BLASTLANDS_HUMANS";
         public const string LobbyVariable = "BLASTLANDS_LOBBY";
         public const string ModeVariable = "BLASTLANDS_MODE";
+        public const string BotsVariable = "BLASTLANDS_BOTS";
 
         // The same name the lobby reads it under, because it is the same secret. Two
         // names for one value is how they end up different on one host.
@@ -40,9 +42,11 @@ namespace Blastlands.Core
             int expectedHumans,
             string lobbyUrl,
             string instanceToken,
-            GameMode mode)
+            GameMode mode,
+            BotSkill botSkill)
         {
             Mode = mode;
+            BotSkill = botSkill;
             ListenPort = listenPort;
             MatchId = matchId;
             ExpectedPlayers = expectedPlayers;
@@ -70,6 +74,8 @@ namespace Blastlands.Core
         // passes it, and every match it could have been handed was an Arena one.
         public GameMode Mode { get; }
 
+        public BotSkill BotSkill { get; }
+
         // Arguments win over the environment. The environment is how a host is
         // configured once; the arguments are how one instance out of several on that
         // host is told what it is, so the more specific of the two has to be the one
@@ -92,6 +98,7 @@ namespace Blastlands.Core
             string rawLobby = Read(arguments, environment, LobbyFlag, LobbyVariable);
             string rawToken = Read(arguments, environment, TokenFlag, TokenVariable);
             string rawMode = Read(arguments, environment, ModeFlag, ModeVariable);
+            string rawBots = Read(arguments, environment, BotsFlag, BotsVariable);
 
             if (!TryPort(rawPort, out int port, out error))
             {
@@ -128,7 +135,12 @@ namespace Blastlands.Core
                 return false;
             }
 
-            options = new ServerOptions(port, matchId, players, humans, lobby, token, mode);
+            if (!TryBots(rawBots, out BotSkill bots, out error))
+            {
+                return false;
+            }
+
+            options = new ServerOptions(port, matchId, players, humans, lobby, token, mode, bots);
             error = null;
             return true;
         }
@@ -148,6 +160,24 @@ namespace Blastlands.Core
             }
 
             error = $"{ModeFlag} must be arena, classic or classic_blinded, not \"{raw.Trim()}\".";
+            return false;
+        }
+
+        private static bool TryBots(string raw, out BotSkill skill, out string error)
+        {
+            error = null;
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                skill = BotSkill.Normal;
+                return true;
+            }
+
+            if (BotSkills.TryRead(raw.Trim(), out skill))
+            {
+                return true;
+            }
+
+            error = $"{BotsFlag} must be easy, normal or hard, not \"{raw.Trim()}\".";
             return false;
         }
 

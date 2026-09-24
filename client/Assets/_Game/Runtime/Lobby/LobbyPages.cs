@@ -133,6 +133,49 @@ namespace Blastlands.Runtime
             }
         }
 
+        public static void Setup(
+            RectTransform root,
+            LobbyArt art,
+            GameMode mode,
+            int seats,
+            BotSkill bots,
+            Action<GameMode> pickMode,
+            Action<int> pickSeats,
+            Action<BotSkill> pickBots,
+            Action create,
+            Action back)
+        {
+            RectTransform panel = LobbyChrome.Panel(root, art, "Setup", new Vector2(900f, 700f));
+            LobbyChrome.Label(panel, art, "HOST A MATCH", true, new Vector2(0f, 250f), 800f);
+            Modes(panel, art, mode, pickMode, new Vector2(0f, 150f));
+            Stepper(panel, art, "Seats: " + seats, new Vector2(0f, 55f),
+                () => pickSeats(Seats.Step(seats, -1)), () => pickSeats(Seats.Step(seats, 1)));
+            Stepper(panel, art, "Bots: " + Named(bots), new Vector2(0f, -40f),
+                () => pickBots(BotSkills.Step(bots, -1)), () => pickBots(BotSkills.Step(bots, 1)));
+            LobbyChrome.Press(panel, art, "Create", new Vector2(0f, -155f), WideButton, create);
+            LobbyChrome.Press(panel, art, "Back", new Vector2(0f, -265f), WideButton, back);
+        }
+
+        private static void Stepper(RectTransform panel, LobbyArt art, string text, Vector2 at, Action down, Action up)
+        {
+            LobbyChrome.Press(panel, art, "<", at + new Vector2(-250f, 0f), ArrowButton, down);
+            LobbyChrome.Label(panel, art, text, false, at, 400f);
+            LobbyChrome.Press(panel, art, ">", at + new Vector2(250f, 0f), ArrowButton, up);
+        }
+
+        public static string Named(BotSkill skill)
+        {
+            switch (skill)
+            {
+                case BotSkill.Easy:
+                    return "Easy";
+                case BotSkill.Hard:
+                    return "Hard";
+                default:
+                    return "Normal";
+            }
+        }
+
         private static void Player(RectTransform panel, LobbyArt art, string player, Action rename)
         {
             TMP_Text name = LobbyChrome.Label(panel, art, player, false, new Vector2(RosterCentre - 120f, 390f), 300f);

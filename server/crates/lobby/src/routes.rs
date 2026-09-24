@@ -21,6 +21,7 @@ use crate::matches::{
 use crate::modes::GameMode;
 use crate::names::DisplayName;
 use crate::release::{ReleaseInfo, Releases};
+use crate::skills::BotSkill;
 use crate::throttle::RateLimiter;
 use crate::tickets::{GameTicket, TicketSigner};
 use crate::version::ClientVersion;
@@ -133,6 +134,8 @@ pub struct CreateMatchRequest {
     #[serde(default)]
     pub mode: GameMode,
     #[serde(default)]
+    pub bot_skill: BotSkill,
+    #[serde(default)]
     pub character: Option<Character>,
 }
 
@@ -152,6 +155,7 @@ pub struct MatchSummary {
     pub bots: u8,
     pub max_players: u8,
     pub mode: GameMode,
+    pub bot_skill: BotSkill,
 }
 
 #[derive(Debug, Serialize)]
@@ -171,6 +175,7 @@ impl From<&Match> for MatchSummary {
             bots: entry.bots,
             max_players: entry.max_players,
             mode: entry.mode,
+            bot_skill: entry.bot_skill,
         }
     }
 }
@@ -347,6 +352,7 @@ async fn create_match(
             host: request.host,
             max_players: request.max_players,
             mode: request.mode,
+            bot_skill: request.bot_skill,
             host_address: address,
         },
         now,
@@ -1666,6 +1672,68 @@ mod tests {
         )
         .await;
         assert_eq!(assigned["mode"], "classic");
+    }
+
+    #[tokio::test]
+    async fn eight_seats_and_the_bot_skill_reach_the_instance() {
+        let router = router();
+        let response = router
+            .clone()
+            .oneshot(post_json(
+                "/v1/matches",
+                json!({ "name": "Full house", "host": "Bryan", "max_players": 8, "bot_skill": "hard" }),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::CREATED);
+        let created = body_json(response).await;
+        assert_eq!(created["bot_skill"], "hard");
+        assert_eq!(created["max_players"], 8);
+
+        let id = created["id"].as_str().expect("an id").to_owned();
+        let ticket = created["ticket"].as_str().expect("a ticket").to_owned();
+        let port = created["endpoint"]["port"].as_u64().expect("a port");
+
+        join_match_on(&router, &id, "Sam").await;
+        router
+            .clone()
+            .oneshot(post_json(
+                &format!("/v1/matches/{id}/start"),
+                json!({ "ticket": ticket }),
+            ))
+            .await
+            .unwrap();
+
+        let assigned = body_json(
+            router
+                .oneshot(instance_get(&format!("/internal/instances/{port}")))
+                .await
+                .unwrap(),
+        )
+        .await;
+        assert_eq!(assigned["players"], 8);
+        assert_eq!(assigned["humans"], 2);
+        assert_eq!(assigned["bot_skill"], "hard");
+    }
+
+    #[tokio::test]
+    async fn a_match_created_without_a_bot_skill_gets_normal_bots() {
+        let created = create_match_on(&router(), "Old client").await;
+
+        assert_eq!(created["bot_skill"], "normal");
+    }
+
+    #[tokio::test]
+    async fn a_bot_skill_the_game_does_not_have_is_refused() {
+        let response = router()
+            .oneshot(post_json(
+                "/v1/matches",
+                json!({ "name": "Nope", "host": "Bryan", "max_players": 2, "bot_skill": "nightmare" }),
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
     }
 
     #[tokio::test]

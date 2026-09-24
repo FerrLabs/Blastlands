@@ -202,12 +202,14 @@ namespace Blastlands.Runtime
             int maxPlayers,
             CharacterKind character,
             GameMode mode,
+            BotSkill bots,
             Action<LobbyResult<MatchHosting>> done)
         {
             string body = "{\"name\":\"" + Escape(name)
                 + "\",\"host\":\"" + Escape(host)
                 + "\",\"max_players\":" + maxPlayers + Character(character)
-                + ",\"mode\":\"" + GameModeTokens.Write(mode) + "\"}";
+                + ",\"mode\":\"" + GameModeTokens.Write(mode)
+                + "\",\"bot_skill\":\"" + BotSkills.Write(bots) + "\"}";
 
             using (UnityWebRequest request = Post("/v1/matches", body))
             {

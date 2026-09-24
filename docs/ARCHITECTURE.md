@@ -35,7 +35,9 @@ Responsibilities:
   The body may name a `mode`, `arena` (the default), `classic` or `classic_blinded`. It is on
   every listing, in the create response, and in the instance's assignment, which the
   entrypoint passes to the binary as `--mode`. A client builds the same rules from the mode in
-  its invite, since prediction runs them before the first snapshot lands.
+  its invite, since prediction runs them before the first snapshot lands. `bot_skill`
+  (`easy`, `normal` by default, or `hard`) travels the same way, as `--bots`, and only the
+  server reads it. `max_players` runs from 2 to 8, the most spawns a board generates.
 - `POST /v1/matches/{id}/join` — reserve a slot, return the endpoint and a join ticket.
 - `POST /v1/matches/{id}/bots` — host-only, claims an open seat for a bot instead of
   waiting for someone to join it. A game server instance already fills every seat nobody
@@ -406,7 +408,7 @@ fails silently: the snapshot refuses a board of a different size rather than wri
 into the wrong rows, so the match looks connected and stands perfectly still.
 
 The image's entrypoint is that loop rather than the player: it polls, and on an answer
-runs the binary with `--match`, `--players`, `--humans` and `--mode`. The port, the lobby URL and the token
+runs the binary with `--match`, `--players`, `--humans`, `--mode` and `--bots`. The port, the lobby URL and the token
 stay in the environment, which is where the binary already reads them from and, for the
 token, keeps it out of the process table.
 

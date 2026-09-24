@@ -79,6 +79,28 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
+        public void TheBotSkillIsReadAndDefaultsToNormal()
+        {
+            var arguments = new List<string>(Complete) { "--bots", "hard" };
+            Assert.That(ServerOptions.TryRead(arguments, NoEnvironment, out ServerOptions fromFlag, out string error), Is.True, error);
+            Assert.That(ServerOptions.TryRead(Complete, Environment("BLASTLANDS_BOTS", "easy"), out ServerOptions fromEnv, out error), Is.True, error);
+            Assert.That(ServerOptions.TryRead(Complete, NoEnvironment, out ServerOptions unnamed, out error), Is.True, error);
+
+            Assert.That(fromFlag.BotSkill, Is.EqualTo(BotSkill.Hard));
+            Assert.That(fromEnv.BotSkill, Is.EqualTo(BotSkill.Easy));
+            Assert.That(unnamed.BotSkill, Is.EqualTo(BotSkill.Normal), "an entrypoint from before the choice existed");
+        }
+
+        [Test]
+        public void ABotSkillNobodyKnowsIsRefused()
+        {
+            var arguments = new List<string>(Complete) { "--bots", "nightmare" };
+
+            Assert.That(ServerOptions.TryRead(arguments, NoEnvironment, out _, out string error), Is.False);
+            Assert.That(error, Does.Contain("--bots"));
+        }
+
+        [Test]
         public void WithoutAHumanCountEverySeatIsWaitedFor()
         {
             Assert.That(ServerOptions.TryRead(Complete, NoEnvironment, out ServerOptions options, out string error), Is.True, error);
