@@ -26,8 +26,8 @@ pub fn page(release: Option<&ReleaseInfo>, installer: Option<&InstallerInfo>) ->
     };
 
     TEMPLATE
-        .replace(ACTION_SLOT, &action)
         .replace(NOTE_SLOT, note)
+        .replace(ACTION_SLOT, &action)
 }
 
 fn available(download_url: &str, version: impl std::fmt::Display, sha256: &str) -> String {
