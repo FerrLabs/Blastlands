@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.97] - 2026-09-24
+
+### Features
+
+- feat(lobby): use a render of the Synty grenade as the page logo (#92)
+
 ## [26.9.96] - 2026-09-24
 
 ### Bug Fixes
