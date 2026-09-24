@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace Blastlands.Core
@@ -29,6 +30,16 @@ namespace Blastlands.Core
 
         public static GeneratedArena Generate(ArenaSettings settings, uint seed)
         {
+            return Generate(settings, seed, MostSpawns);
+        }
+
+        // Only the seats a match fills are cleared on a lattice. The unused ones sit
+        // along the edges between the corners, and on a board the classic size their
+        // pockets meet: every corner then starts joined to every other round the rim,
+        // which is the opposite of opening by digging. An island is left as it was,
+        // with every spawn cleared, since nothing there was measured the other way.
+        public static GeneratedArena Generate(ArenaSettings settings, uint seed, int seated)
+        {
             var random = new DeterministicRandom(seed);
             var arena = new Arena(settings.Width, settings.Height);
 
@@ -43,7 +54,8 @@ namespace Blastlands.Core
             }
 
             IReadOnlyList<GridPos> spawns = ChooseSpawns(arena);
-            HashSet<GridPos> reserved = ReserveSpawns(arena, spawns);
+            int cleared = settings.Board == BoardKind.Lattice ? Math.Min(seated, spawns.Count) : spawns.Count;
+            HashSet<GridPos> reserved = ReserveSpawns(arena, spawns, cleared);
             if (settings.Board == BoardKind.Lattice)
             {
                 SprinkleCover(arena, reserved, settings.SoftBlockPercent, random);
@@ -195,11 +207,11 @@ namespace Blastlands.Core
             }
         }
 
-        private static HashSet<GridPos> ReserveSpawns(Arena arena, IReadOnlyList<GridPos> spawns)
+        private static HashSet<GridPos> ReserveSpawns(Arena arena, IReadOnlyList<GridPos> spawns, int count)
         {
             var reserved = new HashSet<GridPos>();
 
-            for (int i = 0; i < spawns.Count; i++)
+            for (int i = 0; i < count; i++)
             {
                 GridPos spawn = spawns[i];
                 reserved.Add(spawn);

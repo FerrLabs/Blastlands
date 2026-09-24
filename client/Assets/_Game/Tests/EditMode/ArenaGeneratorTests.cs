@@ -152,6 +152,32 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
+        public void ALatticeClearsOnlyTheSeatsTheMatchFills()
+        {
+            var packed = new ArenaSettings(15, 13, 100, 0, IslandSettings.Default, BoardKind.Lattice);
+
+            GeneratedArena four = ArenaGenerator.Generate(packed, 42u, 4);
+            GeneratedArena eight = ArenaGenerator.Generate(packed, 42u, 8);
+            GridPos emptyEdgeSeat = four.Spawns[4];
+
+            for (int seat = 0; seat < 4; seat++)
+            {
+                Assert.That(four.Arena[four.Spawns[seat]], Is.EqualTo(TileKind.Floor), $"seat {seat} was not cleared");
+            }
+
+            Assert.That(four.Arena[emptyEdgeSeat], Is.EqualTo(TileKind.SoftBlock), "an empty seat was cleared anyway");
+            Assert.That(eight.Arena[emptyEdgeSeat], Is.EqualTo(TileKind.Floor), "a filled seat was not cleared");
+        }
+
+        [Test]
+        public void AnIslandStillClearsEverySeatHoweverFewAreFilled()
+        {
+            Assert.That(
+                Snapshot(ArenaGenerator.Generate(ArenaSettings.Default, 42u, 2).Arena),
+                Is.EqualTo(Snapshot(ArenaGenerator.Generate(ArenaSettings.Default, 42u).Arena)));
+        }
+
+        [Test]
         public void Generate_KeepsEverySpawnAndItsEscapeTilesWalkable()
         {
             GeneratedArena generated = ArenaGenerator.Generate(new ArenaSettings(15, 13, 100), 42u);

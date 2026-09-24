@@ -20,7 +20,7 @@ namespace Blastlands.Core
             Func<int, CharacterKind> characterOf)
         {
             // Generated first, because the island decides where its own spawns are.
-            GeneratedArena generated = ArenaGenerator.Generate(arenaSettings, seed);
+            GeneratedArena generated = ArenaGenerator.Generate(arenaSettings, seed, playerCount);
             Arena arena = generated.Arena;
             IReadOnlyList<GridPos> spawns = generated.Spawns;
 

@@ -19,13 +19,17 @@ Three, picked before the match starts.
 permanent on it, cover you stand in, bombs found on the ground and spent for good, dash and
 shove, and vision you can hide from.
 
-**Classic** is the board a bomberman inherits. A full rectangle with a border ring and an
-indestructible pillar on every even/even coordinate, soft blocks sprinkled over the rest at
-40%, no bushes and no drop. That share is the one thing tuned rather than inherited: at the
-75% this board first shipped with, a player could walk to eight tiles before having to bomb
-something, which is a spawn pocket rather than an opening. Forty gives them around forty
-while still leaving 93% of spawn pairs walled off from each other, so the mode opens by
-digging toward somebody rather than by finding them. Bombs are owned rather than found: you hold them, and each one
+**Classic** is the board a bomberman inherits, at the size it inherits it: 15 by 13 with the
+border, so 13 by 11 to play on, an indestructible pillar on every even/even coordinate, four
+corners to start in, soft blocks sprinkled over the rest at 40%, no bushes and no drop. It was
+25 by 21, Arena's size, until that played as a large maze rather than as the board people
+remember. At this size only the seats a match fills get their spawn pocket cleared: clearing
+the empty edge seats too joined every corner to every other round the rim.
+
+The 40% was re-measured at this size. A player can walk to about 29 tiles before having to
+bomb anything, three times the spawn pocket, and 83% of spawn pairs start walled off from each
+other, so the mode opens by digging toward somebody. At 45% the reach halves toward the pocket
+itself. Bombs are owned rather than found: you hold them, and each one
 comes back once it has gone off. No dash, no shove, and the whole board is visible to
 everyone, so the only verb is placing a bomb.
 
@@ -52,11 +56,8 @@ with it switched off, Classic resolves 5 of 12 on its own against Arena's 11, an
 48 against Arena's 35. The lattice is the whole difference: a pillar every other tile gives
 far more to hide behind, and bots that can hide do.
 
-Those two figures were taken while Classic still rolled soft blocks at 75%, and have not been
-run again since it dropped to 40%. The direction is not in doubt, the lattice is still there
-and still the difference, but treat the numbers as describing the old board. Density turned
-out to move Classic's death count very little in a separate sweep, between 62 and 75 of 96
-across the whole range from 25% to 75%, so they are unlikely to be far off.
+Those two figures describe the old 25 by 21 board at 75%. On the classic board, twenty-four
+Hard four-bot matches with sudden death off kill 49 of 96, and every match resolves with it on.
 
 The rules that differ live in a `RuleSet` the simulation asks by name, rather than an enum it
 switches on, so a third mode answers the same questions instead of adding a third branch in a
