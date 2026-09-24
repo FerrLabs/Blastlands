@@ -4,6 +4,13 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.85] - 2026-09-24
+
+### Features
+
+- feat(lobby): serve a download page at the root (#62)
+- feat(lobby): arena backdrop and update card in the bottom right (#60)
+
 ## [26.9.83] - 2026-09-24
 
 ### Features
