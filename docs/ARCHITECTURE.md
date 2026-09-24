@@ -298,6 +298,13 @@ against `https://api.blastlands.ferrlabs.com` unless `--lobby <url>` says otherw
 offered and the player takes it with `F5`. Other platforms never self-update: the release
 publishes a Windows archive only.
 
+**Installer.** Each release also carries `Blastlands-Setup-<tag>.exe`, built by `installer/Blastlands.nsi`
+(NSIS, on the publishing job). It installs for the current user under `%LOCALAPPDATA%\Programs\Blastlands`,
+adds Start menu and desktop shortcuts and an entry in Windows' installed apps, and needs no administrator
+rights. The game itself goes in a `Game` folder and the uninstaller beside it, because the updater replaces
+the whole game folder and would take an uninstaller inside it along. The zip stays: it is what the updater
+downloads and checks. Neither file is code signed, so SmartScreen warns on the first launch.
+
 **Version and update button.** The lobby screens show the running build in the bottom right
 corner. When the lobby announces a newer one, an Update button with a download icon appears
 above it and starts the same `ClientUpdater` the `F5` key does, so the download, the SHA-256
