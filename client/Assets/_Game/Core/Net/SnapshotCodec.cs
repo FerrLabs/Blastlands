@@ -227,6 +227,10 @@ namespace Blastlands.Core.Net
                 writer.Byte((byte)player.Character);
                 writer.Int16(player.AbilityCooldownRemaining);
                 writer.Int16(player.VanishTicksRemaining);
+                writer.Bool(player.CanKick);
+                writer.Bool(player.HasRemote);
+                writer.Byte((byte)player.Curse);
+                writer.Int16(player.CurseTicksRemaining);
             }
         }
 
@@ -261,7 +265,11 @@ namespace Blastlands.Core.Net
                     RevealTicksRemaining = reader.Int16(),
                     Character = reader.Byte(),
                     AbilityCooldownRemaining = reader.Int16(),
-                    VanishTicksRemaining = reader.Int16()
+                    VanishTicksRemaining = reader.Int16(),
+                    CanKick = reader.Bool(),
+                    HasRemote = reader.Bool(),
+                    Curse = reader.Byte(),
+                    CurseTicksRemaining = reader.Int16()
                 };
 
                 if (!line.IsSane())
@@ -289,6 +297,9 @@ namespace Blastlands.Core.Net
                 writer.Byte((byte)bomb.Bomb.Kind);
                 writer.Int32(bomb.FuseTicks);
                 writer.Int32(bomb.FuseRemaining);
+                writer.Bool(bomb.Remote);
+                writer.Byte((byte)bomb.Sliding);
+                writer.Int16(bomb.SlideCountdown);
             }
         }
 
@@ -308,6 +319,9 @@ namespace Blastlands.Core.Net
                 byte kind = reader.Byte();
                 int fuseTicks = reader.Int32();
                 int fuseRemaining = reader.Int32();
+                bool remote = reader.Bool();
+                byte sliding = reader.Byte();
+                int slideCountdown = reader.Int16();
 
                 // Every coordinate is checked now that these bytes come from a socket
                 // rather than from the writer above. ReadArena has already agreed the
@@ -317,13 +331,17 @@ namespace Blastlands.Core.Net
                 // FuseTicks, so a total of zero is a NaN scale and a log line for every
                 // frame the bomb is on the board. A real total always comes from settings,
                 // so refusing zero costs nothing.
-                if (!arena.Contains(tile) || !IsBombKind(kind) || fuseTicks <= 0 || fuseRemaining < 0)
+                if (!arena.Contains(tile) || !IsBombKind(kind) || fuseTicks <= 0 || fuseRemaining < 0
+                    || !IsDirection(sliding) || slideCountdown < 0)
                 {
                     return false;
                 }
 
                 var bomb = new ActiveBomb(new Bomb(tile, owner, range, (BombKind)kind), fuseTicks);
                 bomb.FuseRemaining = fuseRemaining;
+                bomb.Remote = remote;
+                bomb.Sliding = (Direction)sliding;
+                bomb.SlideCountdown = slideCountdown;
                 scratch.Bombs.Add(bomb);
             }
 
@@ -530,9 +548,10 @@ namespace Blastlands.Core.Net
         public const byte HighestOutcome = (byte)RoundOutcome.Draw;
         public const byte HighestTile = (byte)TileKind.Void;
         public const byte HighestBombKind = (byte)BombKind.Cluster;
-        public const byte HighestPowerUpKind = (byte)PowerUpKind.ClusterBomb;
+        public const byte HighestPowerUpKind = (byte)PowerUpKind.Skull;
         public const byte HighestDirection = (byte)Direction.Up;
         public const byte HighestCharacter = (byte)CharacterKind.Sapper;
+        public const byte HighestCurse = (byte)CurseKind.Dry;
 
         private static bool IsTile(byte raw)
         {
@@ -613,10 +632,16 @@ namespace Blastlands.Core.Net
             public byte Character;
             public int AbilityCooldownRemaining;
             public int VanishTicksRemaining;
+            public bool CanKick;
+            public bool HasRemote;
+            public byte Curse;
+            public int CurseTicksRemaining;
 
             public bool IsSane()
             {
                 return IsBombKind(NextBombKind)
+                    && Curse <= HighestCurse
+                    && CurseTicksRemaining >= 0
                     && Character <= HighestCharacter
                     && IsDirection(Facing)
                     && IsDirection(DashDirection)
@@ -645,6 +670,10 @@ namespace Blastlands.Core.Net
                 player.Character = (CharacterKind)Character;
                 player.AbilityCooldownRemaining = AbilityCooldownRemaining;
                 player.VanishTicksRemaining = VanishTicksRemaining;
+                player.CanKick = CanKick;
+                player.HasRemote = HasRemote;
+                player.Curse = (CurseKind)Curse;
+                player.CurseTicksRemaining = CurseTicksRemaining;
             }
         }
     }

@@ -48,6 +48,14 @@ are part of the game. Soft blocks hide pickups:
 | Pierce bomb | the next bomb burns through soft blocks |
 | Cluster bomb | the next bomb flares one tile around the end of each arm |
 
+Classic and Classic Blinded add three more, under blocks that would otherwise hide nothing:
+
+| Pickup | Effect |
+|---|---|
+| Kick | walking into a bomb sends it sliding until something stops it |
+| Remote | your bombs wait for the ability button instead of a fuse, oldest first |
+| Skull | a random curse for 10 s: slow, too fast, reversed controls, dropping bombs nonstop, or no bombs at all |
+
 ### Characters
 
 Each character starts with a kit and has one ability on a cooldown. Classic modes play

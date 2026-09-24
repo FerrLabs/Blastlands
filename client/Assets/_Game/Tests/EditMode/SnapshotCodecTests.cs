@@ -61,6 +61,28 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
+        public void TheClassicItemsSurviveTheRoundTrip()
+        {
+            var buffer = new byte[SnapshotCodec.MaxSize];
+            MatchState server = Blank(7u);
+            MatchState client = Blank(7u);
+            server.Players[2].CanKick = true;
+            server.Players[2].HasRemote = true;
+            server.Players[2].Curse = CurseKind.Reversed;
+            server.Players[2].CurseTicksRemaining = 123;
+            server.AddBomb(new ActiveBomb(new Bomb(new GridPos(1, 3), 2, 2), 90)
+            {
+                Remote = true,
+                Sliding = Direction.Down,
+                SlideCountdown = 2
+            });
+
+            Assert.That(SnapshotCodec.TryApply(buffer, SnapshotCodec.Write(server, buffer), client), Is.True);
+
+            AssertSame(server, client, 0);
+        }
+
+        [Test]
         public void WhoIsABotSurvivesTheRoundTripBothWays()
         {
             var buffer = new byte[SnapshotCodec.MaxSize];
@@ -269,6 +291,7 @@ namespace Blastlands.Core.Tests
             Assert.That(
                 (int)SnapshotCodec.HighestCharacter,
                 Is.EqualTo(Enum.GetValues(typeof(CharacterKind)).Length - 1));
+            Assert.That((int)SnapshotCodec.HighestCurse, Is.EqualTo(Enum.GetValues(typeof(CurseKind)).Length - 1));
         }
 
         private static void AssertSame(MatchState server, MatchState client, int depth)
@@ -317,6 +340,10 @@ namespace Blastlands.Core.Tests
                     Is.EqualTo(sent.AbilityCooldownRemaining),
                     $"player {i} ability cooldown, depth {depth}");
                 Assert.That(got.VanishTicksRemaining, Is.EqualTo(sent.VanishTicksRemaining), $"player {i} vanish, depth {depth}");
+                Assert.That(got.CanKick, Is.EqualTo(sent.CanKick), $"player {i} kick, depth {depth}");
+                Assert.That(got.HasRemote, Is.EqualTo(sent.HasRemote), $"player {i} remote, depth {depth}");
+                Assert.That(got.Curse, Is.EqualTo(sent.Curse), $"player {i} curse, depth {depth}");
+                Assert.That(got.CurseTicksRemaining, Is.EqualTo(sent.CurseTicksRemaining), $"player {i} curse ticks, depth {depth}");
             }
 
             Assert.That(client.Bombs.Count, Is.EqualTo(server.Bombs.Count), $"bombs, depth {depth}");
@@ -328,6 +355,9 @@ namespace Blastlands.Core.Tests
                 Assert.That(client.Bombs[i].Bomb.Kind, Is.EqualTo(server.Bombs[i].Bomb.Kind));
                 Assert.That(client.Bombs[i].FuseTicks, Is.EqualTo(server.Bombs[i].FuseTicks));
                 Assert.That(client.Bombs[i].FuseRemaining, Is.EqualTo(server.Bombs[i].FuseRemaining));
+                Assert.That(client.Bombs[i].Remote, Is.EqualTo(server.Bombs[i].Remote));
+                Assert.That(client.Bombs[i].Sliding, Is.EqualTo(server.Bombs[i].Sliding));
+                Assert.That(client.Bombs[i].SlideCountdown, Is.EqualTo(server.Bombs[i].SlideCountdown));
             }
 
             Assert.That(client.Flames.Count, Is.EqualTo(server.Flames.Count), $"flames, depth {depth}");

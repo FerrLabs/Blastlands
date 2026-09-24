@@ -12,7 +12,18 @@ namespace Blastlands.Core
             FuseRemaining = fuseTicks;
         }
 
-        public Bomb Bomb { get; }
+        public Bomb Bomb { get; private set; }
+
+        public bool Remote { get; set; }
+
+        public Direction Sliding { get; set; }
+
+        public int SlideCountdown { get; set; }
+
+        public void MoveTo(GridPos tile)
+        {
+            Bomb = new Bomb(tile, Bomb.OwnerId, Bomb.FireRange, Bomb.Kind);
+        }
 
         // What this bomb started with, which is not the same for every bomb: one a
         // player drops burns for MatchSettings.FuseTicks, one the fire lights burns for

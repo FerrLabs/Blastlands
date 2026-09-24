@@ -23,6 +23,9 @@ MonoBehaviour:
   - {fileID: 100000, guid: f9125fa89572f1e40bb082978a85b951, type: 3}
   - {fileID: 100000, guid: 864e9c2aaa070ad4c9c04b6b4de7ebf2, type: 3}
   - {fileID: 104092, guid: 5f58efde17f00ff4cb7bf1e0941f4d93, type: 3}
+  - {fileID: 112324, guid: 8c326d620e23a2b4caf79c89edb5f408, type: 3}
+  - {fileID: 123014, guid: 7f6c22d65d59655449574a79097086f5, type: 3}
+  - {fileID: 166404, guid: 9688c4c1937ea2f4ab16284ff3cd0824, type: 3}
   bomb: {fileID: 100000, guid: 1d51fd171c7a61b40b85e2306881707a, type: 3}
   flame: {fileID: 100000, guid: 756d99540142b5e4a8d174e18a6310d9, type: 3}
   explosionBurst: {fileID: 191186, guid: 079954accd64b32419ec069129c81273, type: 3}
