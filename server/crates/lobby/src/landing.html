@@ -258,7 +258,12 @@ h2 {
   object-fit: contain;
 }
 
-.card-body { padding: 1.1rem 1.2rem 1.3rem; }
+.card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 1.1rem 1.2rem 1.3rem;
+}
 
 .card h3 {
   margin: 0;
@@ -269,22 +274,31 @@ h2 {
 }
 
 .kit {
+  flex: 1;
   margin: 0.2rem 0 0.9rem;
   color: var(--muted);
   font-size: 0.92rem;
 }
 
 .ability {
-  margin: 0;
   padding-top: 0.9rem;
   border-top: 1px solid var(--border);
   font-size: 0.92rem;
 }
 
+.ability p { margin: 0; }
+
+.ability .ability-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin-bottom: 0.3rem;
+}
+
 .ability strong { color: var(--accent-strong); }
 
 .cooldown {
-  float: right;
   color: var(--muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.8rem;
@@ -417,7 +431,6 @@ footer a:hover { color: var(--text); }
   .lineup img { height: 46vh; opacity: 0.3; }
   .portrait { height: 13rem; }
   .card-body { padding: 0.9rem; }
-  .cooldown { float: none; display: block; }
 }
 
 @media (max-width: 420px) {
@@ -463,7 +476,10 @@ footer a:hover { color: var(--text); }
           <div class="card-body">
             <h3>Demolisher</h3>
             <p class="kit">Starts with one more tile of blast reach.</p>
-            <p class="ability"><span class="cooldown">6 s</span><strong>Trigger</strong>: sets off your oldest live bomb right now.</p>
+            <div class="ability">
+              <p class="ability-head"><strong>Trigger</strong><span class="cooldown">6 s cooldown</span></p>
+              <p>Sets off your oldest live bomb right now.</p>
+            </div>
           </div>
         </article>
         <article class="card">
@@ -471,7 +487,10 @@ footer a:hover { color: var(--text); }
           <div class="card-body">
             <h3>Runner</h3>
             <p class="kit">Starts two speed steps faster.</p>
-            <p class="ability"><span class="cooldown">10 s</span><strong>Vanish</strong>: hidden for two seconds wherever you stand.</p>
+            <div class="ability">
+              <p class="ability-head"><strong>Vanish</strong><span class="cooldown">10 s cooldown</span></p>
+              <p>Hidden for two seconds wherever you stand.</p>
+            </div>
           </div>
         </article>
         <article class="card">
@@ -479,7 +498,10 @@ footer a:hover { color: var(--text); }
           <div class="card-body">
             <h3>Grenadier</h3>
             <p class="kit">Cluster bombs that flare past the edge of the blast.</p>
-            <p class="ability"><span class="cooldown">5 s</span><strong>Throw</strong>: your next bomb lands up to three tiles ahead.</p>
+            <div class="ability">
+              <p class="ability-head"><strong>Throw</strong><span class="cooldown">5 s cooldown</span></p>
+              <p>Your next bomb lands up to three tiles ahead.</p>
+            </div>
           </div>
         </article>
         <article class="card">
@@ -487,7 +509,10 @@ footer a:hover { color: var(--text); }
           <div class="card-body">
             <h3>Sapper</h3>
             <p class="kit">Bombs that burn through soft blocks.</p>
-            <p class="ability"><span class="cooldown">10 s</span><strong>Wall</strong>: raises a block in front of you for eight seconds.</p>
+            <div class="ability">
+              <p class="ability-head"><strong>Wall</strong><span class="cooldown">10 s cooldown</span></p>
+              <p>Raises a block in front of you for eight seconds.</p>
+            </div>
           </div>
         </article>
       </div>
