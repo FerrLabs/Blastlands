@@ -97,36 +97,31 @@ namespace Blastlands.Core
             get { return new ArenaSettings(25, 21, 35); }
         }
 
-        // The board a bomberman inherits: odd so the lattice lands inside the border, and
-        // denser than Arena, which is what makes the opening about digging rather than
-        // about finding somebody.
+        // The board a bomberman inherits, at the size it inherits it: 15 by 13 with the
+        // border, so 13 by 11 to play on, a pillar on every even pair, four corners to
+        // start in. Odd is a real constraint here, unlike in Arena where nothing needs it
+        // any more: on an even width the lattice would collide with the border ring.
         //
-        // Odd is a real constraint here, unlike in Arena where nothing needs it any more:
-        // on an even width the lattice would collide with the border ring.
+        // It used to be 25 by 21, Arena's size, which played as a large maze rather than
+        // as the board anybody remembers. At the classic size only the seats a match fills
+        // are cleared (see ArenaGenerator.Generate), otherwise the pockets of the empty
+        // edge seats join every corner round the rim.
         //
-        // Cover fell from 75 to 40. Seventy-five was inherited from the smaller board and
-        // never measured on this one. Deaths, the figure Arena was tuned on, says nothing
-        // here: over 24 seeds of four bots it sits between 62 and 75 of 96 across the
-        // whole range, so density is not what limits how often anybody dies in Classic.
+        // Cover stays at 40, re-measured at this size rather than carried over. Over
+        // twenty spawns of four bots, then twenty-four Hard matches with sudden death off:
         //
-        // What it does limit is whether you can move at all. Counting the tiles a player
-        // can walk to from their spawn without bombing anything, over 80 spawns:
+        //         reach   spawns joined   deaths
+        //   40%    28.8       17%          49/96   <- here
+        //   45%    19.9       10%          59/96
+        //   50%    15.4        7%          62/96
         //
-        //   75%    8      sealed into the spawn pocket
-        //   65%   10
-        //   55%   15
-        //   45%   27
-        //   40%   37   <- here
-        //   35%   66      spawns start joined up 16% of the time, which is Arena's job
-        //
-        // Forty gives roughly five times the room to move while still leaving 93% of
-        // spawn pairs walled off from each other, so the mode opens by digging toward
-        // somebody rather than by finding them. It also stays above Arena's 35, which
-        // matters on its own: the two modes converge into each other if the only
-        // difference left between them is the lattice.
+        // Reach is the tiles a player can walk to from their spawn without bombing. The
+        // spawn pocket alone is about eight, so forty keeps three times that to move in
+        // and still opens by digging toward somebody. Above it the pocket starts to be
+        // all there is. Every match resolved with sudden death on, at every density.
         public static ArenaSettings Classic
         {
-            get { return new ArenaSettings(25, 21, 40, 0, IslandSettings.Default, BoardKind.Lattice); }
+            get { return new ArenaSettings(15, 13, 40, 0, IslandSettings.Default, BoardKind.Lattice); }
         }
 
         // Any size at all. Arena has neither a lattice nor a border to line up with,
