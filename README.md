@@ -44,8 +44,8 @@ are part of the game. Soft blocks hide pickups:
 | Bomb up | carry one more bomb |
 | Fire up | one more tile of blast reach |
 | Speed up | one step faster |
-| Pierce bomb | the next bomb burns through soft blocks |
-| Cluster bomb | the next bomb flares one tile around the end of each arm |
+| Pierce bomb | every bomb from then on burns through soft blocks |
+| Cluster bomb | every bomb from then on flares one tile around the end of each arm |
 
 ### Characters
 
