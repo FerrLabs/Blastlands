@@ -195,7 +195,7 @@ namespace Blastlands.Core
 
         private static int TicksPerTile(MatchState state, PlayerState player)
         {
-            int speed = state.Settings.SpeedFor(player.SpeedSteps);
+            int speed = ClassicItems.Speed(player, state.Settings);
             return speed <= 0 ? SubPos.UnitsPerTile : ((SubPos.UnitsPerTile + speed - 1) / speed);
         }
 
@@ -237,7 +237,7 @@ namespace Blastlands.Core
 
         private static int TicksToCross(MatchState state, PlayerState player, Direction direction)
         {
-            int speed = state.Settings.SpeedFor(player.SpeedSteps);
+            int speed = ClassicItems.Speed(player, state.Settings);
             int x = WithinTile(player.Position.X);
             int y = WithinTile(player.Position.Y);
 

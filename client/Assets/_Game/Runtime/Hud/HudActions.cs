@@ -13,6 +13,7 @@ namespace Blastlands.Runtime
         private readonly HudActionButton ability;
         private readonly HudArt art;
         private CharacterKind dressedAs = CharacterKind.None;
+        private bool dressedRemote;
 
         private HudActions(
             int playerIndex,
@@ -78,10 +79,17 @@ namespace Blastlands.Runtime
 
         private void RenderAbility(MatchState state, PlayerState player, MatchSettings settings)
         {
+            if (player.HasRemote)
+            {
+                RenderRemote(state, player);
+                return;
+            }
+
             bool has = settings.Rules.AllowsCharacters && Abilities.Has(player.Character);
-            if (player.Character != dressedAs)
+            if (player.Character != dressedAs || dressedRemote)
             {
                 dressedAs = player.Character;
+                dressedRemote = false;
                 ability.Dress(art.AbilityOf(dressedAs), NameOf(dressedAs));
             }
 
@@ -91,6 +99,19 @@ namespace Blastlands.Runtime
                 int total = settings.Abilities.CooldownFor(player.Character);
                 ability.Show(Recovered(player.AbilityCooldownRemaining, total), Abilities.CanUseNow(state, player), null);
             }
+        }
+
+        private void RenderRemote(MatchState state, PlayerState player)
+        {
+            if (!dressedRemote)
+            {
+                dressedRemote = true;
+                ability.Dress(art.AbilityOf(CharacterKind.Demolisher), "Detonate");
+            }
+
+            bool armed = ClassicItems.OldestRemoteBomb(state, player.Id) >= 0 && player.AbilityCooldownRemaining <= 0;
+            ability.Reveal(true);
+            ability.Show(Recovered(player.AbilityCooldownRemaining, ClassicItems.RemoteCooldownTicks), armed, null);
         }
 
         private static string NameOf(CharacterKind character)

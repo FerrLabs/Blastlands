@@ -33,7 +33,7 @@ namespace Blastlands.Core
             var state = new MatchState(arena, matchSettings, seed);
 
             foreach (KeyValuePair<GridPos, PowerUpKind> hidden
-                in PowerUpPlacer.Place(arena, matchSettings.PowerUpDropPercent, seed))
+                in PowerUpPlacer.Place(arena, matchSettings.PowerUpDropPercent, seed, matchSettings.Rules.ClassicItems))
             {
                 state.HidePowerUp(hidden.Key, hidden.Value);
             }

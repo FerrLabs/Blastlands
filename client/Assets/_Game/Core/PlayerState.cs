@@ -66,6 +66,14 @@ namespace Blastlands.Core
 
         public BombKind NextBombKind { get; set; }
 
+        public bool CanKick { get; set; }
+
+        public bool HasRemote { get; set; }
+
+        public CurseKind Curse { get; set; }
+
+        public int CurseTicksRemaining { get; set; }
+
         public Direction Facing { get; set; }
 
         // A dash is committed: once it starts it runs its length in the direction it

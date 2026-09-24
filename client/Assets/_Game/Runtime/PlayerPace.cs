@@ -62,7 +62,7 @@ namespace Blastlands.Runtime
                 return new Gait(Still, RestingCadence);
             }
 
-            int step = settings.SpeedFor(player.SpeedSteps);
+            int step = ClassicItems.Speed(player, settings);
             if (step <= 0 || runClipSpeed <= 0f)
             {
                 return new Gait(Still, RestingCadence);

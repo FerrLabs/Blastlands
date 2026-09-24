@@ -25,6 +25,8 @@ namespace Blastlands.Core
                 return;
             }
 
+            inputs = ClassicItems.Cursed(state, inputs);
+
             if (state.Settings.Rules.AllowsShove)
             {
                 Shoving.Resolve(state, inputs);
@@ -35,6 +37,8 @@ namespace Blastlands.Core
             CollectLooseBombs(state);
             DropBombs(state, inputs);
             Abilities.Resolve(state, inputs);
+            ClassicItems.Detonate(state, inputs);
+            ClassicItems.SlideBombs(state);
             ExpireFlames(state);
             DetonateDueBombs(state);
             BurnPowerUps(state);
@@ -50,6 +54,7 @@ namespace Blastlands.Core
             // After the kill check, so a wall never shoves someone out of a blast that
             // was about to take them — the arena does not get to save anyone either.
             WallRegrower.Tick(state);
+            ClassicItems.TickCurses(state);
 
             state.Tick++;
         }
@@ -115,7 +120,8 @@ namespace Blastlands.Core
 
                 if (input.IsMoving)
                 {
-                    Travel(state, player, input.MoveX, input.MoveY, state.Settings.SpeedFor(player.SpeedSteps));
+                    Travel(state, player, input.MoveX, input.MoveY, ClassicItems.Speed(player, state.Settings));
+                    ClassicItems.Kick(state, player);
                 }
             }
         }
@@ -191,7 +197,7 @@ namespace Blastlands.Core
                     continue;
                 }
 
-                state.AddBomb(new ActiveBomb(bomb, state.Settings.FuseTicks));
+                state.AddBomb(new ActiveBomb(bomb, state.Settings.FuseTicks) { Remote = player.HasRemote });
             }
         }
 
@@ -295,6 +301,10 @@ namespace Blastlands.Core
                 case PowerUpKind.ClusterBomb:
                     player.NextBombKind = BombKind.Cluster;
                     break;
+
+                default:
+                    ClassicItems.Apply(state, player, kind);
+                    break;
             }
         }
 
@@ -341,7 +351,11 @@ namespace Blastlands.Core
             for (int i = 0; i < state.Bombs.Count; i++)
             {
                 ActiveBomb bomb = state.Bombs[i];
-                bomb.FuseRemaining--;
+                if (ClassicItems.FuseBurns(state, bomb))
+                {
+                    bomb.FuseRemaining--;
+                }
+
                 definitions.Add(bomb.Bomb);
 
                 if (bomb.FuseRemaining <= 0)

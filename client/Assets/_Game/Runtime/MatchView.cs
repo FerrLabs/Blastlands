@@ -105,9 +105,10 @@ namespace Blastlands.Runtime
         private readonly List<GameObject> playerViews = new List<GameObject>();
         private readonly List<GameObject> powerUpViews = new List<GameObject>();
         private readonly List<PowerUpKind> powerUpKinds = new List<PowerUpKind>();
-        private readonly HashSet<GridPos> bombTiles = new HashSet<GridPos>();
-        private readonly HashSet<GridPos> warnedFuses = new HashSet<GridPos>();
-        private readonly List<GridPos> staleFuses = new List<GridPos>();
+        private readonly Dictionary<int, GridPos> bombTiles = new Dictionary<int, GridPos>();
+        private readonly HashSet<int> warnedFuses = new HashSet<int>();
+        private readonly Dictionary<int, Vector3> shownBombs = new Dictionary<int, Vector3>();
+        private readonly List<int> staleFuses = new List<int>();
         private readonly List<GridPos> pickupTiles = new List<GridPos>();
         private readonly List<GridPos> detonated = new List<GridPos>();
         private readonly List<GridPos> freshFlames = new List<GridPos>();
@@ -217,6 +218,7 @@ namespace Blastlands.Runtime
             powerUpKinds.Clear();
             bombTiles.Clear();
             warnedFuses.Clear();
+            shownBombs.Clear();
             staleFuses.Clear();
             pickupTiles.Clear();
             detonated.Clear();
@@ -913,7 +915,7 @@ namespace Blastlands.Runtime
                 float pulse = 1f + (0.14f * Mathf.Sin((1f - fuse) * 34f));
 
                 view.transform.localScale = bombBaseScales[i] * pulse;
-                TileFitter.PlaceOnTile(view, ToWorld(bomb.Position, 0f));
+                TileFitter.PlaceOnTile(view, Slid(bomb));
             }
 
             HideFrom(bombPool, state.Bombs.Count);
@@ -923,6 +925,22 @@ namespace Blastlands.Runtime
         // Counting bombs would miss the tick where one detonates and another is dropped,
         // so the tiles are diffed instead. A bomb tile that is gone and now alight is a
         // bomb that went off, which is where the blast is staged from.
+        private Vector3 Slid(ActiveBomb bomb)
+        {
+            Vector3 target = ToWorld(bomb.Position, 0f);
+            if (!shownBombs.TryGetValue(bomb.Id, out Vector3 shown))
+            {
+                shownBombs[bomb.Id] = target;
+                return target;
+            }
+
+            float tile = (ToWorld(new GridPos(1, 0), 0f) - ToWorld(new GridPos(0, 0), 0f)).magnitude;
+            float perSecond = tile * state.Settings.TicksPerSecond / ClassicItems.SlideTicksPerTile;
+            shown = Vector3.MoveTowards(shown, target, perSecond * Time.deltaTime);
+            shownBombs[bomb.Id] = shown;
+            return shown;
+        }
+
         private void ReportNewBombs()
         {
             for (int i = 0; i < state.Bombs.Count; i++)
@@ -933,12 +951,12 @@ namespace Blastlands.Runtime
                     continue;
                 }
 
-                if (!bombTiles.Contains(bomb.Bomb.Position))
+                if (!bombTiles.ContainsKey(bomb.Id))
                 {
                     sfx.BombDropped(ToWorld(bomb.Bomb.Position, 0f));
                 }
                 else if (BombFuse.IsWarning(SnapshotAge.FuseAfter(bomb, TicksPast), bomb.FuseTicks, state.Settings.TicksPerSecond)
-                         && warnedFuses.Add(bomb.Bomb.Position))
+                         && warnedFuses.Add(bomb.Id))
                 {
                     // Once per bomb rather than once per frame, which is what the set is
                     // for. The warning is the moment it enters its last second, and a
@@ -948,7 +966,7 @@ namespace Blastlands.Runtime
             }
 
             detonated.Clear();
-            foreach (GridPos tile in bombTiles)
+            foreach (GridPos tile in bombTiles.Values)
             {
                 if (!state.HasBombAt(tile) && state.HasFlameAt(tile))
                 {
@@ -959,7 +977,7 @@ namespace Blastlands.Runtime
             bombTiles.Clear();
             for (int i = 0; i < state.Bombs.Count; i++)
             {
-                bombTiles.Add(state.Bombs[i].Bomb.Position);
+                bombTiles[state.Bombs[i].Id] = state.Bombs[i].Bomb.Position;
             }
 
             // Collected first and removed after, because a set cannot be written to
@@ -967,17 +985,26 @@ namespace Blastlands.Runtime
             // predicate would capture this and allocate a delegate on every frame, and
             // nothing else on this path allocates.
             staleFuses.Clear();
-            foreach (GridPos tile in warnedFuses)
+            foreach (int id in warnedFuses)
             {
-                if (!bombTiles.Contains(tile))
+                if (!bombTiles.ContainsKey(id))
                 {
-                    staleFuses.Add(tile);
+                    staleFuses.Add(id);
+                }
+            }
+
+            foreach (int id in shownBombs.Keys)
+            {
+                if (!bombTiles.ContainsKey(id))
+                {
+                    staleFuses.Add(id);
                 }
             }
 
             for (int i = 0; i < staleFuses.Count; i++)
             {
                 warnedFuses.Remove(staleFuses[i]);
+                shownBombs.Remove(staleFuses[i]);
             }
         }
 

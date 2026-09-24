@@ -185,9 +185,9 @@ use it. That stops one lucky drop from deciding the whole round. Placing or thro
 spends it, and the player goes back to their kit's kind: plain for most, cluster for the
 Grenadier, pierce for the Sapper. A kit is permanent, a pickup is one bomb.
 
-Kinds that change *when* a bomb goes off rather than *where* the fire lands — remote detonation,
-proximity mines, sticky bombs — are deferred until the tick loop exists, because they need a
-trigger the resolver has no concept of today.
+Kinds that change *when* a bomb goes off rather than *where* the fire lands are not bomb kinds.
+Remote detonation is a Classic item (below) that holds the fuse instead; proximity mines and
+sticky bombs are still to come.
 
 ## Power-ups
 
@@ -200,6 +200,22 @@ Dropped by destroyed soft blocks at a fixed drop rate. V1 set, kept deliberately
 | Speed up | +1 movement speed step |
 | Pierce bomb | The next bomb dropped is a Pierce |
 | Cluster bomb | The next bomb dropped is a Cluster |
+
+### Classic items
+
+Classic and Classic Blinded hide three more, the ones a bomberman player looks for. They go
+under blocks that rolled nothing, from a stream of their own (`ClassicItemPercent` of the empty
+ones), so the bomb, fire and speed pickups sit exactly where they would without them. Drawing
+them from the same table instead cut a quarter of the firepower off the board, and the bots on
+the Classic ratchet went from 90 deaths in 192 to 79.
+
+| Item | Effect |
+|---|---|
+| Kick | Walking into a bomb, flush against it, sends it sliding a tile every `SlideTicksPerTile`. It stops at a wall, another bomb or a living body, and goes off at once if it slides into fire. A bomb with nowhere to go is not kicked. |
+| Remote | Every bomb dropped after it waits instead of burning its fuse. The ability button sets off the oldest one, with a short cooldown between presses. A bot's remote bombs, and those of a player who died, burn their fuse as usual, or they would sit on the board for the rest of the round. |
+| Skull | One curse for `CurseSeconds`: Slow, Hasty (faster than a maxed speed), Reversed controls, Leaky (drops a bomb every chance it gets) or Dry (cannot drop). |
+
+All three travel in the snapshot, so any of them is a wire change and moves the client minimum.
 
 Bomb count and fire range are capped (`MaxBombs`, `MaxFireRange`). Uncapped fire range ends
 with a player who covers the arena from their spawn, which is not a fight.
