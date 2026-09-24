@@ -11,9 +11,9 @@ the host starts it. No Steam, no accounts required to play.
 Download the Windows installer from [blastlands.ferrlabs.com](https://blastlands.ferrlabs.com).
 
 ### Playing online
+
 - Pick a name, then a character, then a mode on the match list. The character and the mode
   are remembered on that machine; the name is asked again on every launch.
-  that machine.
 - **Host a match** lists it publicly. Others join from the list, the host can **Add bot** to
   fill seats, and starts whenever they like, from 2 to 8 players.
 - The lobby hands each player a dedicated server instance. The server runs the simulation,
