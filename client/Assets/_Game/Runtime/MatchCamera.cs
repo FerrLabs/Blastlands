@@ -10,11 +10,12 @@ namespace Blastlands.Runtime
     // player had to see every tile that was about to be on fire. A bigger arena and free
     // movement give that up on purpose — you no longer read the whole board, which trades
     // the tactical overview for a brawler's closeness. That is a change of nature rather
-    // than a setting, which is why the global mode stays available instead of going away.
+    // than a setting, which is why the global mode stays in the code instead of going away,
+    // although no driver picks it today.
     [RequireComponent(typeof(Camera))]
     public sealed class MatchCamera : MonoBehaviour
     {
-        [SerializeField] private CameraMode mode = CameraMode.Global;
+        private CameraMode mode = CameraMode.Global;
         [SerializeField] private float tiltDegrees = 55f;
 
         // Wide enough to show a band of the surrounding scenery. Framing the arena
@@ -26,6 +27,8 @@ namespace Blastlands.Runtime
         // nothing. On a 15x13 arena at 16:9, anything above about 5 is already wider
         // than the whole board.
         [SerializeField] private float followSize = 4f;
+
+        private const float TunedAspect = 16f / 9f;
         [SerializeField] private float followSmoothing = 0.18f;
 
         // How far ahead of the player the view sits, and how much further while dashing.
@@ -80,6 +83,16 @@ namespace Blastlands.Runtime
         public int ViewCount
         {
             get { return views.Count; }
+        }
+
+        public static float FollowSizeFor(float followSize, float aspect)
+        {
+            return aspect > TunedAspect ? followSize * TunedAspect / aspect : followSize;
+        }
+
+        public static CameraMode ModeFor(int localSeats)
+        {
+            return localSeats > 1 ? CameraMode.Split : CameraMode.Follow;
         }
 
         public Camera ViewAt(int index)
@@ -215,7 +228,7 @@ namespace Blastlands.Runtime
         {
             lastAspect = Aspect();
 
-            int wanted = mode == CameraMode.Split ? Mathf.Max(1, state.Players.Count) : 1;
+            int wanted = mode == CameraMode.Split ? Mathf.Clamp(localSeats, 1, Mathf.Max(1, state.Players.Count)) : 1;
 
             for (int i = views.Count - 1; i >= wanted; i--)
             {
@@ -290,7 +303,7 @@ namespace Blastlands.Runtime
             float size;
             Vector3 focus = mode == CameraMode.Global
                 ? GlobalFocus(view, out size)
-                : FollowFocus(index, out size);
+                : FollowFocus(view, index, out size);
 
             view.orthographicSize = size;
 
@@ -314,9 +327,9 @@ namespace Blastlands.Runtime
             view.transform.position = seat;
         }
 
-        private Vector3 FollowFocus(int index, out float size)
+        private Vector3 FollowFocus(Camera view, int index, out float size)
         {
-            size = followSize;
+            size = FollowSizeFor(followSize, Aspect(view));
 
             PlayerState player = PlayerFor(index);
             if (player == null)

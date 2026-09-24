@@ -191,6 +191,7 @@ namespace Blastlands.Runtime
 
             if (matchCamera != null)
             {
+                matchCamera.Use(MatchCamera.ModeFor(humans));
                 matchCamera.Bind(state, humans);
             }
 

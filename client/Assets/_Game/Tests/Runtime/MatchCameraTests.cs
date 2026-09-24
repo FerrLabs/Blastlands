@@ -76,6 +76,34 @@ namespace Blastlands.Runtime.Tests
         }
 
         [Test]
+        public void OneSeatIsFollowedAndACouchIsSplit()
+        {
+            Assert.That(MatchCamera.ModeFor(1), Is.EqualTo(CameraMode.Follow));
+            Assert.That(MatchCamera.ModeFor(2), Is.EqualTo(CameraMode.Split));
+            Assert.That(MatchCamera.ModeFor(4), Is.EqualTo(CameraMode.Split));
+        }
+
+        [Test]
+        public void SplitOpensAViewportPerPersonNotPerPlayer()
+        {
+            Bind(2);
+            cameras.Use(CameraMode.Split);
+
+            Assert.That(cameras.ViewCount, Is.EqualTo(2), "the two bots get no screen of their own");
+        }
+
+        [Test]
+        public void AWideStripShowsNoMoreBoardAcrossThanAFullScreen()
+        {
+            const float full = 16f / 9f;
+            const float strip = 32f / 9f;
+
+            Assert.That(MatchCamera.FollowSizeFor(4f, full), Is.EqualTo(4f));
+            Assert.That(MatchCamera.FollowSizeFor(4f, strip) * strip, Is.EqualTo(4f * full).Within(1e-4f));
+            Assert.That(MatchCamera.FollowSizeFor(4f, 4f / 3f), Is.EqualTo(4f), "a narrower screen keeps its height");
+        }
+
+        [Test]
         public void GlobalWithOneSeatIsThatSeatAlone()
         {
             Bind(1);

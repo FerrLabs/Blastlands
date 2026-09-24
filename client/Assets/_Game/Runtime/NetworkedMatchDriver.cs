@@ -205,6 +205,7 @@ namespace Blastlands.Runtime
 
             if (matchCamera != null)
             {
+                matchCamera.Use(MatchCamera.ModeFor(1));
                 matchCamera.Bind(prediction.State, 1, seat);
             }
 

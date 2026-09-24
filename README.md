@@ -83,8 +83,8 @@ an editor setting for local play.
 ### Local play
 
 Opening the `Match` scene directly in the editor runs a couch match: one player per
-gamepad (the first also gets the keyboard), up to four, with bots in the other seats on
-one shared screen. The series is first to three rounds, the other seats' characters
+gamepad (the first also gets the keyboard), up to four, with bots in the other seats and
+the screen split between the people playing. The series is first to three rounds, the other seats' characters
 rotate between rounds, and R or Start rerolls the board. The built game does not offer it from the
 lobby yet.
 
@@ -92,9 +92,10 @@ lobby yet.
 
 - Four arena themes (Wasteland, Desert, Scorched, Overgrown), one picked per match.
 - Low-poly Synty art, with a 3D preview of your character in the lobby.
-- One camera framing every living player, online and locally. `--no-shake`
-  on the command line turns off the screen shake.
-- Positional sound: a fuse just off screen is heard from its side.
+- A camera that follows your player, online and alone on a couch, and a split screen when
+  several people play locally. `--no-shake` on the command line turns off the screen shake.
+- Positional sound on a single screen: a fuse just off screen is heard from its side. Split
+  screen falls back to a flat mix.
 
 The design reasoning and the numbers behind the tuning are in
 [docs/GAMEPLAY.md](docs/GAMEPLAY.md).
