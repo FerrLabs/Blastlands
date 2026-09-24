@@ -61,6 +61,10 @@ game used to present it, which the licence allows, rather than the models, textu
 themselves. Nothing that can be imported back into an engine belongs there: a render is a flat
 WebP, never a mesh, a texture atlas or a source file.
 
-They were rendered headless from the characters' prefabs in their idle pose, lit warm from the
+The logo next to them, `logo.png`, is the round grenade from INTERFACE Apocalypse HUD
+(`ICON_SM_Wep_Grenade_01_BR`), cropped and scaled down to 192 pixels. It serves as the page's
+mark and its browser tab icon; the 1024 pixel source stays out of this repository like the rest.
+
+The portraits were rendered headless from the characters' prefabs in their idle pose, lit warm from the
 front with an orange rim, on a transparent background, then cropped and saved as WebP at 880
 pixels high. A new character or a changed outfit needs a new render in the same framing.
