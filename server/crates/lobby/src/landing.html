@@ -4,84 +4,158 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Blastlands</title>
-<meta name="description" content="Blastlands is a bomb-dropping arena game for up to eight players. Download it for Windows.">
+<meta name="description" content="Blastlands is a bomb-dropping arena game for up to eight players. Pick a character, drop bombs, be the last one standing. Free for Windows.">
 <meta name="theme-color" content="#14110c">
 <link rel="icon" href="data:,">
 <style>
 :root {
   --bg: #14110c;
   --bg-raised: #1d1913;
+  --bg-sunk: #0e0c08;
   --border: #33291d;
   --text: #f3ecdf;
   --muted: #a89c86;
   --accent: #e8733a;
   --accent-strong: #f08a55;
   --accent-text: #1a0e05;
+  --glow: rgba(232, 115, 58, 0.35);
 }
 
 * { box-sizing: border-box; }
 
-html { color-scheme: dark; }
+html { color-scheme: dark; scroll-behavior: smooth; }
 
 body {
   margin: 0;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background:
-    radial-gradient(ellipse at 50% 0%, #2b2015 0%, transparent 60%),
-    var(--bg);
+  background: var(--bg);
   color: var(--text);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   line-height: 1.6;
+  overflow-x: hidden;
 }
 
-main {
-  flex: 1;
+img { display: block; max-width: 100%; }
+
+.hero {
+  position: relative;
+  min-height: 100vh;
+  min-height: 100svh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 4rem 1.5rem;
+  padding: 5rem 1rem 7rem;
+  overflow: hidden;
+  isolation: isolate;
 }
 
-.hero {
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -3;
+  background:
+    radial-gradient(ellipse 60% 45% at 50% 42%, rgba(240, 138, 85, 0.30) 0%, rgba(232, 115, 58, 0.10) 40%, transparent 70%),
+    radial-gradient(ellipse 120% 60% at 50% 110%, #2b1d10 0%, transparent 60%),
+    var(--bg);
+}
+
+.hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background-image:
+    linear-gradient(rgba(243, 236, 223, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(243, 236, 223, 0.045) 1px, transparent 1px);
+  background-size: 64px 64px;
+  background-position: center;
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 55%, #000 20%, transparent 75%);
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 55%, #000 20%, transparent 75%);
+}
+
+.lineup {
+  position: absolute;
+  inset: auto 0 0;
+  z-index: -1;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 0 1vw;
+  pointer-events: none;
+}
+
+.lineup .side {
+  display: flex;
+  align-items: flex-end;
+}
+
+.lineup img {
+  height: min(70vh, 620px);
+  width: auto;
+  filter: drop-shadow(0 0 28px rgba(232, 115, 58, 0.18)) brightness(0.9);
+  -webkit-mask-image: linear-gradient(to bottom, #000 70%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 70%, transparent 100%);
+}
+
+.lineup .back {
+  height: min(59vh, 520px);
+  filter: drop-shadow(0 0 20px rgba(232, 115, 58, 0.12)) brightness(0.6) saturate(0.8);
+}
+
+.lineup .left .back { order: -1; margin-right: -4vw; }
+.lineup .right .back { margin-left: -4vw; }
+
+.hero-content {
   width: 100%;
   max-width: 40rem;
   text-align: center;
 }
 
-h1 {
+.eyebrow {
   margin: 0 0 1rem;
-  font-size: clamp(2.75rem, 9vw, 4.5rem);
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1.05;
+  color: var(--accent-strong);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
 }
 
+h1 {
+  margin: 0 0 1.25rem;
+  font-size: clamp(2.25rem, 12.5vw, 6rem);
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 0.95;
+  text-transform: uppercase;
+  text-shadow: 0 0 40px var(--glow), 0 4px 0 #3a1c08;
+}
+
 .lead {
-  margin: 0 auto 2.5rem;
-  max-width: 32rem;
-  color: var(--muted);
+  margin: 0 auto 2.25rem;
+  max-width: 30rem;
+  color: var(--text);
+  opacity: 0.85;
   font-size: 1.15rem;
 }
 
 .button {
   display: inline-block;
-  padding: 0.95rem 2.25rem;
+  padding: 1rem 2.5rem;
   border-radius: 0.6rem;
   background: var(--accent);
   color: var(--accent-text);
   font-size: 1.15rem;
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: 0.02em;
   text-decoration: none;
-  box-shadow: 0 0.5rem 1.75rem rgba(232, 115, 58, 0.25);
+  box-shadow: 0 0.5rem 2rem rgba(232, 115, 58, 0.35), inset 0 -3px 0 rgba(0, 0, 0, 0.2);
   transition: background 0.15s ease, transform 0.15s ease;
 }
 
-a.button:hover { background: var(--accent-strong); transform: translateY(-1px); }
+a.button:hover { background: var(--accent-strong); transform: translateY(-2px); }
 
-a.button:focus-visible {
+a.button:focus-visible,
+.more:focus-visible {
   outline: 3px solid var(--text);
   outline-offset: 3px;
 }
@@ -104,26 +178,220 @@ a.button:focus-visible {
   display: block;
   margin-top: 0.4rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   word-break: break-all;
+  opacity: 0.8;
+}
+
+.more {
+  position: absolute;
+  left: 50%;
+  bottom: 1.5rem;
+  transform: translateX(-50%);
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-decoration: none;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.more:hover { color: var(--text); }
+
+section.band {
+  padding: 5rem 1rem;
+  border-top: 1px solid var(--border);
+}
+
+section.band.sunk { background: var(--bg-sunk); }
+
+.wrap {
+  max-width: 68rem;
+  margin: 0 auto;
+}
+
+h2 {
+  margin: 0 0 0.5rem;
+  font-size: clamp(1.75rem, 4.5vw, 2.5rem);
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.intro {
+  margin: 0 0 2.5rem;
+  max-width: 40rem;
+  color: var(--muted);
+  font-size: 1.05rem;
+}
+
+.roster {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 0.9rem;
+  background: var(--bg-raised);
+  overflow: hidden;
+}
+
+.portrait {
+  height: 17rem;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-top: 1.25rem;
+  background:
+    radial-gradient(ellipse 70% 30% at 50% 100%, rgba(232, 115, 58, 0.35), transparent 70%),
+    linear-gradient(to bottom, #221b13, #16120c);
+}
+
+.portrait img {
+  height: 100%;
+  width: auto;
+  object-fit: contain;
+}
+
+.card-body { padding: 1.1rem 1.2rem 1.3rem; }
+
+.card h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.kit {
+  margin: 0.2rem 0 0.9rem;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.ability {
+  margin: 0;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.92rem;
+}
+
+.ability strong { color: var(--accent-strong); }
+
+.cooldown {
+  float: right;
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+}
+
+.modes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.mode {
+  padding: 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: 0.9rem;
+  background: var(--bg-raised);
+}
+
+.mode h3 {
+  margin: 0 0 0.6rem;
+  font-size: 1.15rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.mode p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+
+.tag {
+  display: inline-block;
+  margin-bottom: 0.9rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(232, 115, 58, 0.14);
+  color: var(--accent-strong);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 2rem 2.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.facts strong {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-size: 1.05rem;
+}
+
+.facts span { color: var(--muted); font-size: 0.95rem; }
+
+.controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.75rem;
+}
+
+.control {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  background: var(--bg-raised);
+  font-size: 0.95rem;
+}
+
+kbd {
+  padding: 0.15rem 0.5rem;
+  border: 1px solid var(--border);
+  border-bottom-width: 3px;
+  border-radius: 0.35rem;
+  background: var(--bg);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.pad-note {
+  margin: 1.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
 }
 
 .notes {
-  margin: 3rem 0 0;
-  padding: 1.25rem 1.5rem;
-  border: 1px solid var(--border);
-  border-radius: 0.75rem;
-  background: var(--bg-raised);
+  max-width: 40rem;
+  margin: 0 auto;
   color: var(--muted);
   font-size: 0.95rem;
-  text-align: left;
+  text-align: center;
 }
 
 .notes p { margin: 0; }
 .notes p + p { margin-top: 0.75rem; }
 
 footer {
-  padding: 1.5rem;
+  padding: 2rem 1rem;
+  border-top: 1px solid var(--border);
   color: var(--muted);
   font-size: 0.85rem;
   text-align: center;
@@ -131,20 +399,161 @@ footer {
 
 footer a { color: inherit; }
 footer a:hover { color: var(--text); }
+
+@media (max-width: 1200px) {
+  .lineup img { opacity: 0.55; }
+  .lineup .back { opacity: 0.35; }
+}
+
+@media (max-width: 900px) {
+  .roster { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .modes { grid-template-columns: 1fr; }
+  .lineup .back { display: none; }
+  .lineup img { height: min(60vh, 480px); opacity: 0.55; }
+}
+
+@media (max-width: 560px) {
+  .lineup { padding: 0; }
+  .lineup img { height: 46vh; opacity: 0.3; }
+  .portrait { height: 13rem; }
+  .card-body { padding: 0.9rem; }
+  .cooldown { float: none; display: block; }
+}
+
+@media (max-width: 420px) {
+  .roster { grid-template-columns: 1fr; }
+  .portrait { height: 16rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  a.button { transition: none; }
+}
 </style>
 </head>
 <body>
-<main>
-  <section class="hero">
+<header class="hero">
+  <div class="lineup" aria-hidden="true">
+    <div class="side left">
+      <img src="/characters/demolisher/portrait" alt="">
+      <img class="back" src="/characters/runner/portrait" alt="">
+    </div>
+    <div class="side right">
+      <img src="/characters/sapper/portrait" alt="">
+      <img class="back" src="/characters/grenadier/portrait" alt="">
+    </div>
+  </div>
+  <div class="hero-content">
+    <p class="eyebrow">Free arena bomber for Windows</p>
     <h1>Blastlands</h1>
-    <p class="lead">A bomb-dropping arena game for up to eight players. Pick a character, drop bombs, and be the last one standing.</p>
+    <p class="lead">Up to eight players on one board. Pick a character, drop bombs, blow the cover away and be the last one standing.</p>
     {{action}}
+  </div>
+  <a class="more" href="#characters">See what's inside</a>
+</header>
+
+<main>
+  <section class="band" id="characters">
+    <div class="wrap">
+      <h2>Pick your character</h2>
+      <p class="intro">Each one starts with a different kit and carries one ability on a cooldown. Characters play in Arena mode.</p>
+      <div class="roster">
+        <article class="card">
+          <div class="portrait"><img src="/characters/demolisher/portrait" alt="The Demolisher, a riot cop in black armour" loading="lazy"></div>
+          <div class="card-body">
+            <h3>Demolisher</h3>
+            <p class="kit">Starts with one more tile of blast reach.</p>
+            <p class="ability"><span class="cooldown">6 s</span><strong>Trigger</strong>: sets off your oldest live bomb right now.</p>
+          </div>
+        </article>
+        <article class="card">
+          <div class="portrait"><img src="/characters/runner/portrait" alt="The Runner, a scout in a cap and a green jacket" loading="lazy"></div>
+          <div class="card-body">
+            <h3>Runner</h3>
+            <p class="kit">Starts two speed steps faster.</p>
+            <p class="ability"><span class="cooldown">10 s</span><strong>Vanish</strong>: hidden for two seconds wherever you stand.</p>
+          </div>
+        </article>
+        <article class="card">
+          <div class="portrait"><img src="/characters/grenadier/portrait" alt="The Grenadier, a soldier in camouflage and a gas mask" loading="lazy"></div>
+          <div class="card-body">
+            <h3>Grenadier</h3>
+            <p class="kit">Cluster bombs that flare past the edge of the blast.</p>
+            <p class="ability"><span class="cooldown">5 s</span><strong>Throw</strong>: your next bomb lands up to three tiles ahead.</p>
+          </div>
+        </article>
+        <article class="card">
+          <div class="portrait"><img src="/characters/sapper/portrait" alt="The Sapper, in a yellow hazmat suit" loading="lazy"></div>
+          <div class="card-body">
+            <h3>Sapper</h3>
+            <p class="kit">Bombs that burn through soft blocks.</p>
+            <p class="ability"><span class="cooldown">10 s</span><strong>Wall</strong>: raises a block in front of you for eight seconds.</p>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="band sunk">
+    <div class="wrap">
+      <h2>Three ways to play</h2>
+      <p class="intro">The host picks the mode. Soft blocks grow back, and after ninety seconds the board starts closing in, so no round drags on.</p>
+      <div class="modes">
+        <article class="mode">
+          <span class="tag">Characters</span>
+          <h3>Arena</h3>
+          <p>An eroded island with cover in clumps and bushes to hide in. Bombs lie on the ground and are spent for good. Dash, shove and use your ability, and only see who you have a line to.</p>
+        </article>
+        <article class="mode">
+          <span class="tag">The original</span>
+          <h3>Classic</h3>
+          <p>The bomberman board: 13 by 11, a pillar on every other tile, one corner each. Your bombs come back once they go off, and placing one is the only move you have.</p>
+        </article>
+        <article class="mode">
+          <span class="tag">No sight</span>
+          <h3>Classic Blinded</h3>
+          <p>The same board and the same bombs, but you only see the players you have a line to. Every pillar becomes somewhere to hide.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="band">
+    <div class="wrap">
+      <h2>Jump in</h2>
+      <p class="intro">No account, no store. Pick a name and play.</p>
+      <ul class="facts">
+        <li><strong>Host or join</strong><span>Open a match from the lobby and it shows up for everyone. Start whenever you like.</span></li>
+        <li><strong>2 to 8 players</strong><span>Fill the empty seats with bots, and a bot takes over anyone who drops out.</span></li>
+        <li><strong>Dedicated servers</strong><span>Every match runs on its own server. Nobody hosts from their own machine.</span></li>
+        <li><strong>Always up to date</strong><span>When a new version is out, the lobby offers it and installs it for you.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="band sunk">
+    <div class="wrap">
+      <h2>Controls</h2>
+      <p class="intro">Keyboard and mouse, or any Xbox or PlayStation pad.</p>
+      <div class="controls">
+        <div class="control">Move <span><kbd>WASD</kbd> <kbd>ZQSD</kbd> <kbd>Arrows</kbd></span></div>
+        <div class="control">Drop a bomb <kbd>E</kbd></div>
+        <div class="control">Dash <kbd>Space</kbd></div>
+        <div class="control">Shove <kbd>Left click</kbd></div>
+        <div class="control">Ability <kbd>Right click</kbd></div>
+      </div>
+      <p class="pad-note">On a pad: stick to move, A or Cross to drop, a shoulder to dash, X or Square to shove, Y or Triangle for the ability.</p>
+    </div>
+  </section>
+
+  <section class="band">
     <div class="notes">
       <p>{{note}}</p>
       <p>The game keeps itself up to date: when a new version is out, an Update button appears in the lobby.</p>
     </div>
   </section>
 </main>
+
 <footer>A <a href="https://ferrlabs.com">FerrLabs</a> game</footer>
 </body>
 </html>

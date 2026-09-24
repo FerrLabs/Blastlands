@@ -52,3 +52,15 @@ repository.
 
 Anything left untracked in the submodule stays on your machine only, which is how a pack can be
 imported whole to browse it without growing the repository.
+
+## Rendered images
+
+The download page at `blastlands.ferrlabs.com` shows the four characters. Those pictures live in
+this repository, under `server/crates/lobby/src/site/`, because they are rendered stills of the
+game used to present it, which the licence allows, rather than the models, textures or animations
+themselves. Nothing that can be imported back into an engine belongs there: a render is a flat
+WebP, never a mesh, a texture atlas or a source file.
+
+They were rendered headless from the characters' prefabs in their idle pose, lit warm from the
+front with an orange rim, on a transparent background, then cropped and saved as WebP at 880
+pixels high. A new character or a changed outfit needs a new render in the same framing.
