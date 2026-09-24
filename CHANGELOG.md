@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.109] - 2026-09-24
+
+### Features
+
+- feat(lobby): drop the controls section from the download page (#121)
+
 ## [26.9.108] - 2026-09-24
 
 ### Refactoring
