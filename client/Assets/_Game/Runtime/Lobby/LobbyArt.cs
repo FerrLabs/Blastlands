@@ -48,7 +48,7 @@ namespace Blastlands.Runtime
             get
             {
                 return header != null && body != null
-                    && panel != null && row != null && field != null;
+                    && panel != null && row != null && field != null && models != null;
             }
         }
     }

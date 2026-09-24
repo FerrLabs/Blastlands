@@ -1132,6 +1132,7 @@ namespace Blastlands.Runtime
 
         private void Recast(int seat, CharacterKind character)
         {
+            playerViews[seat].SetActive(false);
             Destroy(playerViews[seat]);
             playerViews[seat] = CastPlayer(seat, character);
             playerAnimators[seat] = Rig(playerViews[seat]);

@@ -87,7 +87,7 @@ namespace Blastlands.Runtime
             Action create)
         {
             RectTransform panel = LobbyChrome.Panel(root, art, "Browse", new Vector2(1500f, 900f));
-            LobbyChrome.Label(panel, art, "MATCHES", true, new Vector2(0f, 390f), 900f);
+            LobbyChrome.Label(panel, art, "MATCHES", true, new Vector2(ListCentre, 390f), RowSize.x);
             Roster(panel, art, picked, portrait, pick);
             LobbyChrome.Press(panel, art, "Host a match", new Vector2(ListCentre, -330f), WideButton, create);
             Notice(panel, art, flow, new Vector2(0f, -405f));
