@@ -410,6 +410,23 @@ runs the binary with `--match`, `--players`, `--humans` and `--mode`. The port, 
 stay in the environment, which is where the binary already reads them from and, for the
 token, keeps it out of the process table.
 
+**A rollout waits for the match, and the pool only offers live instances.** Two rules keep
+a deploy from cancelling what is being played.
+
+On `SIGTERM` the entrypoint stops taking new matches and lets the one it is running finish,
+then exits 0. An image bump therefore drains a pod instead of killing a match mid-round, and
+`terminationGracePeriodSeconds` on the StatefulSet is the ceiling on that wait rather than a
+delay: an idle pod leaves at once. A match that is assigned while a pod is draining is left
+for its replacement, which finds it on the same port a few seconds later, because an
+assignment belongs to the port and not to the pod.
+
+`PortPool` only hands out a port whose instance polled for an assignment within
+`INSTANCE_READY_TTL`. An instance polls every two seconds while idle and not at all while it
+is running a match, so a port with no pod behind it, or one whose pod is busy, is not
+offered. This is what makes the pool survive a lobby restart: the lobby keeps its directory
+in memory, so it comes back believing every port is free, and without the rule it would put
+a new match on a port where a match is still being played.
+
 The binary runs as a child rather than replacing the script, so a finished match returns
 to the loop instead of ending the container. `restartPolicy: Always` would restart it,
 but through kubelet's backoff, which reaches five minutes after a few short matches and
