@@ -144,6 +144,25 @@ namespace Blastlands.Core
                 return Steer(player, away, dash);
             }
 
+            if (state.Settings.Survival.Enabled && ClosestZombie(state, tile) <= 2)
+            {
+                if (player.CanDropBomb && !state.HasBombAt(tile) && ZombieInReach(state, tile, player.FireRange))
+                {
+                    Direction escape = EscapeAfterBombing(state, player, tile, ticksPerTile);
+                    if (escape != Direction.None)
+                    {
+                        plannedEscape = escape;
+                        return PlayerInput.Dropping();
+                    }
+                }
+
+                Direction away = AwayFromZombies(state, blast, tile);
+                if (away != Direction.None)
+                {
+                    return Steer(player, away, false);
+                }
+            }
+
             // Shoving comes before bombing because it is the only thing here that kills
             // on the tick it happens. A bomb is a threat somebody has two and a half
             // seconds to walk away from, and a bot that has learnt to dodge one will.
@@ -797,6 +816,63 @@ namespace Blastlands.Core
                 && !state.HasBombAt(tile)
                 && !IsClosing(state, tile)
                 && !NextToAZombie(state, tile);
+        }
+
+        private static int ClosestZombie(MatchState state, GridPos tile)
+        {
+            int closest = int.MaxValue;
+            for (int i = 0; i < state.Zombies.Count; i++)
+            {
+                GridPos at = state.Zombies[i].Tile;
+                int steps = System.Math.Abs(at.X - tile.X) + System.Math.Abs(at.Y - tile.Y);
+                if (steps < closest)
+                {
+                    closest = steps;
+                }
+            }
+
+            return closest;
+        }
+
+        private static bool ZombieInReach(MatchState state, GridPos tile, int range)
+        {
+            for (int i = 0; i < state.Zombies.Count; i++)
+            {
+                if (Reaches(state.Arena, tile, state.Zombies[i].Tile, range))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private Direction AwayFromZombies(MatchState state, BlastMap blast, GridPos tile)
+        {
+            Direction best = Direction.None;
+            int bestSteps = ClosestZombie(state, tile);
+
+            for (int i = 0; i < Order.Length; i++)
+            {
+                GridPos delta = Directions.Delta(Order[i]);
+                GridPos next = tile.Offset(delta.X, delta.Y);
+                if (!state.Arena.Contains(next)
+                    || !Tiles.CanBeStoodOn(state.Arena[next])
+                    || state.HasBombAt(next)
+                    || blast.TicksUntilFire(next) != BlastMap.Never)
+                {
+                    continue;
+                }
+
+                int steps = ClosestZombie(state, next);
+                if (steps > bestSteps)
+                {
+                    best = Order[i];
+                    bestSteps = steps;
+                }
+            }
+
+            return best;
         }
 
         private static bool NextToAZombie(MatchState state, GridPos tile)

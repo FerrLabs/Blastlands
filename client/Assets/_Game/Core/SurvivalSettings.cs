@@ -14,8 +14,10 @@ namespace Blastlands.Core
             int zombieSpeedPerWave,
             int contactReach,
             int chewTicks,
-            int spawnDistance)
+            int spawnDistance,
+            bool fireHurtsPlayers)
         {
+            FireHurtsPlayers = fireHurtsPlayers;
             Waves = waves;
             FirstWaveTicks = firstWaveTicks;
             BreatherTicks = breatherTicks;
@@ -54,6 +56,8 @@ namespace Blastlands.Core
 
         public int SpawnDistance { get; }
 
+        public bool FireHurtsPlayers { get; }
+
         public bool Enabled
         {
             get { return Waves > 0; }
@@ -61,7 +65,7 @@ namespace Blastlands.Core
 
         public int ZombiesIn(int wave, int players)
         {
-            int extra = players > 1 ? (players - 1) * ZombiesPerExtraPlayer * wave : 0;
+            int extra = players > 1 ? (players - 1) * ZombiesPerExtraPlayer * wave / 2 : 0;
             int count = FirstWaveZombies + ((wave - 1) * ZombiesPerWave) + extra;
             return count > MostZombies ? MostZombies : count;
         }
@@ -73,12 +77,12 @@ namespace Blastlands.Core
 
         public static SurvivalSettings Default
         {
-            get { return new SurvivalSettings(5, 90, 150, 3, 2, 1, 24, 14, 2, 150, 90, 5); }
+            get { return new SurvivalSettings(5, 90, 150, 3, 2, 1, 20, 14, 2, 128, 90, 5, false); }
         }
 
         public static SurvivalSettings Off
         {
-            get { return new SurvivalSettings(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0); }
+            get { return new SurvivalSettings(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, true); }
         }
     }
 }

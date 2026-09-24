@@ -432,6 +432,11 @@ namespace Blastlands.Core
         // each other up on the same tick both die rather than the loop order deciding.
         private static void KillPlayersInFlames(MatchState state)
         {
+            if (state.Settings.Survival.Enabled && !state.Settings.Survival.FireHurtsPlayers)
+            {
+                return;
+            }
+
             for (int i = 0; i < state.Players.Count; i++)
             {
                 PlayerState player = state.Players[i];

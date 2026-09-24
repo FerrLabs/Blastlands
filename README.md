@@ -32,10 +32,18 @@ Download the Windows installer from [blastlands.ferrlabs.com](https://blastlands
 | **Classic** | the bomberman board: 13x11 inside a border, a pillar on every other tile, corner starts | owned, each one comes back once it goes off | walk, place a bomb | the whole board |
 | **Classic Blinded** | same as Classic | same as Classic | same as Classic | only what you have a line to |
 | **Arena** | 25x21 eroded island, cover in clumps, bushes to hide in | found on the ground, spent for good | walk, dash, shove, ability | only what you have a line to |
+| **Survival** | same as Classic | same as Classic, and fire only hurts zombies | same as Classic | the whole board |
 
-In every mode, destroyed soft blocks grow back after 20 seconds (a marker shows where), and
+**Survival** is co-op: everyone against five waves of zombies. They walk the corridors
+towards the nearest player, kill on contact, chew through a soft block when walls shut them
+out, and die to fire like anything else. Each wave is bigger and a little faster, with five
+seconds of breather in between. Clear the fifth and the run is won; if everyone is caught,
+it is over. There is no sudden death in this mode. Bots play on your side.
+
+In the versus modes, destroyed soft blocks grow back after 20 seconds (a marker shows where), and
 after 90 seconds sudden death closes the board from the edge one ring every five seconds, so
-no round outlasts two minutes. Last one standing wins.
+no round outlasts two minutes. Last one standing wins. Soft blocks grow back in Survival
+too.
 
 ### Bombs and pickups
 

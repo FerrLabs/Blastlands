@@ -1212,7 +1212,7 @@ namespace Blastlands.Runtime
                 if (shown.Animator != null)
                 {
                     bool moving = (target - from).sqrMagnitude > 0.0001f;
-                    shown.Animator.SetFloat(Speed, moving ? PlayerPace.Running : PlayerPace.Still, GaitDampSeconds, Time.deltaTime);
+                    shown.Animator.speed = Mathf.MoveTowards(shown.Animator.speed, moving ? 1f : 0.25f, CadencePerSecond * Time.deltaTime);
                 }
             }
 
@@ -1251,7 +1251,13 @@ namespace Blastlands.Runtime
                 TileFitter.FitToHeight(body, playerHeight);
             }
 
-            return new ZombieView { Body = body, Animator = Rig(body), Heading = FacingAngle(zombie.Facing) };
+            var animator = body.GetComponentInChildren<Animator>(true);
+            if (animator != null)
+            {
+                animator.applyRootMotion = false;
+            }
+
+            return new ZombieView { Body = body, Animator = animator, Heading = FacingAngle(zombie.Facing) };
         }
 
         private void BuildPlayers()
