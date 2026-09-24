@@ -235,69 +235,166 @@ h2 {
 
 .intro:last-child { margin-bottom: 0; }
 
-.roster {
+.picker {
+  --portrait: 26rem;
+  --offset: 17rem;
+  position: relative;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
   gap: 1rem;
 }
 
-.card {
+.picker-stage {
+  position: relative;
+  display: grid;
+  overflow: hidden;
+  padding-top: 1rem;
+  touch-action: pan-y;
+}
+
+.picker-stage::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: calc(var(--portrait) - 1.5rem);
+  width: 22rem;
+  height: 4rem;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse at center, rgba(232, 115, 58, 0.45), transparent 70%);
+  pointer-events: none;
+}
+
+.character {
+  grid-area: 1 / 1;
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--border);
-  border-radius: 0.9rem;
-  background: var(--bg-raised);
-  overflow: hidden;
+  align-items: center;
+  text-align: center;
 }
 
-.portrait {
-  height: 17rem;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  padding-top: 1.25rem;
-  background:
-    radial-gradient(ellipse 70% 30% at 50% 100%, rgba(232, 115, 58, 0.35), transparent 70%),
-    linear-gradient(to bottom, #221b13, #16120c);
-}
-
-.portrait img {
-  height: 100%;
+.character-portrait {
+  display: block;
+  height: var(--portrait);
   width: auto;
-  object-fit: contain;
+  transform-origin: 50% 100%;
+  transition: transform 0.35s ease, opacity 0.35s ease, filter 0.35s ease;
+  -webkit-user-drag: none;
+  user-select: none;
 }
 
-.card-body { padding: 1.1rem 1.2rem 1.3rem; }
+.character-info {
+  max-width: 30rem;
+  padding: 1.5rem 1rem 0;
+  transition: opacity 0.25s ease;
+}
 
-.card h3 {
+.character h3 {
   margin: 0;
-  font-size: 1.2rem;
-  font-weight: 800;
+  font-size: 1.6rem;
+  font-weight: 900;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
 }
 
 .kit {
-  margin: 0.2rem 0 0.9rem;
+  margin: 0.3rem 0 1rem;
   color: var(--muted);
-  font-size: 0.92rem;
+  font-size: 1rem;
 }
 
 .ability {
-  margin: 0;
-  padding-top: 0.9rem;
+  padding-top: 1rem;
   border-top: 1px solid var(--border);
-  font-size: 0.92rem;
+  font-size: 0.98rem;
 }
 
-.ability strong { color: var(--accent-strong); }
+.ability p { margin: 0; }
+
+.ability .ability-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: 0.15rem 0.75rem;
+  margin-bottom: 0.35rem;
+}
+
+.ability strong { color: var(--accent-strong); font-size: 1.05rem; }
 
 .cooldown {
-  float: right;
   color: var(--muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.8rem;
+  white-space: nowrap;
 }
+
+.picker.enhanced .character { z-index: 1; }
+.picker.enhanced .character[data-pos="0"] { z-index: 3; }
+.picker.enhanced .character[data-pos="1"],
+.picker.enhanced .character[data-pos="-1"] { z-index: 2; }
+
+.picker.enhanced .character:not([data-pos="0"]) .character-info {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.picker.enhanced .character[data-pos="1"] .character-portrait,
+.picker.enhanced .character[data-pos="-1"] .character-portrait {
+  cursor: pointer;
+  opacity: 0.6;
+  filter: brightness(0.8) saturate(0.8);
+}
+
+.picker.enhanced .character[data-pos="1"] .character-portrait { transform: translateX(var(--offset)) scale(0.62); }
+.picker.enhanced .character[data-pos="-1"] .character-portrait { transform: translateX(calc(-1 * var(--offset))) scale(0.62); }
+
+.picker.enhanced .character[data-pos="1"] .character-portrait:hover,
+.picker.enhanced .character[data-pos="-1"] .character-portrait:hover {
+  opacity: 0.85;
+  filter: brightness(0.95) saturate(0.95);
+}
+
+.picker.enhanced .character:not([data-pos="0"]):not([data-pos="1"]):not([data-pos="-1"]) .character-portrait {
+  opacity: 0;
+  transform: scale(0.4);
+}
+
+.picker-arrow {
+  align-self: center;
+  margin-top: calc(var(--portrait) * -0.35);
+  width: 3.25rem;
+  height: 3.25rem;
+  display: none;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--bg-raised);
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.picker-arrow:hover { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+
+.picker-arrow:focus-visible {
+  outline: 3px solid var(--text);
+  outline-offset: 3px;
+}
+
+.picker-arrow svg { width: 1.3rem; height: 1.3rem; }
+
+.picker.enhanced .picker-arrow { display: grid; }
+
+.picker:not(.enhanced) { display: block; }
+
+.picker:not(.enhanced) .picker-stage {
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 2rem 1rem;
+}
+
+.picker:not(.enhanced) .character { grid-area: auto; }
+.picker:not(.enhanced) .character-portrait { height: 18rem; }
 
 .modes {
   display: grid;
@@ -398,7 +495,7 @@ footer a:hover { color: var(--text); }
 }
 
 @media (max-width: 900px) {
-  .roster { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .picker { --portrait: 22rem; --offset: 14rem; }
   .modes { grid-template-columns: 1fr; }
   .lineup .back { display: none; }
   .lineup img { height: min(60vh, 480px); opacity: 0.55; }
@@ -407,19 +504,16 @@ footer a:hover { color: var(--text); }
 @media (max-width: 560px) {
   .lineup { padding: 0; }
   .lineup img { height: 46vh; opacity: 0.3; }
-  .portrait { height: 13rem; }
-  .card-body { padding: 0.9rem; }
-  .cooldown { float: none; display: block; }
-}
-
-@media (max-width: 420px) {
-  .roster { grid-template-columns: 1fr; }
-  .portrait { height: 16rem; }
+  .picker { --portrait: 19rem; --offset: 38vw; grid-template-columns: 1fr; }
+  .picker-arrow { position: absolute; top: calc(var(--portrait) * 0.5); z-index: 4; margin: 0; width: 2.75rem; height: 2.75rem; }
+  .picker-arrow.prev { left: 0; }
+  .picker-arrow.next { right: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   a.button { transition: none; }
+  .character-portrait, .character-info, .picker-arrow { transition: none; }
 }
 </style>
 </head>
@@ -450,39 +544,55 @@ footer a:hover { color: var(--text); }
     <div class="wrap">
       <h2>Characters</h2>
       <p class="intro">Each one starts with its own bonus and has an ability on a cooldown. They only exist in Arena: the Classic modes play without them.</p>
-      <div class="roster">
-        <article class="card">
-          <div class="portrait"><img src="/characters/demolisher/portrait" alt="The Demolisher, a riot cop in black armour" loading="lazy"></div>
-          <div class="card-body">
-            <h3>Demolisher</h3>
-            <p class="kit">Starts with one more tile of blast reach.</p>
-            <p class="ability"><span class="cooldown">6 s</span><strong>Trigger</strong>: sets off your oldest live bomb right now.</p>
-          </div>
-        </article>
-        <article class="card">
-          <div class="portrait"><img src="/characters/runner/portrait" alt="The Runner, a scout in a cap and a green jacket" loading="lazy"></div>
-          <div class="card-body">
-            <h3>Runner</h3>
-            <p class="kit">Starts two speed steps faster.</p>
-            <p class="ability"><span class="cooldown">10 s</span><strong>Vanish</strong>: hidden for two seconds wherever you stand.</p>
-          </div>
-        </article>
-        <article class="card">
-          <div class="portrait"><img src="/characters/grenadier/portrait" alt="The Grenadier, a soldier in camouflage and a gas mask" loading="lazy"></div>
-          <div class="card-body">
-            <h3>Grenadier</h3>
-            <p class="kit">Cluster bombs that flare past the edge of the blast.</p>
-            <p class="ability"><span class="cooldown">5 s</span><strong>Throw</strong>: your next bomb lands up to three tiles ahead.</p>
-          </div>
-        </article>
-        <article class="card">
-          <div class="portrait"><img src="/characters/sapper/portrait" alt="The Sapper, in a yellow hazmat suit" loading="lazy"></div>
-          <div class="card-body">
-            <h3>Sapper</h3>
-            <p class="kit">Bombs that burn through soft blocks.</p>
-            <p class="ability"><span class="cooldown">10 s</span><strong>Wall</strong>: raises a block in front of you for eight seconds.</p>
-          </div>
-        </article>
+      <div class="picker" data-picker role="region" aria-roledescription="carousel" aria-label="Characters">
+        <button class="picker-arrow prev" type="button" data-step="-1" aria-label="Previous character"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5 8 12l7 7"/></svg></button>
+        <div class="picker-stage" aria-live="polite">
+          <article class="character" id="character-demolisher">
+            <img class="character-portrait" src="/characters/demolisher/portrait" data-idle="/characters/demolisher/idle" alt="The Demolisher, a riot cop in black armour" loading="lazy" draggable="false">
+            <div class="character-info">
+              <h3>Demolisher</h3>
+              <p class="kit">Starts with one more tile of blast reach.</p>
+              <div class="ability">
+                <p class="ability-head"><strong>Trigger</strong><span class="cooldown">6 s cooldown</span></p>
+                <p>Sets off your oldest live bomb right now.</p>
+              </div>
+            </div>
+          </article>
+          <article class="character" id="character-runner">
+            <img class="character-portrait" src="/characters/runner/portrait" data-idle="/characters/runner/idle" alt="The Runner, a scout in a cap and a green jacket" loading="lazy" draggable="false">
+            <div class="character-info">
+              <h3>Runner</h3>
+              <p class="kit">Starts two speed steps faster.</p>
+              <div class="ability">
+                <p class="ability-head"><strong>Vanish</strong><span class="cooldown">10 s cooldown</span></p>
+                <p>Hidden for two seconds wherever you stand.</p>
+              </div>
+            </div>
+          </article>
+          <article class="character" id="character-grenadier">
+            <img class="character-portrait" src="/characters/grenadier/portrait" data-idle="/characters/grenadier/idle" alt="The Grenadier, a soldier in camouflage and a gas mask" loading="lazy" draggable="false">
+            <div class="character-info">
+              <h3>Grenadier</h3>
+              <p class="kit">Cluster bombs that flare past the edge of the blast.</p>
+              <div class="ability">
+                <p class="ability-head"><strong>Throw</strong><span class="cooldown">5 s cooldown</span></p>
+                <p>Your next bomb lands up to three tiles ahead.</p>
+              </div>
+            </div>
+          </article>
+          <article class="character" id="character-sapper">
+            <img class="character-portrait" src="/characters/sapper/portrait" data-idle="/characters/sapper/idle" alt="The Sapper, in a yellow hazmat suit" loading="lazy" draggable="false">
+            <div class="character-info">
+              <h3>Sapper</h3>
+              <p class="kit">Bombs that burn through soft blocks.</p>
+              <div class="ability">
+                <p class="ability-head"><strong>Wall</strong><span class="cooldown">10 s cooldown</span></p>
+                <p>Raises a block in front of you for eight seconds.</p>
+              </div>
+            </div>
+          </article>
+        </div>
+        <button class="picker-arrow next" type="button" data-step="1" aria-label="Next character"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></button>
       </div>
     </div>
   </section>
@@ -545,5 +655,71 @@ footer a:hover { color: var(--text); }
 </main>
 
 <footer>A <a href="https://ferrlabs.com">FerrLabs</a> game</footer>
+<script>
+(() => {
+  const picker = document.querySelector("[data-picker]");
+  if (!picker) return;
+  const stage = picker.querySelector(".picker-stage");
+  const characters = [...picker.querySelectorAll(".character")];
+  const moving = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let current = 0;
+  let visible = false;
+
+  const animate = (character, on) => {
+    const portrait = character.querySelector(".character-portrait");
+    portrait.dataset.still ??= portrait.src;
+    if (on && !visible) return;
+    if (!on || !moving) {
+      portrait.src = portrait.dataset.still;
+      return;
+    }
+    const idle = new Image();
+    idle.onload = () => {
+      if (character.dataset.pos === "0") portrait.src = idle.src;
+    };
+    idle.src = portrait.dataset.idle;
+  };
+
+  const show = (index) => {
+    const count = characters.length;
+    current = (index + count) % count;
+    characters.forEach((character, i) => {
+      let pos = (i - current + count) % count;
+      if (pos > count / 2) pos -= count;
+      character.dataset.pos = String(pos);
+      character.setAttribute("aria-hidden", String(pos !== 0));
+      animate(character, pos === 0);
+    });
+  };
+
+  picker.querySelectorAll("[data-step]").forEach((button) =>
+    button.addEventListener("click", () => show(current + Number(button.dataset.step))));
+  characters.forEach((character, i) =>
+    character.querySelector(".character-portrait").addEventListener("click", () => show(i)));
+  picker.addEventListener("keydown", (event) => {
+    if (event.key === "ArrowLeft") show(current - 1);
+    if (event.key === "ArrowRight") show(current + 1);
+  });
+
+  let swipeFrom = null;
+  stage.addEventListener("pointerdown", (event) => { swipeFrom = event.clientX; });
+  stage.addEventListener("pointerup", (event) => {
+    if (swipeFrom !== null && Math.abs(event.clientX - swipeFrom) > 40) {
+      show(current + (event.clientX < swipeFrom ? 1 : -1));
+    }
+    swipeFrom = null;
+  });
+
+  picker.classList.add("enhanced");
+  show(0);
+
+  new IntersectionObserver((entries, observer) => {
+    if (!entries.some((entry) => entry.isIntersecting)) return;
+    observer.disconnect();
+    visible = true;
+    animate(characters[current], true);
+  }).observe(stage);
+})();
+</script>
 </body>
 </html>

@@ -27,6 +27,15 @@ impl Character {
             Character::Sapper => include_bytes!("site/sapper.webp"),
         }
     }
+
+    pub fn idle(self) -> &'static [u8] {
+        match self {
+            Character::Demolisher => include_bytes!("site/demolisher-idle.webp"),
+            Character::Runner => include_bytes!("site/runner-idle.webp"),
+            Character::Grenadier => include_bytes!("site/grenadier-idle.webp"),
+            Character::Sapper => include_bytes!("site/sapper-idle.webp"),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -69,6 +78,31 @@ mod tests {
                     a.token(),
                     b.token()
                 );
+            }
+        }
+    }
+
+    #[test]
+    fn every_character_has_its_own_animated_idle() {
+        let all = [
+            Character::Demolisher,
+            Character::Runner,
+            Character::Grenadier,
+            Character::Sapper,
+        ];
+        for character in all {
+            let idle = character.idle();
+            assert_eq!(&idle[..4], b"RIFF", "{}", character.token());
+            assert_eq!(&idle[8..12], b"WEBP", "{}", character.token());
+            assert!(
+                idle.windows(4).any(|chunk| chunk == b"ANIM"),
+                "{} is animated",
+                character.token()
+            );
+        }
+        for (i, a) in all.iter().enumerate() {
+            for b in &all[i + 1..] {
+                assert_ne!(a.idle(), b.idle(), "{} and {}", a.token(), b.token());
             }
         }
     }

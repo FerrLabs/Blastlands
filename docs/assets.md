@@ -69,3 +69,7 @@ a sprite and would import straight back into Unity.
 The portraits were rendered headless from the characters' prefabs in their idle pose, lit warm
 from the front with an orange rim, on a transparent background, then cropped and saved as WebP at
 880 pixels high. A new character or a changed outfit needs a new render in the same framing.
+
+Each character also has a `<name>-idle.webp`: the same setup rendered as 54 frames over one cycle
+of the idle animation, with the body swaying 22 degrees either side, assembled into a looping
+animated WebP 520 pixels high. The page only plays the one in the middle of the picker.
