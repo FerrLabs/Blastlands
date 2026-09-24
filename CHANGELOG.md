@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.107] - 2026-09-24
+
+### Features
+
+- feat(lobby): animate arrows beside the scroll link on the download page (#115)
+
 ## [26.9.106] - 2026-09-24
 
 ### Bug Fixes
