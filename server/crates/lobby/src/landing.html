@@ -474,42 +474,6 @@ h2 {
   text-transform: uppercase;
 }
 
-.controls {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-  gap: 0.75rem;
-}
-
-.control {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.5rem 1rem;
-  padding: 0.8rem 1rem;
-  border: 1px solid var(--border);
-  border-radius: 0.6rem;
-  background: var(--bg-raised);
-  font-size: 0.95rem;
-}
-
-kbd {
-  padding: 0.15rem 0.5rem;
-  border: 1px solid var(--border);
-  border-bottom-width: 3px;
-  border-radius: 0.35rem;
-  background: var(--bg);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.8rem;
-  white-space: nowrap;
-}
-
-.pad-note {
-  margin: 1.25rem 0 0;
-  color: var(--muted);
-  font-size: 0.9rem;
-}
-
 .notes {
   max-width: 40rem;
   margin: 0 auto;
@@ -676,21 +640,6 @@ footer a:hover { color: var(--text); }
   </section>
 
   <section class="band sunk">
-    <div class="wrap">
-      <h2>Controls</h2>
-      <p class="intro">Keyboard and mouse, or an Xbox or PlayStation controller.</p>
-      <div class="controls">
-        <div class="control">Move <span><kbd>WASD</kbd> <kbd>ZQSD</kbd> <kbd>Arrows</kbd></span></div>
-        <div class="control">Drop a bomb <kbd>E</kbd></div>
-        <div class="control">Dash <kbd>Space</kbd></div>
-        <div class="control">Shove <kbd>Left click</kbd></div>
-        <div class="control">Ability <kbd>Right click</kbd></div>
-      </div>
-      <p class="pad-note">On a pad: stick to move, A or Cross to drop, a shoulder to dash, X or Square to shove, Y or Triangle for the ability.</p>
-    </div>
-  </section>
-
-  <section class="band">
     <div class="notes">
       <p>{{note}}</p>
       <p>When a new version comes out, the lobby shows an Update button.</p>
