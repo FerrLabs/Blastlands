@@ -353,3 +353,28 @@ jobs:
           tags: |
             ghcr.io/ferrlabs/blastlands/server:${{ steps.tag.outputs.value }}
             ghcr.io/ferrlabs/blastlands/server:sha-${{ github.sha }}
+
+  discard-builds:
+    name: Discard build artifacts
+    needs: [build, publish-client, image]
+    if: >-
+      always() &&
+      needs.build.result == 'success' &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled')
+    runs-on: ${{ github.event.repository.private && 'ferrlabs-k8s-light' || 'ubuntu-latest' }}
+    permissions:
+      actions: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${REPO}/actions/runs/${RUN_ID}/artifacts" \
+            --jq '.artifacts[] | select(.name == "Windows client" or .name == "Linux dedicated server") | "\(.id) \(.name)"' |
+            while read -r id name; do
+              gh api -X DELETE "repos/${REPO}/actions/artifacts/${id}"
+              echo "deleted ${name} (${id})"
+            done
