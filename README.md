@@ -76,7 +76,9 @@ follow whichever one is plugged in.
 ### Bots
 
 Easy, Normal and Hard. They use the same inputs as a player and see only what a player in
-their seat would see. Difficulty changes how far ahead they plan, not how fast they react.
+their seat would see. A harder bot plans further ahead, reacts sooner and remembers where
+it last saw you for longer. Every bot in an online match plays at Normal; the difficulty is
+an editor setting for local play.
 
 ### Local play
 
