@@ -455,6 +455,12 @@ namespace Blastlands.Core
         // looks broken rather than fooled. Everything else simply ages out.
         private void Observe(MatchState state, PlayerState self)
         {
+            if (state.Settings.Survival.Enabled)
+            {
+                ObserveZombies(state);
+                return;
+            }
+
             for (int i = sightings.Count - 1; i >= 0; i--)
             {
                 Sighting stale = sightings[i];
@@ -463,12 +469,6 @@ namespace Blastlands.Core
                 {
                     sightings.RemoveAt(i);
                 }
-            }
-
-            if (state.Settings.Survival.Enabled)
-            {
-                ObserveZombies(state);
-                return;
             }
 
             for (int i = 0; i < state.Players.Count; i++)

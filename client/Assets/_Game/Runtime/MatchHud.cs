@@ -52,10 +52,7 @@ namespace Blastlands.Runtime
 
             clock?.Render(state);
 
-            if (series != null)
-            {
-                round?.Render(series, state);
-            }
+            round?.Render(series, state);
 
             foreach (HudRoster roster in rosters)
             {

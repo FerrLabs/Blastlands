@@ -98,6 +98,10 @@ namespace Blastlands.Core
         private readonly List<Zombie> zombies = new List<Zombie>();
         private int[] coastDistance;
 
+        internal readonly Queue<GridPos> ZombieQueue = new Queue<GridPos>();
+        internal int[] ZombieField;
+        internal int[] ChewField;
+
         public MatchState(Arena arena, MatchSettings settings, uint seed)
         {
             if (arena == null)

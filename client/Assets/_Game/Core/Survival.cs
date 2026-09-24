@@ -176,13 +176,28 @@ namespace Blastlands.Core
         private static int[] DistanceField(MatchState state, bool throughSoftBlocks)
         {
             Arena arena = state.Arena;
-            var field = new int[arena.Width * arena.Height];
+            int size = arena.Width * arena.Height;
+            int[] field = throughSoftBlocks ? state.ChewField : state.ZombieField;
+            if (field == null || field.Length != size)
+            {
+                field = new int[size];
+                if (throughSoftBlocks)
+                {
+                    state.ChewField = field;
+                }
+                else
+                {
+                    state.ZombieField = field;
+                }
+            }
+
             for (int i = 0; i < field.Length; i++)
             {
                 field[i] = Unreached;
             }
 
-            var queue = new Queue<GridPos>();
+            Queue<GridPos> queue = state.ZombieQueue;
+            queue.Clear();
             for (int i = 0; i < state.Players.Count; i++)
             {
                 PlayerState player = state.Players[i];
