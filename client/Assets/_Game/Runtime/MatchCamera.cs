@@ -347,7 +347,7 @@ namespace Blastlands.Runtime
                 PlayerState watched = Spectated(state, player);
                 if (watched == null)
                 {
-                    return drawn != null && drawn.TryShown(seat, out Vector3 fallen) ? fallen : MatchView.ToWorld(player.Position, 0f);
+                    return MatchView.ToWorld(player.Position, 0f);
                 }
 
                 player = watched;
