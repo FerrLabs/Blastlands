@@ -27,10 +27,17 @@ pub struct Asset {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Installer {
+    pub asset_url: String,
+    pub sha256: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PublishedClient {
     pub version: ClientVersion,
     pub asset_url: String,
     pub sha256: String,
+    pub installer: Option<Installer>,
 }
 
 #[derive(Debug, Error)]
@@ -53,14 +60,25 @@ pub fn newest_client(releases: &[Release]) -> Option<PublishedClient> {
 fn published_client(release: &Release) -> Option<PublishedClient> {
     let version = release.tag_name.strip_prefix('v')?.parse().ok()?;
     let archive = format!("Blastlands-{}-windows.zip", release.tag_name);
-    let asset = release.assets.iter().find(|asset| asset.name == archive)?;
+    let (asset_url, sha256) = checked_asset(release, &archive)?;
+
+    let setup = format!("Blastlands-Setup-{}.exe", release.tag_name);
+    let installer =
+        checked_asset(release, &setup).map(|(asset_url, sha256)| Installer { asset_url, sha256 });
+
+    Some(PublishedClient {
+        version,
+        asset_url,
+        sha256,
+        installer,
+    })
+}
+
+fn checked_asset(release: &Release, name: &str) -> Option<(String, String)> {
+    let asset = release.assets.iter().find(|asset| asset.name == name)?;
     let sha256 = asset.digest.as_deref()?.strip_prefix("sha256:")?;
 
-    is_sha256(sha256).then(|| PublishedClient {
-        version,
-        asset_url: asset.url.clone(),
-        sha256: sha256.to_owned(),
-    })
+    is_sha256(sha256).then(|| (asset.url.clone(), sha256.to_owned()))
 }
 
 fn is_sha256(hex: &str) -> bool {
@@ -142,6 +160,14 @@ mod tests {
         })
     }
 
+    fn installer_asset(tag: &str, digest: Option<&str>) -> Value {
+        json!({
+            "name": format!("Blastlands-Setup-{tag}.exe"),
+            "url": format!("https://api.github.com/repos/FerrLabs/Blastlands/releases/assets/{tag}-setup"),
+            "digest": digest,
+        })
+    }
+
     fn newest(releases: Value) -> Option<PublishedClient> {
         let releases: Vec<Release> = serde_json::from_value(releases).expect("fixture parses");
         newest_client(&releases)
@@ -149,6 +175,59 @@ mod tests {
 
     fn sha(digest: &str) -> String {
         format!("sha256:{digest}")
+    }
+
+    #[test]
+    fn a_release_with_an_installer_carries_it_along() {
+        let client = newest(json!([release(
+            "v26.9.18",
+            json!([
+                windows_asset("v26.9.18", Some(&sha(DIGEST))),
+                installer_asset("v26.9.18", Some(&sha(DIGEST)))
+            ])
+        )]))
+        .expect("the release is usable");
+
+        let installer = client.installer.expect("the installer is published");
+        assert!(installer.asset_url.ends_with("v26.9.18-setup"));
+        assert_eq!(installer.sha256, DIGEST);
+    }
+
+    #[test]
+    fn an_installer_nobody_can_check_is_left_out_but_the_release_stays_usable() {
+        let client = newest(json!([release(
+            "v26.9.18",
+            json!([
+                windows_asset("v26.9.18", Some(&sha(DIGEST))),
+                installer_asset("v26.9.18", None)
+            ])
+        )]))
+        .expect("the archive alone is enough");
+
+        assert_eq!(client.installer, None);
+    }
+
+    #[test]
+    fn an_installer_named_for_another_release_is_ignored() {
+        let client = newest(json!([release(
+            "v26.9.18",
+            json!([
+                windows_asset("v26.9.18", Some(&sha(DIGEST))),
+                installer_asset("v26.9.17", Some(&sha(DIGEST)))
+            ])
+        )]))
+        .expect("the archive is usable");
+
+        assert_eq!(client.installer, None);
+    }
+
+    #[test]
+    fn a_release_with_only_an_installer_is_not_a_client_release() {
+        assert!(newest(json!([release(
+            "v26.9.18",
+            json!([installer_asset("v26.9.18", Some(&sha(DIGEST)))])
+        )]))
+        .is_none());
     }
 
     #[test]
