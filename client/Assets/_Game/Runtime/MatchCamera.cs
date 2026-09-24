@@ -115,15 +115,10 @@ namespace Blastlands.Runtime
         {
             into.Clear();
 
-            if (mode == CameraMode.Split)
+            if (mode == CameraMode.Split || mode == CameraMode.Follow)
             {
-                into.Add(firstSeat + index);
-                return;
-            }
-
-            if (mode == CameraMode.Follow)
-            {
-                into.Add(firstSeat);
+                bool spectating = index < watching.Count && watching[index] >= 0;
+                into.Add(spectating ? watching[index] : firstSeat + (mode == CameraMode.Split ? index : 0));
                 return;
             }
 
@@ -345,21 +340,9 @@ namespace Blastlands.Runtime
             }
 
             int seat = firstSeat + (mode == CameraMode.Split ? index : 0);
-            if (player.Alive)
+            if (!player.Alive)
             {
-                if (index < watching.Count)
-                {
-                    watching[index] = -1;
-                }
-            }
-            else
-            {
-                PlayerState watched = StillWatching(index) ?? Spectated(state, player);
-                if (index < watching.Count)
-                {
-                    watching[index] = watched == null ? -1 : watched.Id;
-                }
-
+                PlayerState watched = Spectate(index);
                 if (watched == null)
                 {
                     return MatchView.ToWorld(player.Position, 0f);
@@ -367,6 +350,10 @@ namespace Blastlands.Runtime
 
                 player = watched;
                 seat = watched.Id;
+            }
+            else
+            {
+                Spectate(index);
             }
 
             Vector3 at = drawn != null && drawn.TryShown(seat, out Vector3 shown)
@@ -384,6 +371,18 @@ namespace Blastlands.Runtime
             }
 
             return at + wanted;
+        }
+
+        public PlayerState Spectate(int index)
+        {
+            PlayerState own = PlayerFor(index);
+            PlayerState watched = own == null || own.Alive ? null : StillWatching(index) ?? Spectated(state, own);
+            if (index < watching.Count)
+            {
+                watching[index] = watched == null ? -1 : watched.Id;
+            }
+
+            return watched;
         }
 
         private PlayerState StillWatching(int index)

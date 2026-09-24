@@ -13,6 +13,7 @@ namespace Blastlands.Runtime.Tests
         private GameObject host;
         private MatchCamera cameras;
         private readonly List<int> viewers = new List<int>();
+        private MatchState state;
 
         [SetUp]
         public void SetUp()
@@ -29,7 +30,7 @@ namespace Blastlands.Runtime.Tests
 
         private void Bind(int seats)
         {
-            var state = new MatchState(new Arena(9, 9), MatchSettings.Default, 1u);
+            state = new MatchState(new Arena(9, 9), MatchSettings.Default, 1u);
             for (int i = 0; i < 4; i++)
             {
                 state.AddPlayer(new GridPos(1 + i, 1));
@@ -146,6 +147,25 @@ namespace Blastlands.Runtime.Tests
             state.Players[1].Alive = false;
             state.Players[2].Alive = false;
             Assert.That(MatchCamera.Spectated(state, state.Players[0]), Is.Null, "nobody left to watch");
+        }
+
+        [Test]
+        public void ASpectatingViewportSeesThroughThePlayerItWatches()
+        {
+            Bind(1);
+            cameras.Use(CameraMode.Follow);
+            state.Players[0].Alive = false;
+
+            PlayerState watched = cameras.Spectate(0);
+            cameras.ViewersOf(0, viewers);
+
+            Assert.That(watched, Is.Not.Null);
+            Assert.That(viewers, Is.EqualTo(new[] { watched.Id }), "the fog follows the camera, or it draws nobody");
+
+            state.Players[0].Alive = true;
+            cameras.Spectate(0);
+            cameras.ViewersOf(0, viewers);
+            Assert.That(viewers, Is.EqualTo(new[] { 0 }), "back to your own eyes once you are alive");
         }
 
         [Test]

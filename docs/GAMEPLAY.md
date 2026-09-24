@@ -239,7 +239,10 @@ away, fast when they have dashed off, so it neither swims behind a sprint nor ji
 standing player. The lookahead eases in and out instead of flipping with the facing.
 
 Once your player is out, the camera moves on to the nearest player still standing rather than
-staring at where you fell.
+staring at where you fell, and stays with them until they fall too. It sees through their eyes:
+the fog follows the camera, or a dead viewer would see nobody at all in the modes that hide
+players. On a shared screen that means a couch mate can read a living player's view off the
+spectator's viewport, which is the bargain that makes spectating work online at all.
 
 None of it shows much beyond the arena edge, past which the view is mostly scenery and the
 player loses track of where the board ends.
