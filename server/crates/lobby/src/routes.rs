@@ -200,6 +200,7 @@ pub struct JoinAccepted {
 pub fn app(state: AppState) -> Router {
     Router::new()
         .route("/", get(landing_page))
+        .route("/logo.svg", get(logo))
         .route("/characters/{character}/portrait", get(character_portrait))
         .route("/healthz", get(health))
         .route("/v1/version", get(version))
@@ -228,6 +229,16 @@ async fn landing_page(State(state): State<AppState>) -> impl IntoResponse {
             state.release.current().as_ref(),
             state.release.installer().as_ref(),
         )),
+    )
+}
+
+async fn logo() -> impl IntoResponse {
+    (
+        [
+            (header::CONTENT_TYPE, "image/svg+xml"),
+            (header::CACHE_CONTROL, "public, max-age=86400"),
+        ],
+        landing::LOGO,
     )
 }
 
@@ -709,6 +720,18 @@ mod tests {
         assert_eq!(response.headers()[header::CONTENT_TYPE], "image/webp");
         let bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
         assert_eq!(&bytes[..], Character::Runner.portrait());
+    }
+
+    #[tokio::test]
+    async fn the_logo_the_page_points_at_is_served_as_svg() {
+        let page = body_text(router().oneshot(get_request("/")).await.unwrap()).await;
+        assert!(page.contains("href=\"/logo.svg\""), "the page uses it as its icon");
+
+        let response = router().oneshot(get_request("/logo.svg")).await.unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.headers()[header::CONTENT_TYPE], "image/svg+xml");
+        assert!(body_text(response).await.starts_with("<svg"));
     }
 
     #[tokio::test]

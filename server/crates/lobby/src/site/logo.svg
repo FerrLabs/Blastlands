@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Blastlands">
+  <defs>
+    <radialGradient id="body" cx="0.36" cy="0.32" r="0.75">
+      <stop offset="0" stop-color="#6a5a47"/>
+      <stop offset="0.45" stop-color="#2e261d"/>
+      <stop offset="1" stop-color="#15110c"/>
+    </radialGradient>
+    <radialGradient id="spark" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#fff4c2"/>
+      <stop offset="0.45" stop-color="#ffc857"/>
+      <stop offset="1" stop-color="#e8733a"/>
+    </radialGradient>
+  </defs>
+  <path d="M47 16 C49 12 51 10.5 53.5 9.5" fill="none" stroke="#d8c3a0" stroke-width="3.5" stroke-linecap="round"/>
+  <rect x="39" y="15" width="12" height="9" rx="2" transform="rotate(45 45 19.5)" fill="#8a7760" stroke="#15110c" stroke-width="1.5"/>
+  <circle cx="27" cy="38" r="22.5" fill="url(#body)" stroke="#e8733a" stroke-width="3"/>
+  <ellipse cx="18.5" cy="28.5" rx="6" ry="3.8" transform="rotate(-35 18.5 28.5)" fill="#f3ecdf" opacity="0.4"/>
+  <path d="M55 1.5 L57 6.5 L62.5 5.5 L58.5 9.5 L61.5 14 L56 12 L53 16.5 L52.5 11 L47 10 L51.5 7 Z" fill="url(#spark)"/>
+</svg>
