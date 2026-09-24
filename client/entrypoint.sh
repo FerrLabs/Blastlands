@@ -56,15 +56,15 @@ while true; do
       # A lobby from before modes names none, and everything it ran was Arena.
       mode="$(jq -er '.mode // "arena"' <"${body}")"
 
-      if [ -n "${draining}" ]; then
-        echo "blastlands: draining, leaving ${match} for another instance" >&2
-        exit 0
-      fi
-
       if [ "${match}" = "${finished_match}" ]; then
         echo "blastlands: ${match} is still assigned after it ended, not replaying it" >&2
         sleep "${poll_seconds}" || true
         continue
+      fi
+
+      if [ -n "${draining}" ]; then
+        echo "blastlands: draining, leaving ${match} for another instance" >&2
+        exit 0
       fi
 
       echo "blastlands: taking ${mode} match ${match}, ${players} seats for ${humans} players" >&2

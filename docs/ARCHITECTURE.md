@@ -429,9 +429,10 @@ is running a match, so a port with no pod behind it, or one whose pod is busy, i
 offered. The two numbers are coupled: the widest gap between two polls is the entrypoint's
 `BLASTLANDS_POLL_SECONDS` (2) plus curl's 10 s timeout, and `INSTANCE_READY_TTL` (15 s) has to
 stay above it. Raise the poll interval past that and every create answers `no_capacity` with
-nothing in the logs pointing at the poll. This is what makes the pool survive a lobby restart: the lobby keeps its directory
-in memory, so it comes back believing every port is free, and without the rule it would put
-a new match on a port where a match is still being played.
+nothing in the logs pointing at the poll. This is what makes the pool survive a lobby
+restart: the lobby keeps its directory in memory, so it comes back believing every port is
+free, and without the rule it would put a new match on a port where a match is still being
+played.
 
 The binary runs as a child rather than replacing the script, so a finished match returns
 to the loop instead of ending the container. `restartPolicy: Always` would restart it,
