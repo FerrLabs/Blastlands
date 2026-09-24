@@ -20,6 +20,13 @@ pub struct ReleaseInfo {
     pub sha256: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InstallerInfo {
+    pub version: ClientVersion,
+    pub download_url: String,
+    pub sha256: String,
+}
+
 pub struct Releases {
     minimum: ClientVersion,
     public_url: String,
@@ -60,6 +67,27 @@ impl Releases {
             download_url: format!("{}/v1/client/{}/download", self.public_url, client.version),
             sha256: client.sha256,
         })
+    }
+
+    pub fn installer(&self) -> Option<InstallerInfo> {
+        self.published().and_then(|client| {
+            client.installer.map(|installer| InstallerInfo {
+                version: client.version,
+                download_url: format!("{}/v1/client/{}/installer", self.public_url, client.version),
+                sha256: installer.sha256,
+            })
+        })
+    }
+
+    pub fn installer_for(&self, version: ClientVersion) -> Result<String, LobbyError> {
+        match self.published() {
+            None => Err(LobbyError::ReleaseUnknown),
+            Some(client) if client.version == version => client
+                .installer
+                .map(|installer| installer.asset_url)
+                .ok_or(LobbyError::ReleaseNotFound),
+            Some(_) => Err(LobbyError::ReleaseNotFound),
+        }
     }
 
     pub fn asset_for(&self, version: ClientVersion) -> Result<String, LobbyError> {
@@ -113,6 +141,17 @@ mod tests {
             version: version.parse().unwrap(),
             asset_url: format!("https://api.github.com/assets/{version}"),
             sha256: "ab".repeat(32),
+            installer: None,
+        }
+    }
+
+    fn with_installer(version: &str) -> PublishedClient {
+        PublishedClient {
+            installer: Some(crate::github::Installer {
+                asset_url: format!("https://api.github.com/assets/{version}-setup"),
+                sha256: "cd".repeat(32),
+            }),
+            ..published(version)
         }
     }
 
@@ -127,6 +166,50 @@ mod tests {
         let mut map = HeaderMap::new();
         map.insert(VERSION_HEADER, HeaderValue::from_str(value).unwrap());
         map
+    }
+
+    #[test]
+    fn the_installer_is_offered_under_the_lobbys_own_address() {
+        let releases = releases();
+        releases.publish(with_installer("26.9.5"));
+
+        let installer = releases.installer().expect("an installer is published");
+        assert_eq!(
+            installer.download_url,
+            "https://api.blastlands.test/v1/client/26.9.5/installer"
+        );
+        assert_eq!(installer.sha256, "cd".repeat(32));
+        assert_eq!(
+            releases.installer_for("26.9.5".parse().unwrap()).unwrap(),
+            "https://api.github.com/assets/26.9.5-setup"
+        );
+    }
+
+    #[test]
+    fn a_release_without_an_installer_has_none_to_offer() {
+        let releases = releases();
+        releases.publish(published("26.9.5"));
+
+        assert_eq!(releases.installer(), None);
+        assert!(matches!(
+            releases.installer_for("26.9.5".parse().unwrap()),
+            Err(LobbyError::ReleaseNotFound)
+        ));
+    }
+
+    #[test]
+    fn only_the_published_versions_installer_can_be_asked_for() {
+        let releases = releases();
+        assert!(matches!(
+            releases.installer_for("26.9.5".parse().unwrap()),
+            Err(LobbyError::ReleaseUnknown)
+        ));
+
+        releases.publish(with_installer("26.9.5"));
+        assert!(matches!(
+            releases.installer_for("26.9.4".parse().unwrap()),
+            Err(LobbyError::ReleaseNotFound)
+        ));
     }
 
     #[test]

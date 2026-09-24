@@ -25,8 +25,11 @@ sees a bomb.
 
 Responsibilities:
 
-- `GET /` — the download page: an Install button pointing at the published Windows build, or a
-  disabled one before any build exists. The HTML is embedded in the binary (`landing.html`).
+- `GET /` — the download page: an Install button pointing at the installer when the release carries one,
+  the zip otherwise, and a disabled one before any build exists. The HTML is embedded in the binary
+  (`landing.html`).
+- `GET /v1/client/{version}/installer` — redirect to the release's `Blastlands-Setup-<tag>.exe`, like
+  `.../download` does for the zip. Only the published version has one, and only if the release carries it.
 - `GET /v1/matches` — public list of matches accepting players.
 - `POST /v1/matches` — create a match, allocate a game server instance, return its endpoint.
 - `POST /v1/matches/{id}/join` — reserve a slot, return the endpoint and a join ticket.

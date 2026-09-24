@@ -198,6 +198,7 @@ pub fn app(state: AppState) -> Router {
         .route("/healthz", get(health))
         .route("/v1/version", get(version))
         .route("/v1/client/{version}/download", get(download_client))
+        .route("/v1/client/{version}/installer", get(download_installer))
         .route("/v1/matches", get(list_matches).post(create_match))
         .route("/v1/matches/{id}", get(match_status))
         .route("/v1/matches/{id}/join", post(join_match))
@@ -217,7 +218,10 @@ async fn health() -> StatusCode {
 async fn landing_page(State(state): State<AppState>) -> impl IntoResponse {
     (
         [(header::CACHE_CONTROL, "public, max-age=60")],
-        Html(landing::page(state.release.current().as_ref())),
+        Html(landing::page(
+            state.release.current().as_ref(),
+            state.release.installer().as_ref(),
+        )),
     )
 }
 
@@ -236,15 +240,28 @@ async fn download_client(
     Path(version): Path<String>,
 ) -> Result<Redirect, LobbyError> {
     let asset_url = state.release.asset_for(version.parse::<ClientVersion>()?)?;
+    redirect_to_asset(&state, &version, &asset_url).await
+}
 
-    let location = state
-        .downloads
-        .location(&asset_url)
-        .await
-        .map_err(|error| {
-            tracing::warn!(%error, %version, "could not obtain a download link from GitHub");
-            LobbyError::DownloadUnavailable
-        })?;
+async fn download_installer(
+    State(state): State<AppState>,
+    Path(version): Path<String>,
+) -> Result<Redirect, LobbyError> {
+    let asset_url = state
+        .release
+        .installer_for(version.parse::<ClientVersion>()?)?;
+    redirect_to_asset(&state, &version, &asset_url).await
+}
+
+async fn redirect_to_asset(
+    state: &AppState,
+    version: &str,
+    asset_url: &str,
+) -> Result<Redirect, LobbyError> {
+    let location = state.downloads.location(asset_url).await.map_err(|error| {
+        tracing::warn!(%error, %version, "could not obtain a download link from GitHub");
+        LobbyError::DownloadUnavailable
+    })?;
 
     Ok(Redirect::temporary(&location))
 }
@@ -437,6 +454,7 @@ mod tests {
             version: CURRENT.parse().unwrap(),
             asset_url: "https://api.github.com/assets/1".to_owned(),
             sha256: "ab".repeat(32),
+            installer: None,
         });
         releases
     }
@@ -661,6 +679,54 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::OK);
         assert!(!body_text(response).await.contains("/v1/client/"));
+    }
+
+    fn release_with_installer() -> Arc<Releases> {
+        let releases = unpublished();
+        releases.publish(PublishedClient {
+            version: CURRENT.parse().unwrap(),
+            asset_url: "https://api.github.com/assets/1".to_owned(),
+            sha256: "ab".repeat(32),
+            installer: Some(crate::github::Installer {
+                asset_url: "https://api.github.com/assets/2".to_owned(),
+                sha256: "cd".repeat(32),
+            }),
+        });
+        releases
+    }
+
+    #[tokio::test]
+    async fn the_root_prefers_the_installer_when_one_is_published() {
+        let response = router_with(release_with_installer())
+            .oneshot(get_request("/"))
+            .await
+            .unwrap();
+
+        let page = body_text(response).await;
+        assert!(page.contains("/v1/client/26.9.0/installer"));
+        assert!(!page.contains("/v1/client/26.9.0/download"));
+        assert!(page.contains(&"cd".repeat(32)));
+    }
+
+    #[tokio::test]
+    async fn a_release_without_an_installer_answers_not_found_for_it() {
+        let response = router()
+            .oneshot(get_request("/v1/client/26.9.0/installer"))
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        assert_eq!(body_json(response).await["code"], "release_not_found");
+    }
+
+    #[tokio::test]
+    async fn an_installer_before_any_release_is_read_is_unavailable() {
+        let response = router_with(unpublished())
+            .oneshot(get_request("/v1/client/26.9.0/installer"))
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
     }
 
     #[tokio::test]
