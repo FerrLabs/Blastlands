@@ -60,15 +60,6 @@ namespace Blastlands.Runtime
                 Render(Notice);
             }
 
-            if (card != null)
-            {
-                bool wanted = Notice.Visible && Notice.BlocksPlay;
-                if (card.activeSelf != wanted)
-                {
-                    card.SetActive(wanted);
-                }
-            }
-
             if (Notice.OffersUpdate && Accepted())
             {
                 StartCoroutine(updater.Apply(gate.Release));
@@ -83,7 +74,7 @@ namespace Blastlands.Runtime
 
         private void Render(UpdateNotice notice)
         {
-            if (!notice.Visible || !notice.BlocksPlay)
+            if (!notice.Visible || !notice.Prominent)
             {
                 if (card != null)
                 {
