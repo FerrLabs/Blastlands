@@ -59,8 +59,17 @@ namespace Blastlands.Runtime
 
             int capacity = Mathf.Max(1, player.CarryCapacity);
             bomb.Show(player.BombsHeld / (float)capacity, player.BombsHeld > 0, player.BombsHeld.ToString());
-            dash.Show(Recovered(player.DashCooldownRemaining, settings.DashCooldownTicks + settings.DashTicks), player.DashCooldownRemaining <= 0, null);
-            shove.Show(Recovered(player.PushCooldownRemaining, settings.Push.CooldownTicks), player.PushCooldownRemaining <= 0, null);
+            dash.Reveal(settings.Rules.AllowsDash);
+            if (settings.Rules.AllowsDash)
+            {
+                dash.Show(Recovered(player.DashCooldownRemaining, settings.DashCooldownTicks + settings.DashTicks), player.DashCooldownRemaining <= 0, null);
+            }
+
+            shove.Reveal(settings.Rules.AllowsShove);
+            if (settings.Rules.AllowsShove)
+            {
+                shove.Show(Recovered(player.PushCooldownRemaining, settings.Push.CooldownTicks), player.PushCooldownRemaining <= 0, null);
+            }
             RenderAbility(state, player, settings);
 
             bool won = state.Outcome == RoundOutcome.Winner && state.WinnerId == player.Id;
