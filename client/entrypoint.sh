@@ -36,9 +36,9 @@ echo "blastlands: waiting for a match on port ${BLASTLANDS_PORT}" >&2
 body="$(mktemp)"
 server_pid=""
 finished_match=""
+draining=""
 trap 'rm -f "${body}"' EXIT
-trap 'if [ -n "${server_pid}" ]; then kill -TERM "${server_pid}" 2>/dev/null || true; wait "${server_pid}" 2>/dev/null || true; fi; exit 143' TERM
-trap 'if [ -n "${server_pid}" ]; then kill -INT "${server_pid}" 2>/dev/null || true; wait "${server_pid}" 2>/dev/null || true; fi; exit 130' INT
+trap 'draining=1; echo "blastlands: draining, no new match will be taken" >&2' TERM INT
 
 while true; do
   status="$(
@@ -58,8 +58,13 @@ while true; do
 
       if [ "${match}" = "${finished_match}" ]; then
         echo "blastlands: ${match} is still assigned after it ended, not replaying it" >&2
-        sleep "${poll_seconds}"
+        sleep "${poll_seconds}" || true
         continue
+      fi
+
+      if [ -n "${draining}" ]; then
+        echo "blastlands: draining, leaving ${match} for another instance" >&2
+        exit 0
       fi
 
       echo "blastlands: taking ${mode} match ${match}, ${players} seats for ${humans} players" >&2
@@ -67,7 +72,10 @@ while true; do
         --match "${match}" --players "${players}" --humans "${humans}" --mode "${mode}" &
       server_pid="$!"
       code=0
-      wait "${server_pid}" || code="$?"
+      while :; do
+        wait "${server_pid}" && code=0 || code="$?"
+        kill -0 "${server_pid}" 2>/dev/null || break
+      done
       server_pid=""
 
       if [ "${code}" -ne 0 ]; then
@@ -84,5 +92,10 @@ while true; do
       ;;
   esac
 
-  sleep "${poll_seconds}"
+  if [ -n "${draining}" ]; then
+    echo "blastlands: drained, shutting down" >&2
+    exit 0
+  fi
+
+  sleep "${poll_seconds}" || true
 done

@@ -175,7 +175,7 @@ impl MatchDirectory {
             }
         }
 
-        let port = state.ports.acquire()?;
+        let port = state.ports.acquire(now)?;
 
         // Generated once and kept, rather than minted fresh on the way out. The copy the
         // host is handed is the only thing that can start this match later, so the lobby
@@ -318,6 +318,10 @@ impl MatchDirectory {
         Ok(())
     }
 
+    pub fn observe_instance(&self, port: u16, now: Instant) {
+        self.write().ports.observe_instance(port, now);
+    }
+
     /// What the instance owning `port` should run, once there is something to run.
     ///
     /// Only a started match answers. Before that there is nobody to play against, and an
@@ -430,11 +434,17 @@ mod tests {
 
     use super::*;
 
+    fn directory_over(range: std::ops::RangeInclusive<u16>) -> MatchDirectory {
+        let mut ports = PortPool::new(range.clone());
+        let now = Instant::now();
+        for port in range {
+            ports.observe_instance(port, now);
+        }
+        MatchDirectory::new("game.blastlands.test".to_owned(), ports)
+    }
+
     fn directory() -> MatchDirectory {
-        MatchDirectory::new(
-            "game.blastlands.test".to_owned(),
-            PortPool::new(7000..=7001),
-        )
+        directory_over(7000..=7001)
     }
 
     fn name(raw: &str) -> DisplayName {
@@ -808,7 +818,7 @@ mod tests {
 
     #[test]
     fn a_match_nobody_joined_is_taken_away_and_its_port_returned() {
-        let directory = MatchDirectory::new("game.test".to_owned(), PortPool::new(7000..=7000));
+        let directory = directory_over(7000..=7000);
         let start = Instant::now();
         make(&directory, caller(1), start);
 
@@ -819,12 +829,13 @@ mod tests {
         assert_eq!(reaped.len(), 1);
         assert_eq!(reaped[0].reason, ReapReason::NobodyJoined);
         assert!(directory.open_matches().is_empty());
+        directory.observe_instance(7000, start + Duration::from_secs(302));
         make(&directory, caller(2), start + Duration::from_secs(302));
     }
 
     #[test]
     fn a_match_someone_joined_is_left_alone() {
-        let directory = MatchDirectory::new("game.test".to_owned(), PortPool::new(7000..=7001));
+        let directory = directory_over(7000..=7001);
         let start = Instant::now();
         let id = make(&directory, caller(1), start);
         directory
@@ -842,7 +853,7 @@ mod tests {
         // instance, so it has nothing to heartbeat with. Judging it on silence would
         // delete every match on a lobby whose game servers do not exist yet, which is
         // exactly the state of this project.
-        let directory = MatchDirectory::new("game.test".to_owned(), PortPool::new(7000..=7001));
+        let directory = directory_over(7000..=7001);
         let start = Instant::now();
         let id = make(&directory, caller(1), start);
         directory
@@ -855,7 +866,7 @@ mod tests {
 
     #[test]
     fn a_match_never_started_is_reaped_at_its_deadline_even_with_players_in_it() {
-        let directory = MatchDirectory::new("game.test".to_owned(), PortPool::new(7000..=7000));
+        let directory = directory_over(7000..=7000);
         let start = Instant::now();
         let id = make(&directory, caller(1), start);
         directory
@@ -870,12 +881,13 @@ mod tests {
 
         assert_eq!(reaped.len(), 1);
         assert_eq!(reaped[0].reason, ReapReason::NeverStarted);
+        directory.observe_instance(7000, start + Duration::from_secs(902));
         make(&directory, caller(2), start + Duration::from_secs(902));
     }
 
     #[test]
     fn a_started_match_is_not_held_to_the_waiting_deadline() {
-        let directory = MatchDirectory::new("game.test".to_owned(), PortPool::new(7000..=7000));
+        let directory = directory_over(7000..=7000);
         let start = Instant::now();
         let (id, ticket) = made(&directory, caller(1), start);
         seat_a_guest(&directory, id);
@@ -893,7 +905,7 @@ mod tests {
 
     #[test]
     fn a_running_match_whose_instance_went_quiet_is_reaped() {
-        let directory = MatchDirectory::new("game.test".to_owned(), PortPool::new(7000..=7000));
+        let directory = directory_over(7000..=7000);
         let start = Instant::now();
         let (id, ticket) = made(&directory, caller(1), start);
         seat_a_guest(&directory, id);
@@ -905,12 +917,13 @@ mod tests {
 
         assert_eq!(reaped.len(), 1);
         assert_eq!(reaped[0].reason, ReapReason::InstanceWentSilent);
+        directory.observe_instance(7000, start + Duration::from_secs(32));
         make(&directory, caller(2), start + Duration::from_secs(32));
     }
 
     #[test]
     fn a_port_has_no_assignment_until_its_match_starts() {
-        let directory = MatchDirectory::new("game.test".to_owned(), PortPool::new(7000..=7000));
+        let directory = directory_over(7000..=7000);
         let start = Instant::now();
         let (id, ticket) = made(&directory, caller(1), start);
         seat_a_guest(&directory, id);
@@ -935,7 +948,7 @@ mod tests {
 
     #[test]
     fn a_port_nobody_was_given_has_no_assignment() {
-        let directory = MatchDirectory::new("game.test".to_owned(), PortPool::new(7000..=7001));
+        let directory = directory_over(7000..=7001);
         let start = Instant::now();
         let (id, ticket) = made(&directory, caller(1), start);
         seat_a_guest(&directory, id);
@@ -949,7 +962,7 @@ mod tests {
 
     #[test]
     fn a_finished_match_releases_its_assignment() {
-        let directory = MatchDirectory::new("game.test".to_owned(), PortPool::new(7000..=7000));
+        let directory = directory_over(7000..=7000);
         let start = Instant::now();
         let (id, ticket) = made(&directory, caller(1), start);
         seat_a_guest(&directory, id);
@@ -963,7 +976,7 @@ mod tests {
 
     #[test]
     fn starting_late_still_leaves_the_instance_its_grace_window() {
-        let directory = MatchDirectory::new("game.test".to_owned(), PortPool::new(7000..=7000));
+        let directory = directory_over(7000..=7000);
         let start = Instant::now();
         let (id, ticket) = made(&directory, caller(1), start);
         seat_a_guest(&directory, id);
@@ -990,7 +1003,7 @@ mod tests {
 
     #[test]
     fn a_heartbeat_keeps_a_running_match_alive() {
-        let directory = MatchDirectory::new("game.test".to_owned(), PortPool::new(7000..=7001));
+        let directory = directory_over(7000..=7001);
         let start = Instant::now();
         let (id, ticket) = made(&directory, caller(1), start);
         seat_a_guest(&directory, id);
@@ -1012,7 +1025,7 @@ mod tests {
 
     #[test]
     fn one_address_may_only_hold_so_many_matches() {
-        let directory = MatchDirectory::new("game.test".to_owned(), PortPool::new(7000..=7010));
+        let directory = directory_over(7000..=7010);
         let now = Instant::now();
 
         for _ in 0..2 {
