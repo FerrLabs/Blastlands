@@ -14,7 +14,7 @@ namespace Blastlands.Runtime
     [RequireComponent(typeof(Camera))]
     public sealed class MatchCamera : MonoBehaviour
     {
-        [SerializeField] private CameraMode mode = CameraMode.Global;
+        private CameraMode mode = CameraMode.Global;
         [SerializeField] private float tiltDegrees = 55f;
 
         // Wide enough to show a band of the surrounding scenery. Framing the arena
@@ -80,6 +80,11 @@ namespace Blastlands.Runtime
         public int ViewCount
         {
             get { return views.Count; }
+        }
+
+        public static CameraMode ModeFor(int localSeats)
+        {
+            return localSeats > 1 ? CameraMode.Split : CameraMode.Follow;
         }
 
         public Camera ViewAt(int index)
@@ -215,7 +220,7 @@ namespace Blastlands.Runtime
         {
             lastAspect = Aspect();
 
-            int wanted = mode == CameraMode.Split ? Mathf.Max(1, state.Players.Count) : 1;
+            int wanted = mode == CameraMode.Split ? Mathf.Clamp(localSeats, 1, Mathf.Max(1, state.Players.Count)) : 1;
 
             for (int i = views.Count - 1; i >= wanted; i--)
             {
