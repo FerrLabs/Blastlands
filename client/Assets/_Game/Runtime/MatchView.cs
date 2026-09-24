@@ -167,6 +167,11 @@ namespace Blastlands.Runtime
             theme = next;
         }
 
+        public void Dress(MatchArt matchArt)
+        {
+            art = matchArt;
+        }
+
         public void Bind(MatchState matchState)
         {
             state = matchState;

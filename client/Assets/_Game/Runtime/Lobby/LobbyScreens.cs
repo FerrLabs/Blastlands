@@ -77,6 +77,10 @@ namespace Blastlands.Runtime
             stage.transform.SetParent(transform, false);
             stage.Show(art.Models, CharacterChoice.Current);
 
+            var backdrop = new GameObject("Backdrop").AddComponent<LobbyBackdrop>();
+            backdrop.transform.SetParent(transform, false);
+            backdrop.Build(art, Camera.main);
+
             BuildCanvas();
         }
 
@@ -410,6 +414,8 @@ namespace Blastlands.Runtime
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1920f, 1080f);
             scaler.matchWidthOrHeight = 0.5f;
+
+            LobbyBackdrop.Shade(host.transform);
 
             root = LobbyChrome.Stretch(new GameObject("Screen", typeof(RectTransform)), 0f);
             root.SetParent(host.transform, false);
