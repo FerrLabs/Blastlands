@@ -12,6 +12,7 @@ namespace Blastlands.Runtime
         [SerializeField] private Sprite row;
         [SerializeField] private Sprite field;
         [SerializeField] private MatchArt models;
+        [SerializeField] private ArenaTheme[] themes;
 
         public GameObject Header
         {
@@ -41,6 +42,11 @@ namespace Blastlands.Runtime
         public MatchArt Models
         {
             get { return models; }
+        }
+
+        public ArenaTheme ThemeFor(uint seed)
+        {
+            return themes == null || themes.Length == 0 ? null : themes[(int)(seed % (uint)themes.Length)];
         }
 
         public bool Complete

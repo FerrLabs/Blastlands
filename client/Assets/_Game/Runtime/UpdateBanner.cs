@@ -3,6 +3,7 @@ using Blastlands.Core.Update;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 namespace Blastlands.Runtime
@@ -11,10 +12,12 @@ namespace Blastlands.Runtime
     {
         private const int Layer = 500;
         private const float Padding = 28f;
+        private const float BadgeClearance = 170f;
+        private const string MatchScene = "Match";
 
         private static readonly Vector2 Reference = new Vector2(1920f, 1080f);
-        private static readonly Vector2 TopCentre = new Vector2(0.5f, 1f);
-        private static readonly Vector2 CardSize = new Vector2(1180f, 212f);
+        private static readonly Vector2 BottomRight = new Vector2(1f, 0f);
+        private static readonly Vector2 CardSize = new Vector2(640f, 250f);
         private static readonly Color Dimmed = new Color(0f, 0f, 0f, 0.86f);
         private static readonly Color Panel = new Color(0.07f, 0.08f, 0.10f, 0.94f);
         private static readonly Color Blocking = new Color(1f, 0.42f, 0.32f);
@@ -57,6 +60,16 @@ namespace Blastlands.Runtime
                 Notice = UpdateNotice.For(
                     gate.Verdict, stage, updater == null ? null : updater.Failure, Application.version, gate.Release);
                 Render(Notice);
+            }
+
+            if (card != null)
+            {
+                bool inMatch = !Notice.BlocksPlay && SceneManager.GetActiveScene().name == MatchScene;
+                bool wanted = Notice.Visible && !inMatch;
+                if (card.activeSelf != wanted)
+                {
+                    card.SetActive(wanted);
+                }
             }
 
             if (Notice.OffersUpdate && Accepted())
@@ -116,14 +129,14 @@ namespace Blastlands.Runtime
 
             card = Fill(host.transform, "Card", Panel).gameObject;
             var frame = (RectTransform)card.transform;
-            frame.anchorMin = TopCentre;
-            frame.anchorMax = TopCentre;
-            frame.pivot = TopCentre;
+            frame.anchorMin = BottomRight;
+            frame.anchorMax = BottomRight;
+            frame.pivot = BottomRight;
             frame.sizeDelta = CardSize;
-            frame.anchoredPosition = new Vector2(0f, -56f);
+            frame.anchoredPosition = new Vector2(-Padding, BadgeClearance);
 
-            headline = Write(frame, "Headline", 52f, FontStyles.Bold, -Padding, 64f);
-            detail = Write(frame, "Detail", 30f, FontStyles.Normal, -(Padding + 70f), 110f);
+            headline = Write(frame, "Headline", 36f, FontStyles.Bold, -Padding, 48f);
+            detail = Write(frame, "Detail", 24f, FontStyles.Normal, -(Padding + 54f), 150f);
         }
 
         private static Image Fill(Transform parent, string name, Color colour)
