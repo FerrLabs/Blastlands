@@ -400,6 +400,11 @@ footer {
 footer a { color: inherit; }
 footer a:hover { color: var(--text); }
 
+@media (max-width: 1200px) {
+  .lineup img { opacity: 0.55; }
+  .lineup .back { opacity: 0.35; }
+}
+
 @media (max-width: 900px) {
   .roster { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .modes { grid-template-columns: 1fr; }
