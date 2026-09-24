@@ -145,9 +145,11 @@ namespace Blastlands.Runtime
             GameObject key = HudPlacement.Spawn(art.KeyPrompt, parent, action + " prompt");
             HudPlacement.Pin(key, corner, offset, scale * 0.7f);
             HudPlacement.Hide(key, "Press and Hold");
-            HudPlacement.Write(HudPlacement.Text(key), ActionPrompts.KeyLabel(glyph));
 
-            if (glyph == PromptGlyph.MouseLeft || glyph == PromptGlyph.MouseRight)
+            string rebound = KeyBindings.Rebound(action);
+            HudPlacement.Write(HudPlacement.Text(key), rebound ?? ActionPrompts.KeyLabel(glyph));
+
+            if (rebound == null && (glyph == PromptGlyph.MouseLeft || glyph == PromptGlyph.MouseRight))
             {
                 HudPlacement.Hide(key, "Label_Input_Key");
                 Image mouse = HudPlacement.Part<Image>(key, "ICON");

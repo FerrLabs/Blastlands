@@ -6,6 +6,7 @@ using Blastlands.Core.Lobby;
 using Blastlands.Core.Net;
 using Blastlands.Core.Update;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
@@ -46,6 +47,10 @@ namespace Blastlands.Runtime
         private bool dirty = true;
         private bool busy;
         private bool settingUp;
+        private bool inSettings;
+        private InputActionAsset keys;
+        private InputActionRebindingExtensions.RebindingOperation rebinding;
+        private HudAction? waitingFor;
         private bool polling;
         private int generation;
         private float sinceStatus;
@@ -71,6 +76,7 @@ namespace Blastlands.Runtime
             // leaving it in charge means a build ignores --lobby and the environment
             // and quietly dials whatever was saved in the scene.
             lobby.Use(ClientOptions.Lobby(Environment.GetCommandLineArgs()));
+            SettingsChoice.Apply();
 
             badge = UpdateBadge.For(Application.version, UpdateVerdict.Unknown, UpdateStage.Idle, default);
             CharacterChoice.Choose(CharacterKits.Shown(CharacterChoice.Current));
@@ -142,12 +148,17 @@ namespace Blastlands.Runtime
                 case LobbyScreen.Name:
                     LobbyPages.Name(root, art, flow, draft, Drafted, Named);
                     break;
+                case LobbyScreen.Browse when inSettings:
+                    LobbyPages.Settings(root, art, SettingsChoice.Volume, SettingsChoice.Shake, SettingsChoice.Hud,
+                        action => KeyBindings.Shown(keys, action), waitingFor,
+                        PickVolume, PickShake, PickHud, Rebind, ResetKeys, CloseSettings);
+                    break;
                 case LobbyScreen.Browse when settingUp:
                     LobbyPages.Setup(root, art, ModeChoice.Current, HostChoice.SeatCount, HostChoice.Bots,
                         PickMode, PickSeats, PickBots, Host, StopSettingUp);
                     break;
                 case LobbyScreen.Browse:
-                    LobbyPages.Browse(root, art, flow, CharacterChoice.Current, stage.Texture, ModeChoice.Current, Pick, PickMode, Join, Create, Practise, Rename);
+                    LobbyPages.Browse(root, art, flow, CharacterChoice.Current, stage.Texture, ModeChoice.Current, Pick, PickMode, Join, Create, Practise, Rename, OpenSettings);
                     break;
                 case LobbyScreen.Host:
                     LobbyPages.Room(root, art, flow, true, Begin, AddBot, Leave);
@@ -246,6 +257,110 @@ namespace Blastlands.Runtime
         private void PickBots(BotSkill skill)
         {
             HostChoice.ChooseBots(skill);
+            Redraw();
+        }
+
+        private void OnDestroy()
+        {
+            StopRebinding();
+        }
+
+        private void OpenSettings()
+        {
+            keys = KeyBindings.Load();
+            inSettings = true;
+            Redraw();
+        }
+
+        private void CloseSettings()
+        {
+            StopRebinding();
+            if (keys != null)
+            {
+                Destroy(keys);
+                keys = null;
+            }
+
+            inSettings = false;
+            Redraw();
+        }
+
+        private void PickVolume(int steps)
+        {
+            SettingsChoice.ChooseVolume(steps);
+            Redraw();
+        }
+
+        private void PickShake(bool on)
+        {
+            SettingsChoice.ChooseShake(on);
+            Redraw();
+        }
+
+        private void PickHud(HudSize size)
+        {
+            SettingsChoice.ChooseHud(size);
+            Redraw();
+        }
+
+        private void Rebind(HudAction action)
+        {
+            if (rebinding != null || keys == null)
+            {
+                return;
+            }
+
+            InputAction input = KeyBindings.ActionFor(keys, action);
+            int index = KeyBindings.KeyboardBinding(input);
+            if (index < 0)
+            {
+                return;
+            }
+
+            waitingFor = action;
+            rebinding = input.PerformInteractiveRebinding(index)
+                .WithControlsExcluding("<Gamepad>")
+                .WithControlsExcluding("<Mouse>/position")
+                .WithControlsExcluding("<Mouse>/delta")
+                .WithControlsExcluding("<Mouse>/scroll")
+                .WithCancelingThrough("<Keyboard>/escape")
+                .OnComplete(_ => FinishRebinding(true))
+                .OnCancel(_ => FinishRebinding(false))
+                .Start();
+            Redraw();
+        }
+
+        private void FinishRebinding(bool changed)
+        {
+            StopRebinding();
+            if (changed && keys != null)
+            {
+                KeyBindings.Save(keys);
+            }
+
+            Redraw();
+        }
+
+        private void StopRebinding()
+        {
+            if (rebinding != null)
+            {
+                rebinding.Dispose();
+                rebinding = null;
+            }
+
+            waitingFor = null;
+        }
+
+        private void ResetKeys()
+        {
+            if (keys == null)
+            {
+                return;
+            }
+
+            StopRebinding();
+            KeyBindings.Reset(keys);
             Redraw();
         }
 

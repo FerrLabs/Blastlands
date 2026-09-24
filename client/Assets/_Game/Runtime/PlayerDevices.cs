@@ -12,22 +12,14 @@ namespace Blastlands.Runtime
 {
     public sealed class PlayerDevices : IDisposable
     {
-        private const string ControlsResource = "BlastlandsControls";
-
         private readonly Seat[] seats;
 
         public PlayerDevices(int playerCount)
         {
-            InputActionAsset controls = Resources.Load<InputActionAsset>(ControlsResource);
-            if (controls == null)
-            {
-                throw new InvalidOperationException("Input actions asset Resources/" + ControlsResource + " is missing");
-            }
-
             seats = new Seat[Mathf.Max(1, playerCount)];
             for (int player = 0; player < seats.Length; player++)
             {
-                seats[player] = new Seat(Object.Instantiate(controls));
+                seats[player] = new Seat(KeyBindings.Load());
             }
 
             AssignDevices();
