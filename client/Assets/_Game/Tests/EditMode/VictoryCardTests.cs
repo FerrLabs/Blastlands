@@ -4,6 +4,22 @@ namespace Blastlands.Core.Tests
 {
     public class VictoryCardTests
     {
+        [Test]
+        public void AWinOnTheTieBreakSaysHowItWasWon()
+        {
+            var state = new MatchState(new Arena(15, 15), MatchSettings.Default, 1u);
+            state.AddPlayer(new GridPos(0, 6));
+            state.AddPlayer(new GridPos(0, 3));
+            state.Players[0].Alive = false;
+            state.Players[1].Alive = false;
+            state.Outcome = RoundOutcome.Winner;
+            state.WinnerId = 0;
+
+            Assert.That(VictoryCard.ForRound(state, 0).Detail, Does.Contain("nearest the middle"));
+            Assert.That(VictoryCard.ForRound(state, 1).Detail, Does.Contain("nearest the middle"));
+            Assert.That(VictoryCard.ForRound(state, 1).Heading, Is.EqualTo("DEFEAT"));
+        }
+
         private static MatchState Ended(RoundOutcome outcome, int winner)
         {
             MatchState state = MatchFactory.Create(

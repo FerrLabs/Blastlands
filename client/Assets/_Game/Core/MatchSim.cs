@@ -43,8 +43,8 @@ namespace Blastlands.Core
 
             // Before the outcome check, so a ring that takes the last two closes the
             // round on the tick it happens rather than the one after.
-            SuddenDeath.Tick(state);
-            ResolveOutcome(state);
+            IReadOnlyList<PlayerState> takenByTheRing = SuddenDeath.Tick(state);
+            ResolveOutcome(state, takenByTheRing);
             BombSpawner.Tick(state);
 
             // After the kill check, so a wall never shoves someone out of a blast that
@@ -427,7 +427,7 @@ namespace Blastlands.Core
             }
         }
 
-        private static void ResolveOutcome(MatchState state)
+        private static void ResolveOutcome(MatchState state, IReadOnlyList<PlayerState> takenByTheRing)
         {
             if (state.Players.Count < 2)
             {
@@ -437,8 +437,9 @@ namespace Blastlands.Core
             int alive = state.AliveCount;
             if (alive == 0)
             {
-                state.Outcome = RoundOutcome.Draw;
-                state.WinnerId = -1;
+                PlayerState heldOut = SuddenDeath.HeldOutLongest(state, takenByTheRing);
+                state.Outcome = heldOut == null ? RoundOutcome.Draw : RoundOutcome.Winner;
+                state.WinnerId = heldOut == null ? -1 : heldOut.Id;
                 return;
             }
 

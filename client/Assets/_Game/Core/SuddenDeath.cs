@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+
 namespace Blastlands.Core
 {
     // Closes the island from the coast inward, one ring at a time, until there is no
@@ -14,23 +17,59 @@ namespace Blastlands.Core
     // edge of what already closed, so the warning is the shape of the board.
     public static class SuddenDeath
     {
-        public static void Tick(MatchState state)
+        public static IReadOnlyList<PlayerState> Tick(MatchState state)
         {
             SuddenDeathSettings settings = state.Settings.SuddenDeath;
             if (!settings.Enabled || state.Tick < settings.StartTicks)
             {
-                return;
+                return Array.Empty<PlayerState>();
             }
 
             int due = ((state.Tick - settings.StartTicks) / settings.RingTicks) + 1;
+            if (state.SuddenDeathRings >= due)
+            {
+                return Array.Empty<PlayerState>();
+            }
+
+            var taken = new List<PlayerState>();
             while (state.SuddenDeathRings < due)
             {
-                Close(state, state.SuddenDeathRings + 1);
+                Close(state, state.SuddenDeathRings + 1, taken);
                 state.SuddenDeathRings++;
             }
+
+            return taken;
         }
 
-        private static void Close(MatchState state, int ring)
+        public static PlayerState HeldOutLongest(MatchState state, IReadOnlyList<PlayerState> taken)
+        {
+            long centreX = (long)state.Arena.Width * SubPos.UnitsPerTile / 2;
+            long centreY = (long)state.Arena.Height * SubPos.UnitsPerTile / 2;
+            PlayerState nearest = null;
+            long best = long.MaxValue;
+            bool tied = false;
+
+            foreach (PlayerState player in taken)
+            {
+                long dx = player.Position.X - centreX;
+                long dy = player.Position.Y - centreY;
+                long distance = (dx * dx) + (dy * dy);
+                if (distance < best)
+                {
+                    best = distance;
+                    nearest = player;
+                    tied = false;
+                }
+                else if (distance == best)
+                {
+                    tied = true;
+                }
+            }
+
+            return tied ? null : nearest;
+        }
+
+        private static void Close(MatchState state, int ring, List<PlayerState> taken)
         {
             Arena arena = state.Arena;
 
@@ -44,7 +83,7 @@ namespace Blastlands.Core
                         continue;
                     }
 
-                    Clear(state, tile);
+                    Clear(state, tile, taken);
                     arena[tile] = TileKind.HardBlock;
                 }
             }
@@ -59,7 +98,7 @@ namespace Blastlands.Core
         // ring that closes and still be centred next door; on the centre alone that
         // player survives and then walks around with their body in the rock, which
         // PlayerBody explicitly allows by ignoring the tiles it already overlaps.
-        private static void Clear(MatchState state, GridPos tile)
+        private static void Clear(MatchState state, GridPos tile, List<PlayerState> taken)
         {
             for (int i = 0; i < state.Players.Count; i++)
             {
@@ -67,6 +106,7 @@ namespace Blastlands.Core
                 if (player.Alive && PlayerBody.Covers(player.Position, state.Settings.PlayerRadius, tile))
                 {
                     player.Alive = false;
+                    taken.Add(player);
                 }
             }
 

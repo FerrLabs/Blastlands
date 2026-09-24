@@ -50,10 +50,12 @@ namespace Blastlands.Core
 
             if (winner.Id == localSeat)
             {
-                return new VictoryCard(VictoryTone.Won, "VICTORY", "You are the last one standing.", winner.Id, winner.Character);
+                string how = winner.Alive ? "You are the last one standing." : "The ring took everyone, and you held out nearest the middle.";
+                return new VictoryCard(VictoryTone.Won, "VICTORY", how, winner.Id, winner.Character);
             }
 
-            return new VictoryCard(VictoryTone.Lost, "DEFEAT", Label(winner) + " wins.", winner.Id, winner.Character);
+            string won = winner.Alive ? " wins." : " wins, holding out nearest the middle.";
+            return new VictoryCard(VictoryTone.Lost, "DEFEAT", Label(winner) + won, winner.Id, winner.Character);
         }
 
         // A local series, seen from the couch: whoever took it, and how it went.
