@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.100] - 2026-09-24
+
+### Features
+
+- feat(lobby): show the characters as a picker that animates the selected one (#97)
+
 ## [26.9.98] - 2026-09-24
 
 ### Features
