@@ -732,7 +732,15 @@ mod tests {
             })
             .collect();
 
-        assert!(links.len() >= 4, "the page shows every character");
+        for character in [
+            Character::Demolisher,
+            Character::Runner,
+            Character::Grenadier,
+            Character::Sapper,
+        ] {
+            let link = format!("/characters/{}/portrait", character.token());
+            assert!(links.contains(&link.as_str()), "the page shows no {link}");
+        }
         for link in links {
             let response = router().oneshot(get_request(link)).await.unwrap();
             assert_eq!(response.status(), StatusCode::OK, "{link}");
