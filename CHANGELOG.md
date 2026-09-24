@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.83] - 2026-09-24
+
+### Features
+
+- feat(lobby): pick a character from a 3D preview with arrows (#55)
+
 ## [26.9.82] - 2026-09-24
 
 ### Features
