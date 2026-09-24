@@ -61,6 +61,11 @@ game used to present it, which the licence allows, rather than the models, textu
 themselves. Nothing that can be imported back into an engine belongs there: a render is a flat
 WebP, never a mesh, a texture atlas or a source file.
 
-They were rendered headless from the characters' prefabs in their idle pose, lit warm from the
-front with an orange rim, on a transparent background, then cropped and saved as WebP at 880
-pixels high. A new character or a changed outfit needs a new render in the same framing.
+The logo, `logo.png`, is a render too: the grenade model from POLYGON Battle Royale
+(`SM_Wep_Grenade_01`) with the pack's first texture, lit the same way and saved as a 192 pixel
+PNG so it can also serve as the browser tab icon. It is not the pack's own grenade icon, which is
+a sprite and would import straight back into Unity.
+
+The portraits were rendered headless from the characters' prefabs in their idle pose, lit warm
+from the front with an orange rim, on a transparent background, then cropped and saved as WebP at
+880 pixels high. A new character or a changed outfit needs a new render in the same framing.
