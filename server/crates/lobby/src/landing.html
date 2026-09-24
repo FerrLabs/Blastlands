@@ -355,7 +355,7 @@ h2 {
   filter: brightness(0.95) saturate(0.95);
 }
 
-.picker.enhanced .character[data-pos="2"] .character-portrait {
+.picker.enhanced .character:not([data-pos="0"]):not([data-pos="1"]):not([data-pos="-1"]) .character-portrait {
   opacity: 0;
   transform: scale(0.4);
 }
@@ -594,7 +594,6 @@ footer a:hover { color: var(--text); }
         </div>
         <button class="picker-arrow next" type="button" data-step="1" aria-label="Next character"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></button>
       </div>
-      </div>
     </div>
   </section>
 
@@ -664,10 +663,12 @@ footer a:hover { color: var(--text); }
   const characters = [...picker.querySelectorAll(".character")];
   const moving = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   let current = 0;
+  let visible = false;
 
   const animate = (character, on) => {
     const portrait = character.querySelector(".character-portrait");
     portrait.dataset.still ??= portrait.src;
+    if (on && !visible) return;
     if (!on || !moving) {
       portrait.src = portrait.dataset.still;
       return;
@@ -711,6 +712,13 @@ footer a:hover { color: var(--text); }
 
   picker.classList.add("enhanced");
   show(0);
+
+  new IntersectionObserver((entries, observer) => {
+    if (!entries.some((entry) => entry.isIntersecting)) return;
+    observer.disconnect();
+    visible = true;
+    animate(characters[current], true);
+  }).observe(stage);
 })();
 </script>
 </body>
