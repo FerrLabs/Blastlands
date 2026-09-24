@@ -1,0 +1,4 @@
+# tzdata 2026b in gcr.io/distroless/cc-debian12, fixed upstream in 2026c but not yet
+# in the base image. The lobby reads no timezone data. Drop this line once the base
+# is rebuilt; it stops applying on its own on the date below either way.
+DLA-4792-1 exp:2026-10-24

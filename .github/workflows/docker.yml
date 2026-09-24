@@ -40,13 +40,14 @@ jobs:
       id-token: write
       attestations: write
       security-events: write
-    uses: FerrLabs/.github/.github/workflows/reusable-docker-build.yml@b6a08e6055076c18cfa7b8f80c9925275ed407fe # main
+    uses: FerrLabs/.github/.github/workflows/reusable-docker-build.yml@c4833f85755afde4c7f702858270fe5deb0dba9e # main
     with:
       image-name: ghcr.io/ferrlabs/blastlands/lobby
       tag: ${{ needs.version.outputs.value }}
       context: server
       dockerfile: Dockerfile
       extra-tags: ghcr.io/ferrlabs/blastlands/lobby:sha-${{ github.sha }}
+      trivyignores: server/.trivyignore
       # No `runner:`. Pinning `ferrlabs-k8s` was right while this repository was
       # private; on a public one the job stays queued for ever, because the ARC scale
       # sets do not serve public repositories. Left empty, the reusable workflow takes
