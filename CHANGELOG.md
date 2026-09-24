@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.111] - 2026-09-24
+
+### Features
+
+- feat(lobby): let the host pick seats and bot difficulty (#125)
+
 ## [26.9.110] - 2026-09-24
 
 ### Features
