@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.104] - 2026-09-24
+
+### Bug Fixes
+
+- fix(client): keep only the update button for an optional update and hide actions a mode does not have (#110)
+
 ## [26.9.103] - 2026-09-24
 
 ### Features
