@@ -47,6 +47,14 @@ namespace Blastlands.Runtime
         private const float SlowestCadence = 0.5f;
         private const float FastestCadence = 2f;
 
+        public const int StillTicksBeforeStopping = 2;
+
+        public static Gait Held(Gait measured, Gait previous, int stillTicks)
+        {
+            bool stoppedJustNow = measured.Speed < Running && previous.Speed >= Running;
+            return stoppedJustNow && stillTicks <= StillTicksBeforeStopping ? previous : measured;
+        }
+
         public static Gait For(PlayerState player, SubPos previous, MatchSettings settings, float runClipSpeed)
         {
             if (!player.Alive)

@@ -116,7 +116,18 @@ namespace Blastlands.Runtime
         private readonly List<Animator> playerAnimators = new List<Animator>();
         private readonly List<CharacterKind> castAs = new List<CharacterKind>();
         private readonly List<SubPos> lastSampled = new List<SubPos>();
+        private readonly List<TickBlend> blends = new List<TickBlend>();
+        private readonly List<float> headings = new List<float>();
+        private readonly List<Gait> gaits = new List<Gait>();
+        private readonly List<int> stillTicks = new List<int>();
         private int lastSampledTick = -1;
+        private int ticksThisFrame;
+        private float tickFraction = 1f;
+        private bool blending;
+
+        private const float TurnDegreesPerSecond = 900f;
+        private const float GaitDampSeconds = 0.06f;
+        private const float CadencePerSecond = 4f;
         private readonly HashSet<GridPos> burningTiles = new HashSet<GridPos>();
         private PlayerTrail trail;
         private InterpolationClock clock;
@@ -214,6 +225,10 @@ namespace Blastlands.Runtime
             playerAnimators.Clear();
             castAs.Clear();
             lastSampled.Clear();
+            blends.Clear();
+            headings.Clear();
+            gaits.Clear();
+            stillTicks.Clear();
             lastSampledTick = -1;
             burningTiles.Clear();
 
@@ -223,6 +238,25 @@ namespace Blastlands.Runtime
             BuildScenery();
             SyncBlocks();
             BuildPlayers();
+        }
+
+        public void Blend(int ticksAdvanced, float fraction)
+        {
+            blending = true;
+            ticksThisFrame += ticksAdvanced;
+            tickFraction = fraction;
+        }
+
+        public bool TryShown(int seat, out Vector3 position)
+        {
+            if (seat < 0 || seat >= blends.Count || seat >= playerViews.Count || !playerViews[seat].activeSelf)
+            {
+                position = default;
+                return false;
+            }
+
+            position = playerViews[seat].transform.position;
+            return true;
         }
 
         public void Interpolate(PlayerTrail playerTrail, InterpolationClock serverClock, int seat, Func<SubPos> ownPosition)
@@ -1119,6 +1153,10 @@ namespace Blastlands.Runtime
                 castAs.Add(character);
                 wasAlive.Add(state.Players[i].Alive);
                 lastSampled.Add(state.Players[i].Position);
+                blends.Add(new TickBlend());
+                headings.Add(FacingAngle(state.Players[i].Facing));
+                gaits.Add(new Gait(PlayerPace.Still, PlayerPace.RestingCadence));
+                stillTicks.Add(0);
             }
         }
 
@@ -1243,10 +1281,59 @@ namespace Blastlands.Runtime
                     continue;
                 }
 
+                bool appearing = !view.activeSelf;
                 view.SetActive(true);
-                view.transform.position = ToWorld(Placement(i, player), 0f);
-                view.transform.rotation = Quaternion.Euler(0f, FacingAngle(player.Facing), 0f);
+
+                Vector3 target = ToWorld(Placement(i, player), 0f);
+                bool continuous = trail != null && clock != null && i != ownSeat;
+                TickBlend blend = blends[i];
+                Vector3 at;
+                if (appearing || !blending)
+                {
+                    blend.Snap(target);
+                    at = target;
+                }
+                else if (continuous)
+                {
+                    at = blend.Show(target, true, 1f);
+                }
+                else
+                {
+                    at = blend.Show(target, ticksThisFrame > 0, tickFraction);
+                }
+
+                view.transform.position = at;
+                view.transform.rotation = Quaternion.Euler(0f, Turn(i, player, blend, appearing), 0f);
+                Animate(i);
             }
+
+            ticksThisFrame = 0;
+        }
+
+        private float Turn(int i, PlayerState player, TickBlend blend, bool appearing)
+        {
+            Vector3 heading = blend.Heading;
+            float wanted = heading.sqrMagnitude > 0.000001f
+                ? Mathf.Atan2(heading.x, heading.z) * Mathf.Rad2Deg
+                : FacingAngle(player.Facing);
+
+            headings[i] = appearing
+                ? wanted
+                : Mathf.MoveTowardsAngle(headings[i], wanted, TurnDegreesPerSecond * Time.deltaTime);
+            return headings[i];
+        }
+
+        private void Animate(int i)
+        {
+            Animator animator = i < playerAnimators.Count ? playerAnimators[i] : null;
+            if (animator == null)
+            {
+                return;
+            }
+
+            Gait gait = gaits[i];
+            animator.SetFloat(Speed, gait.Speed, GaitDampSeconds, Time.deltaTime);
+            animator.speed = Mathf.MoveTowards(animator.speed, gait.Cadence, CadencePerSecond * Time.deltaTime);
         }
 
         // Sampled per tick rather than per frame. Render runs every frame and a position
@@ -1269,9 +1356,9 @@ namespace Blastlands.Runtime
 
                 if (animator != null)
                 {
-                    Gait gait = PlayerPace.For(player, lastSampled[i], state.Settings, runClipSpeed);
-                    animator.SetFloat(Speed, gait.Speed);
-                    animator.speed = gait.Cadence;
+                    Gait measured = PlayerPace.For(player, lastSampled[i], state.Settings, runClipSpeed);
+                    stillTicks[i] = measured.Speed < PlayerPace.Running ? stillTicks[i] + 1 : 0;
+                    gaits[i] = PlayerPace.Held(measured, gaits[i], stillTicks[i]);
                 }
 
                 lastSampled[i] = player.Position;

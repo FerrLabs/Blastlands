@@ -16,6 +16,18 @@ namespace Blastlands.Runtime.Tests
         }
 
         [Test]
+        public void TheFractionIsHowFarIntoTheNextTickTheClockIs()
+        {
+            TickPacer pacer = Pacer();
+
+            Assert.That(pacer.Advance(1f / Rate * 1.5f), Is.EqualTo(1));
+            Assert.That(pacer.Fraction, Is.EqualTo(0.5f).Within(0.01f));
+
+            pacer.Advance(1f / Rate * 0.25f);
+            Assert.That(pacer.Fraction, Is.EqualTo(0.75f).Within(0.01f));
+        }
+
+        [Test]
         public void AFrameShorterThanATickRunsNothingYet()
         {
             Assert.That(Pacer().Advance(0.01f), Is.EqualTo(0));

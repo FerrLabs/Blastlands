@@ -206,6 +206,7 @@ namespace Blastlands.Runtime
             if (matchCamera != null)
             {
                 matchCamera.Use(MatchCamera.ModeFor(1));
+                matchCamera.Track(view);
                 matchCamera.Bind(prediction.State, 1, seat);
             }
 
@@ -291,6 +292,11 @@ namespace Blastlands.Runtime
                 prediction.Step(nextTick, input);
                 smoother.Tick();
                 nextTick++;
+            }
+
+            if (view != null)
+            {
+                view.Blend(ticks, pacer.Fraction);
             }
 
             Render();

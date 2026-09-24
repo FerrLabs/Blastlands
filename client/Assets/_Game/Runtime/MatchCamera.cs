@@ -29,7 +29,12 @@ namespace Blastlands.Runtime
         [SerializeField] private float followSize = 4f;
 
         private const float TunedAspect = 16f / 9f;
-        [SerializeField] private float followSmoothing = 0.18f;
+        [SerializeField] private AnimationCurve followCurve = new AnimationCurve(
+            new Keyframe(0f, 4f),
+            new Keyframe(1f, 7f),
+            new Keyframe(4f, 16f));
+
+        [SerializeField] private float lookaheadEasing = 5f;
 
         // How far ahead of the player the view sits, and how much further while dashing.
         // A camera that lags a dash makes the dash feel worse than not having one.
@@ -53,7 +58,8 @@ namespace Blastlands.Runtime
         [SerializeField] private bool screenShake = true;
 
         private readonly List<Camera> views = new List<Camera>();
-        private readonly List<Vector3> velocities = new List<Vector3>();
+        private readonly List<Vector3> leads = new List<Vector3>();
+        private MatchView drawn;
         private readonly List<CameraShake> shakes = new List<CameraShake>();
 
         private MatchState state;
@@ -238,14 +244,14 @@ namespace Blastlands.Runtime
                 }
 
                 views.RemoveAt(i);
-                velocities.RemoveAt(i);
+                leads.RemoveAt(i);
                 shakes.RemoveAt(i);
             }
 
             while (views.Count < wanted)
             {
                 views.Add(views.Count == 0 ? Own() : Clone(views.Count));
-                velocities.Add(Vector3.zero);
+                leads.Add(Vector3.zero);
 
                 // A phase per viewport, so one bomb reaching two of them does not shake
                 // both the same way at the same moment, which reads as the whole window
@@ -310,9 +316,7 @@ namespace Blastlands.Runtime
             Vector3 target = Clamp(focus, view, size);
             Vector3 looking = view.transform.position + (view.transform.forward * 40f);
 
-            Vector3 velocity = velocities[index];
-            looking = Vector3.SmoothDamp(looking, target, ref velocity, followSmoothing);
-            velocities[index] = velocity;
+            looking = Follow(looking, target, followCurve, Time.deltaTime);
 
             Vector3 seat = looking - (view.transform.forward * 40f);
 
@@ -337,11 +341,70 @@ namespace Blastlands.Runtime
                 return ArenaCentre();
             }
 
-            Vector3 at = MatchView.ToWorld(player.Position, 0f);
+            int seat = firstSeat + (mode == CameraMode.Split ? index : 0);
+            if (!player.Alive)
+            {
+                PlayerState watched = Spectated(state, player);
+                if (watched == null)
+                {
+                    return drawn != null && drawn.TryShown(seat, out Vector3 fallen) ? fallen : MatchView.ToWorld(player.Position, 0f);
+                }
+
+                player = watched;
+                seat = watched.Id;
+            }
+
+            Vector3 at = drawn != null && drawn.TryShown(seat, out Vector3 shown)
+                ? new Vector3(shown.x, 0f, shown.z)
+                : MatchView.ToWorld(player.Position, 0f);
+
             GridPos ahead = Directions.Delta(player.Facing);
             float reach = player.Dashing ? dashLookahead : lookahead;
+            var wanted = new Vector3(ahead.X * reach, 0f, -ahead.Y * reach);
 
-            return at + new Vector3(ahead.X * reach, 0f, -ahead.Y * reach);
+            if (index < leads.Count)
+            {
+                leads[index] = Vector3.Lerp(leads[index], wanted, 1f - Mathf.Exp(-lookaheadEasing * Time.deltaTime));
+                wanted = leads[index];
+            }
+
+            return at + wanted;
+        }
+
+        public static PlayerState Spectated(MatchState match, PlayerState fallen)
+        {
+            PlayerState nearest = null;
+            long best = long.MaxValue;
+            foreach (PlayerState other in match.Players)
+            {
+                if (!other.Alive)
+                {
+                    continue;
+                }
+
+                long dx = other.Position.X - fallen.Position.X;
+                long dy = other.Position.Y - fallen.Position.Y;
+                long distance = (dx * dx) + (dy * dy);
+                if (distance < best)
+                {
+                    best = distance;
+                    nearest = other;
+                }
+            }
+
+            return nearest;
+        }
+
+        public static Vector3 Follow(Vector3 from, Vector3 to, AnimationCurve curve, float deltaTime)
+        {
+            float gap = Vector3.Distance(from, to);
+            float rate = curve == null || curve.length == 0 ? 8f : Mathf.Max(0f, curve.Evaluate(gap));
+            return Vector3.Lerp(from, to, 1f - Mathf.Exp(-rate * Mathf.Max(0f, deltaTime)));
+        }
+
+        public void Track(MatchView view)
+        {
+            drawn = view;
         }
 
         // Frames whoever is still alive. Dead players drop out of the framing, or the

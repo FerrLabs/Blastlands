@@ -104,6 +104,51 @@ namespace Blastlands.Runtime.Tests
         }
 
         [Test]
+        public void TheCameraClosesMoreOfABigGapThanOfASmallOneAndNeverOvershoots()
+        {
+            var curve = new AnimationCurve(new Keyframe(0f, 4f), new Keyframe(4f, 16f));
+
+            Vector3 near = MatchCamera.Follow(Vector3.zero, new Vector3(0.5f, 0f, 0f), curve, 1f / 60f);
+            Vector3 far = MatchCamera.Follow(Vector3.zero, new Vector3(4f, 0f, 0f), curve, 1f / 60f);
+
+            Assert.That(near.x / 0.5f, Is.LessThan(far.x / 4f), "a far target is caught up with faster");
+            Assert.That(far.x, Is.LessThan(4f));
+            Assert.That(MatchCamera.Follow(Vector3.zero, Vector3.one, curve, 10f).x, Is.LessThanOrEqualTo(1f));
+        }
+
+        [Test]
+        public void TheFollowDoesNotDependOnTheFrameRate()
+        {
+            var curve = new AnimationCurve(new Keyframe(0f, 6f), new Keyframe(10f, 6f));
+            var target = new Vector3(3f, 0f, 0f);
+
+            Vector3 slow = MatchCamera.Follow(Vector3.zero, target, curve, 0.1f);
+            Vector3 fast = Vector3.zero;
+            for (int frame = 0; frame < 10; frame++)
+            {
+                fast = MatchCamera.Follow(fast, target, curve, 0.01f);
+            }
+
+            Assert.That(fast.x, Is.EqualTo(slow.x).Within(0.001f));
+        }
+
+        [Test]
+        public void OnceYouAreOutTheCameraWatchesTheNearestPlayerStillStanding()
+        {
+            var state = new MatchState(new Arena(15, 15), MatchSettings.Default, 1u);
+            state.AddPlayer(new GridPos(1, 1));
+            state.AddPlayer(new GridPos(13, 13));
+            state.AddPlayer(new GridPos(3, 1));
+            state.Players[0].Alive = false;
+
+            Assert.That(MatchCamera.Spectated(state, state.Players[0]), Is.SameAs(state.Players[2]));
+
+            state.Players[1].Alive = false;
+            state.Players[2].Alive = false;
+            Assert.That(MatchCamera.Spectated(state, state.Players[0]), Is.Null, "nobody left to watch");
+        }
+
+        [Test]
         public void GlobalWithOneSeatIsThatSeatAlone()
         {
             Bind(1);

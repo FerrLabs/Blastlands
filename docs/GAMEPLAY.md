@@ -230,6 +230,17 @@ Three modes, because a following camera cannot serve four people on one screen.
   each view stays wider than it is tall; three or four take quadrants, and a third player
   leaves an empty corner rather than handing someone a differently shaped view to read.
 
+**What the camera follows is what is drawn, not the simulation.** The simulation moves at 30
+ticks a second and the screen refreshes several times between two of them, so every player is
+drawn part way between their last two positions, and the camera tracks that drawn position.
+Following the tick-stepped one made the whole view move in 33 ms jumps, which read as lag. The
+camera closes the gap along a curve rather than at a fixed rate: gently when the player is a step
+away, fast when they have dashed off, so it neither swims behind a sprint nor jitters around a
+standing player. The lookahead eases in and out instead of flipping with the facing.
+
+Once your player is out, the camera moves on to the nearest player still standing rather than
+staring at where you fell.
+
 None of it shows much beyond the arena edge, past which the view is mostly scenery and the
 player loses track of where the board ends.
 
