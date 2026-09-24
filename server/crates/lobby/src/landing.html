@@ -176,7 +176,9 @@ a.button:focus-visible,
 }
 
 .actions {
-  display: inline-flex;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   align-items: stretch;
   gap: 0.75rem;
 }
@@ -538,7 +540,7 @@ footer a:hover { color: var(--text); }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  a.button { transition: none; }
+  a.button, .github { transition: none; }
   .character-portrait, .character-info, .picker-arrow { transition: none; }
 }
 </style>
