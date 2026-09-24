@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.114] - 2026-09-24
+
+### Features
+
+- feat(client): add a settings screen for volume, shake, HUD size and keys (#128)
+
 ## [26.9.113] - 2026-09-24
 
 ### Features
