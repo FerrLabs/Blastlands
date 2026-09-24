@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.88] - 2026-09-24
+
+### Features
+
+- feat(build): publish a Windows installer with each release (#66)
+
 ## [26.9.87] - 2026-09-24
 
 ### Features
