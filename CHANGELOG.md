@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.96] - 2026-09-24
+
+### Bug Fixes
+
+- fix(client): follow the player and split the screen between local players (#86)
+
 ## [26.9.95] - 2026-09-24
 
 ### Features
