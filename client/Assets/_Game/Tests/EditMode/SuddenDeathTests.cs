@@ -68,6 +68,59 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
+        public void TheRingTakingTheLastTwoAtOnceGoesToWhoeverHeldOutNearestTheMiddle()
+        {
+            MatchState state = Open(new GridPos(0, 7), new GridPos(7, 7));
+            state.Players[1].Position = new SubPos(SubPos.CentreOf(0), SubPos.CentreOf(3));
+            state.Players[0].Position = new SubPos(SubPos.CentreOf(0), SubPos.CentreOf(6));
+
+            Run(state, 11);
+
+            Assert.That(state.Players[0].Alive, Is.False);
+            Assert.That(state.Players[1].Alive, Is.False);
+            Assert.That(state.Outcome, Is.EqualTo(RoundOutcome.Winner), "the ring cannot end a round in a draw");
+            Assert.That(state.WinnerId, Is.EqualTo(0), "row 6 is nearer the middle of a 15 by 15 board than row 3");
+        }
+
+        [Test]
+        public void TwoPlayersTheRingTakesAtTheSameDistanceStillDraw()
+        {
+            MatchState state = Open(new GridPos(0, 7), new GridPos(14, 7));
+
+            Run(state, 11);
+
+            Assert.That(state.Outcome, Is.EqualTo(RoundOutcome.Draw), "mirror images have nothing to split them");
+        }
+
+        [Test]
+        public void ABlastThatTakesTheLastTwoIsStillADraw()
+        {
+            MatchState state = Open(new GridPos(7, 7), new GridPos(8, 7));
+            state.AddFlame(new GridPos(7, 7), Settings.FlameTicks, 0);
+            state.AddFlame(new GridPos(8, 7), Settings.FlameTicks, 0);
+
+            Run(state, 1);
+
+            Assert.That(state.Outcome, Is.EqualTo(RoundOutcome.Draw), "only the ring gets a tie-break");
+        }
+
+        [Test]
+        public void WhenTheFireTakesOneAndTheRingTheOtherTheRingsVictimOutlastedTheFire()
+        {
+            MatchState state = Open(new GridPos(7, 7), new GridPos(0, 7));
+            Run(state, 10);
+            Assert.That(state.AliveCount, Is.EqualTo(2), "both reach the tick the first ring closes on");
+
+            state.AddFlame(new GridPos(7, 7), Settings.FlameTicks, state.Tick);
+            Run(state, 1);
+
+            Assert.That(state.Players[0].Alive, Is.False, "the fire took the one in the middle");
+            Assert.That(state.Players[1].Alive, Is.False, "the ring took the one on the coast");
+            Assert.That(state.Outcome, Is.EqualTo(RoundOutcome.Winner));
+            Assert.That(state.WinnerId, Is.EqualTo(1), "the fire lands before the ring, so the coast outlasted the middle");
+        }
+
+        [Test]
         public void ItTakesAnyoneWhoseBodyIsInIt()
         {
             // Movement is free, so the tile under a player's centre is not the whole of

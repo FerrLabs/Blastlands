@@ -413,6 +413,16 @@ the tile next door. On the centre alone that player lives and then walks around 
 inside the rock, which the movement code allows on purpose: it ignores the tiles you already
 overlap, so that a wall growing back under you cannot lock you in place.
 
+**The ring cannot end a round in a draw.** When a closing ring takes the last players standing
+on the same tick, the round goes to whichever of them held out nearest the middle of the board,
+measured from their body's position rather than their tile. Only exact mirror images still draw.
+Blasts get no tie-break: two players who catch each other in the same fire both lose, which is a
+trade they made. A mixed ending follows the order things happen in a tick, fire before the ring:
+if a blast takes one of the last two and the ring the other on the same tick, the one the ring
+took outlasted the fire and wins, wherever the other one stood. Over 240 bot matches this took the draws from 31 to 7, most of them in Classic
+and Classic Blinded, where the small board used to hand the last ring to everyone left at once;
+the seven that remain are blasts.
+
 ## Characters
 
 Each player is a character, and a character is a head start on one power-up the arena
