@@ -293,6 +293,13 @@ against `https://api.blastlands.ferrlabs.com` unless `--lobby <url>` says otherw
 offered and the player takes it with `F5`. Other platforms never self-update: the release
 publishes a Windows archive only.
 
+**Version and update button.** The lobby screens show the running build in the bottom right
+corner. When the lobby announces a newer one, an Update button with a download icon appears
+above it and starts the same `ClientUpdater` the `F5` key does, so the download, the SHA-256
+check and the swap are unchanged. It is greyed while a download runs, and where a build cannot
+replace itself (the editor, anything but a Windows player) it only says the new version is out.
+`UpdateBadge` decides the text and whether it can be pressed, and is tested without Unity.
+
 **What the player is told.** `UpdateBanner` draws the verdict on an overlay of its own, so a
 build that cannot join a match says so on screen instead of only in the log. Below `minimum`
 the banner dims the game behind it; between `minimum` and `latest` it sits at the top and the

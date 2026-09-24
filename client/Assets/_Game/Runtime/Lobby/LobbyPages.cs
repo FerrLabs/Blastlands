@@ -1,8 +1,10 @@
 using System;
 using Blastlands.Core;
 using Blastlands.Core.Lobby;
+using Blastlands.Core.Update;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Blastlands.Runtime
 {
@@ -27,6 +29,49 @@ namespace Blastlands.Runtime
             LobbyChrome.Press(panel, art, "Continue", new Vector2(0f, -140f), WideButton, () => submit(field.text));
             Notice(panel, art, flow, new Vector2(0f, -210f));
             return field;
+        }
+
+        public static void Footer(RectTransform root, LobbyArt art, UpdateBadge badge, Action install)
+        {
+            TMP_Text version = LobbyChrome.Label(root, art, badge.Version, false, Vector2.zero, 320f);
+            version.fontSize = 28f;
+            version.alignment = TextAlignmentOptions.MidlineRight;
+            Corner(version.rectTransform, new Vector2(-28f, 20f));
+
+            if (!badge.Offers)
+            {
+                return;
+            }
+
+            Button press = LobbyChrome.Press(root, art, badge.Action, Vector2.zero, new Vector2(440f, 72f), install);
+            press.interactable = badge.Pressable;
+            Corner((RectTransform)press.transform, new Vector2(-28f, 72f));
+
+            TMP_Text label = press.GetComponentInChildren<TMP_Text>(true);
+            label.fontSize = 34f;
+
+            var mark = new GameObject("Update icon", typeof(RectTransform), typeof(Image));
+            mark.transform.SetParent(press.transform, false);
+
+            var rect = (RectTransform)mark.transform;
+            rect.anchorMin = new Vector2(0f, 0.5f);
+            rect.anchorMax = new Vector2(0f, 0.5f);
+            rect.pivot = new Vector2(0f, 0.5f);
+            rect.anchoredPosition = new Vector2(18f, 0f);
+            rect.sizeDelta = new Vector2(40f, 40f);
+
+            Image icon = mark.GetComponent<Image>();
+            icon.sprite = UpdateIcon.Sprite;
+            icon.color = new Color(1f, 1f, 1f, badge.Pressable ? 1f : 0.5f);
+            icon.raycastTarget = false;
+        }
+
+        private static void Corner(RectTransform rect, Vector2 offset)
+        {
+            rect.anchorMin = new Vector2(1f, 0f);
+            rect.anchorMax = new Vector2(1f, 0f);
+            rect.pivot = new Vector2(1f, 0f);
+            rect.anchoredPosition = offset;
         }
 
         public static void Browse(
