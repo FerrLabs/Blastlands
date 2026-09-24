@@ -267,7 +267,11 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq nsis
           SETUP="Blastlands-Setup-${TAG}.exe"
-          makensis -V2             -DTAG="${TAG}"             -DSOURCE="${PWD}/client-build/StandaloneWindows64"             -DOUTFILE="${PWD}/${SETUP}"             installer/Blastlands.nsi
+          makensis -V2 \
+            -DTAG="${TAG}" \
+            -DSOURCE="${PWD}/client-build/StandaloneWindows64" \
+            -DOUTFILE="${PWD}/${SETUP}" \
+            installer/Blastlands.nsi
           gh release upload "${TAG}" "${SETUP}" --clobber --repo "${GITHUB_REPOSITORY}"
 
   # Wrapped around the server this workflow already built, rather than built again in a
