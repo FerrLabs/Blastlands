@@ -81,8 +81,8 @@ their seat would see. Difficulty changes how far ahead they plan, not how fast t
 ### Local play
 
 Opening the `Match` scene directly in the editor runs a couch match: one player per
-gamepad (the first also gets the keyboard), up to four, with bots in the other seats and
-split screen for two or more. The series is first to three rounds, the other seats' characters
+gamepad (the first also gets the keyboard), up to four, with bots in the other seats on
+one shared screen. The series is first to three rounds, the other seats' characters
 rotate between rounds, and R or Start rerolls the board. The built game does not offer it from the
 lobby yet.
 
