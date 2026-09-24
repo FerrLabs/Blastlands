@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.105] - 2026-09-24
+
+### Features
+
+- feat(lobby): link the GitHub repository next to the install button (#113)
+
 ## [26.9.104] - 2026-09-24
 
 ### Bug Fixes
