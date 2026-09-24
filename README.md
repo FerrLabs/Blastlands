@@ -88,10 +88,9 @@ follow whichever one is plugged in.
 
 **Settings** on the match list sets the master volume, turns the screen shake on or off,
 picks the HUD size (Small, Normal, Large), and rebinds the keyboard key or mouse button for
-dropping a bomb, dashing, shoving and the ability. A key that is already in use is refused, Esc
-cancels a rebind, **Reset keys** puts
-the defaults back, and the HUD prompts show whatever you picked. Everything is saved on that
-machine. Movement keys and pad buttons are fixed.
+dropping a bomb, dashing, shoving and the ability. A key that is already in use is refused,
+Esc cancels a rebind, **Reset keys** puts the defaults back, and the HUD prompts show whatever
+you picked. Everything is saved on that machine. Movement keys and pad buttons are fixed.
 
 ### Bots
 
