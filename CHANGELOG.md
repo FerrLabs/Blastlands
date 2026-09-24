@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.90] - 2026-09-24
+
+### Features
+
+- feat(lobby): choose the game mode when hosting a match (#72)
+
 ## [26.9.89] - 2026-09-24
 
 ### Features
