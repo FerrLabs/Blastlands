@@ -34,12 +34,18 @@ namespace Blastlands.Core
 
         public CharacterKind Character { get; internal set; }
 
-        public Bomb PlaceBomb(GridPos tile)
+        public bool TryPlaceBomb(GridPos tile, out Bomb bomb)
         {
-            var bomb = new Bomb(tile, Id, FireRange, NextBombKind);
+            if (!CanDropBomb)
+            {
+                bomb = default;
+                return false;
+            }
+
+            bomb = new Bomb(tile, Id, FireRange, NextBombKind);
             BombsHeld--;
             NextBombKind = CharacterKits.BombKindFor(Character);
-            return bomb;
+            return true;
         }
 
         public SubPos Position { get; set; }

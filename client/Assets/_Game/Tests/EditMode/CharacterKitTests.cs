@@ -30,11 +30,23 @@ namespace Blastlands.Core.Tests
             sapper.BombsHeld = 1;
             sapper.NextBombKind = BombKind.Cluster;
 
-            Bomb placed = sapper.PlaceBomb(new GridPos(1, 1));
+            Assert.That(sapper.TryPlaceBomb(new GridPos(1, 1), out Bomb placed), Is.True);
 
             Assert.That(placed.Kind, Is.EqualTo(BombKind.Cluster));
             Assert.That(sapper.NextBombKind, Is.EqualTo(BombKind.Pierce), "the Sapper's own bombs come back");
             Assert.That(sapper.BombsHeld, Is.Zero);
+        }
+
+        [Test]
+        public void WithNothingInHandNoBombIsPlacedAndNothingIsSpent()
+        {
+            PlayerState sapper = Spawned(CharacterKind.Sapper, Arena);
+            sapper.BombsHeld = 0;
+            sapper.NextBombKind = BombKind.Cluster;
+
+            Assert.That(sapper.TryPlaceBomb(new GridPos(1, 1), out _), Is.False);
+            Assert.That(sapper.BombsHeld, Is.Zero);
+            Assert.That(sapper.NextBombKind, Is.EqualTo(BombKind.Cluster), "the pickup is still waiting");
         }
 
         // Starting with room for one bomb is what stops a player having two blasts live
