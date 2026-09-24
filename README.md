@@ -6,6 +6,99 @@ Drop bombs, blow up soft blocks, grab power-ups, be the last one standing. Anyon
 open a match; it shows up in the public lobby list and fills with players (or bots) until
 the host starts it. No Steam, no accounts required to play.
 
+## What's in the game
+
+Download the Windows installer from [blastlands.ferrlabs.com](https://blastlands.ferrlabs.com).
+
+### Playing online
+
+- Pick a name, then a character, then a mode on the match list. The character and the mode
+  are remembered on that machine; the name is asked again on every launch.
+- **Host a match** lists it publicly. Others join from the list, the host can **Add bot** to
+  fill seats, and starts whenever they like, from 2 to 8 players.
+- The lobby hands each player a dedicated server instance. The server runs the simulation,
+  clients only send their inputs.
+- A player who drops out mid-round is taken over by a bot.
+- The game checks for a new version on launch. When one is out, an icon and a card appear at
+  the bottom right of the lobby, and F5 installs it and restarts.
+
+### Modes
+
+| Mode | Board | Bombs | Moves | Sight |
+|---|---|---|---|---|
+| **Arena** | 25x21 eroded island, cover in clumps, bushes to hide in | found on the ground, spent for good | walk, dash, shove, ability | only what you have a line to |
+| **Classic** | the bomberman board: 13x11 inside a border, a pillar on every other tile, corner starts | owned, each one comes back once it goes off | walk, place a bomb | the whole board |
+| **Classic Blinded** | same as Classic | same as Classic | same as Classic | only what you have a line to |
+
+In every mode, destroyed soft blocks grow back after 20 seconds (a marker shows where), and
+after 90 seconds sudden death closes the board from the edge one ring every five seconds, so
+no round outlasts two minutes. Last one standing wins.
+
+### Bombs and pickups
+
+The blast is a disc, stopped by walls, and a bomb caught in fire goes off at once, so chains
+are part of the game. Soft blocks hide pickups:
+
+| Pickup | Effect |
+|---|---|
+| Bomb up | carry one more bomb |
+| Fire up | one more tile of blast reach |
+| Speed up | one step faster |
+| Pierce bomb | every bomb from then on burns through soft blocks |
+| Cluster bomb | every bomb from then on flares one tile around the end of each arm |
+
+### Characters
+
+Each character starts with a kit and has one ability on a cooldown. Classic modes play
+without characters.
+
+| Character | Starts with | Ability |
+|---|---|---|
+| Demolisher | one more tile of reach | **Trigger**: sets off your oldest live bomb now (6 s) |
+| Runner | two speed steps | **Vanish**: hidden for 2 s wherever you stand (10 s) |
+| Grenadier | cluster bombs | **Throw**: your next bomb lands up to three tiles ahead (5 s) |
+| Sapper | pierce bombs | **Wall**: raises a soft block in front of you for 8 s (10 s) |
+
+### Controls
+
+| Action | Keyboard and mouse | Gamepad |
+|---|---|---|
+| Move | WASD, ZQSD or arrows | left stick or d-pad |
+| Drop a bomb | E | south button (A / Cross) |
+| Dash | Space | either shoulder |
+| Shove | left click | west button (X / Square) |
+| Ability | right click | north button (Y / Triangle) |
+
+A shove never kills on its own: it pushes the nearest player in front of you, and stuns
+them if they hit a wall. Xbox and PlayStation pads both work, and the on-screen prompts
+follow whichever one is plugged in.
+
+### Bots
+
+Easy, Normal and Hard. They use the same inputs as a player and see only what a player in
+their seat would see. A harder bot plans further ahead, reacts sooner and remembers where
+it last saw you for longer. Every bot in an online match plays at Normal; the difficulty is
+an editor setting for local play.
+
+### Local play
+
+Opening the `Match` scene directly in the editor runs a couch match: one player per
+gamepad (the first also gets the keyboard), up to four, with bots in the other seats on
+one shared screen. The series is first to three rounds, the other seats' characters
+rotate between rounds, and R or Start rerolls the board. The built game does not offer it from the
+lobby yet.
+
+### Presentation
+
+- Four arena themes (Wasteland, Desert, Scorched, Overgrown), one picked per match.
+- Low-poly Synty art, with a 3D preview of your character in the lobby.
+- One camera framing every living player, online and locally. `--no-shake`
+  on the command line turns off the screen shake.
+- Positional sound: a fuse just off screen is heard from its side.
+
+The design reasoning and the numbers behind the tuning are in
+[docs/GAMEPLAY.md](docs/GAMEPLAY.md).
+
 ## Layout
 
 | Path | What |
@@ -60,8 +153,8 @@ Quality settings: the manifest pulls the package, not the configuration.
 
 ## Status
 
-Pre-alpha. Nothing is playable yet, see the [milestones](https://github.com/FerrLabs/Blastlands/milestones)
-for what is being built and in what order.
+Pre-alpha and playable. The [milestones](https://github.com/FerrLabs/Blastlands/milestones)
+show what is being built next.
 
 ## Licence
 
