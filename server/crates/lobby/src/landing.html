@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Blastlands</title>
-<meta name="description" content="Blastlands is a bomb-dropping arena game for up to eight players. Pick a character, drop bombs, be the last one standing. Free for Windows.">
+<meta name="description" content="Blastlands is a free multiplayer bomber for Windows, up to eight players per match.">
 <meta name="theme-color" content="#14110c">
 <link rel="icon" href="/logo.png" type="image/png">
 <style>
@@ -332,23 +332,6 @@ h2 {
   text-transform: uppercase;
 }
 
-.facts {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
-  gap: 2rem 2.5rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.facts strong {
-  display: block;
-  margin-bottom: 0.3rem;
-  font-size: 1.05rem;
-}
-
-.facts span { color: var(--muted); font-size: 0.95rem; }
-
 .controls {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
@@ -452,19 +435,19 @@ footer a:hover { color: var(--text); }
   </div>
   <div class="hero-content">
     <img class="logo" src="/logo.png" alt="" width="96" height="96">
-    <p class="eyebrow">Free arena bomber for Windows</p>
+    <p class="eyebrow">Free on Windows</p>
     <h1>Blastlands</h1>
-    <p class="lead">Up to eight players on one board. Pick a character, drop bombs, blow the cover away and be the last one standing.</p>
+    <p class="lead">A multiplayer bomber for up to eight players, with bots to fill the empty seats. Last one alive wins the round.</p>
     {{action}}
   </div>
-  <a class="more" href="#characters">See what's inside</a>
+  <a class="more" href="#characters">What's in it</a>
 </header>
 
 <main>
   <section class="band" id="characters">
     <div class="wrap">
-      <h2>Pick your character</h2>
-      <p class="intro">Each one starts with a different kit and carries one ability on a cooldown. Characters play in Arena mode.</p>
+      <h2>Characters</h2>
+      <p class="intro">Each one starts with its own bonus and has an ability on a cooldown. They only exist in Arena: the Classic modes play without them.</p>
       <div class="roster">
         <article class="card">
           <div class="portrait"><img src="/characters/demolisher/portrait" alt="The Demolisher, a riot cop in black armour" loading="lazy"></div>
@@ -504,23 +487,23 @@ footer a:hover { color: var(--text); }
 
   <section class="band sunk">
     <div class="wrap">
-      <h2>Three ways to play</h2>
-      <p class="intro">The host picks the mode. Soft blocks grow back, and after ninety seconds the board starts closing in, so no round drags on.</p>
+      <h2>Modes</h2>
+      <p class="intro">The host picks one when creating the match. Destroyed blocks grow back after a while, and at ninety seconds the board starts shrinking, so rounds stay short.</p>
       <div class="modes">
         <article class="mode">
-          <span class="tag">The original</span>
+          <span class="tag">Original</span>
           <h3>Classic</h3>
-          <p>The bomberman board: 13 by 11, a pillar on every other tile, one corner each. Your bombs come back once they go off, and placing one is the only move you have.</p>
+          <p>The board everyone remembers from bomberman: 13 by 11, a pillar on every other tile, a corner each. Your bombs come back after they explode. No dash, no shove, just bombs.</p>
         </article>
         <article class="mode">
-          <span class="tag">No sight</span>
+          <span class="tag">Hidden players</span>
           <h3>Classic Blinded</h3>
-          <p>The same board and the same bombs, but you only see the players you have a line to. Every pillar becomes somewhere to hide.</p>
+          <p>Classic, except you can't see a player unless nothing stands between you. With a pillar on every other tile, that is most of the time.</p>
         </article>
         <article class="mode">
-          <span class="tag">Characters</span>
+          <span class="tag">With characters</span>
           <h3>Arena</h3>
-          <p>An eroded island with cover in clumps and bushes to hide in. Bombs lie on the ground and are spent for good. Dash, shove and use your ability, and only see who you have a line to.</p>
+          <p>A bigger island with bushes to hide in. Bombs are picked up off the ground and gone once used. You can dash, shove people around and use your character's ability.</p>
         </article>
       </div>
     </div>
@@ -528,21 +511,18 @@ footer a:hover { color: var(--text); }
 
   <section class="band">
     <div class="wrap">
-      <h2>Jump in</h2>
-      <p class="intro">No account, no store. Pick a name and play.</p>
-      <ul class="facts">
-        <li><strong>Host or join</strong><span>Open a match from the lobby and it shows up for everyone. Start whenever you like.</span></li>
-        <li><strong>2 to 8 players</strong><span>Fill the empty seats with bots, and a bot takes over anyone who drops out.</span></li>
-        <li><strong>Dedicated servers</strong><span>Every match runs on its own server. Nobody hosts from their own machine.</span></li>
-        <li><strong>Always up to date</strong><span>When a new version is out, the lobby offers it and installs it for you.</span></li>
-      </ul>
+      <h2>Playing online</h2>
+      <p class="intro">Launch the game, type a name and you land on the match list. Host a match and it
+      shows up there for everyone else. Add bots if your friends are late, then press Start when you
+      are ready. Matches run on our servers, not on someone's PC, and if a player drops out a bot
+      finishes the round for them.</p>
     </div>
   </section>
 
   <section class="band sunk">
     <div class="wrap">
       <h2>Controls</h2>
-      <p class="intro">Keyboard and mouse, or any Xbox or PlayStation pad.</p>
+      <p class="intro">Keyboard and mouse, or an Xbox or PlayStation controller.</p>
       <div class="controls">
         <div class="control">Move <span><kbd>WASD</kbd> <kbd>ZQSD</kbd> <kbd>Arrows</kbd></span></div>
         <div class="control">Drop a bomb <kbd>E</kbd></div>
@@ -557,7 +537,7 @@ footer a:hover { color: var(--text); }
   <section class="band">
     <div class="notes">
       <p>{{note}}</p>
-      <p>The game keeps itself up to date: when a new version is out, an Update button appears in the lobby.</p>
+      <p>When a new version comes out, the lobby shows an Update button.</p>
     </div>
   </section>
 </main>
