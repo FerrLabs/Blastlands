@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.102] - 2026-09-24
+
+### Features
+
+- feat(client): scale the match HUD down to 80 percent (#101)
+
 ## [26.9.101] - 2026-09-24
 
 ### Features
