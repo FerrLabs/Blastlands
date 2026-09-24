@@ -45,6 +45,7 @@ Section "Install"
   CreateShortcut "$DESKTOP\Blastlands.lnk" "${GAME_EXE}"
 
   WriteRegStr HKCU "${UNINSTALL_KEY}" "DisplayName" "Blastlands"
+  WriteRegStr HKCU "${UNINSTALL_KEY}" "DisplayVersion" "${TAG}"
   WriteRegStr HKCU "${UNINSTALL_KEY}" "Publisher" "FerrLabs"
   WriteRegStr HKCU "${UNINSTALL_KEY}" "DisplayIcon" "${GAME_EXE}"
   WriteRegStr HKCU "${UNINSTALL_KEY}" "InstallLocation" "$INSTDIR"
