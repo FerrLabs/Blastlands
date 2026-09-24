@@ -1525,6 +1525,45 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn a_port_is_only_handed_out_once_its_instance_has_polled() {
+        let router = app(AppState {
+            directory: Arc::new(MatchDirectory::new(
+                "game.blastlands.test".to_owned(),
+                PortPool::new(7000..=7000),
+            )),
+            instance_token: Arc::from(TOKEN),
+            tickets: Arc::new(signer()),
+            release: release(),
+            downloads: downloads(),
+            creates: Arc::new(RateLimiter::new(0, Duration::from_secs(60))),
+            joins: Arc::new(RateLimiter::new(0, Duration::from_secs(60))),
+            matches_per_address: 0,
+            address_source: ClientAddress::Peer,
+        });
+        let create = || {
+            post_json(
+                "/v1/matches",
+                json!({ "name": "Night raid", "host": "Bryan", "max_players": 4 }),
+            )
+        };
+
+        let refused = router.clone().oneshot(create()).await.unwrap();
+        assert_eq!(refused.status(), StatusCode::SERVICE_UNAVAILABLE);
+        assert_eq!(body_json(refused).await["code"], "no_capacity");
+
+        let polled = router
+            .clone()
+            .oneshot(instance_get("/internal/instances/7000"))
+            .await
+            .unwrap();
+        assert_eq!(polled.status(), StatusCode::NO_CONTENT);
+
+        let created = router.clone().oneshot(create()).await.unwrap();
+        assert_eq!(created.status(), StatusCode::CREATED);
+        assert_eq!(body_json(created).await["endpoint"]["port"], 7000);
+    }
+
+    #[tokio::test]
     async fn an_idle_port_answers_no_content() {
         let response = router()
             .oneshot(instance_get("/internal/instances/7000"))

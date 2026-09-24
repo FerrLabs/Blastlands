@@ -318,14 +318,14 @@ impl MatchDirectory {
         Ok(())
     }
 
-    /// What the instance owning `port` should run, once there is something to run.
-    ///
-    /// Only a started match answers. Before that there is nobody to play against, and an
-    /// instance booted early would spend its grace window waiting on an empty arena.
     pub fn observe_instance(&self, port: u16, now: Instant) {
         self.write().ports.observe_instance(port, now);
     }
 
+    /// What the instance owning `port` should run, once there is something to run.
+    ///
+    /// Only a started match answers. Before that there is nobody to play against, and an
+    /// instance booted early would spend its grace window waiting on an empty arena.
     pub fn assignment(&self, port: u16) -> Option<Assignment> {
         self.read()
             .matches

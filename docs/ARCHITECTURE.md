@@ -417,13 +417,19 @@ On `SIGTERM` the entrypoint stops taking new matches and lets the one it is runn
 then exits 0. An image bump therefore drains a pod instead of killing a match mid-round, and
 `terminationGracePeriodSeconds` on the StatefulSet is the ceiling on that wait rather than a
 delay: an idle pod leaves at once. A match that is assigned while a pod is draining is left
-for its replacement, which finds it on the same port a few seconds later, because an
-assignment belongs to the port and not to the pod.
+for its replacement, which picks it up on the same port, because an assignment belongs to the
+port and not to the pod. That handover is bounded by the lobby's `silent_ttl` (30 s by
+default), not by how fast the pod comes back: the declined match is already running with its
+`last_seen` set when it started, so a replacement that takes longer than that to pull its
+image and start heartbeating finds the match reaped. Raise `silent_ttl` if that starts to bite.
 
 `PortPool` only hands out a port whose instance polled for an assignment within
 `INSTANCE_READY_TTL`. An instance polls every two seconds while idle and not at all while it
 is running a match, so a port with no pod behind it, or one whose pod is busy, is not
-offered. This is what makes the pool survive a lobby restart: the lobby keeps its directory
+offered. The two numbers are coupled: the widest gap between two polls is the entrypoint's
+`BLASTLANDS_POLL_SECONDS` (2) plus curl's 10 s timeout, and `INSTANCE_READY_TTL` (15 s) has to
+stay above it. Raise the poll interval past that and every create answers `no_capacity` with
+nothing in the logs pointing at the poll. This is what makes the pool survive a lobby restart: the lobby keeps its directory
 in memory, so it comes back believing every port is free, and without the rule it would put
 a new match on a port where a match is still being played.
 
