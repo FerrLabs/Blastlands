@@ -11,8 +11,9 @@ namespace Blastlands.Runtime
         {
             get
             {
-                GameModeTokens.TryRead(PlayerPrefs.GetString(Key, string.Empty), out GameMode picked);
-                return picked;
+                return GameModeTokens.TryRead(PlayerPrefs.GetString(Key, string.Empty), out GameMode picked)
+                    ? picked
+                    : GameModeTokens.All[0];
             }
         }
 

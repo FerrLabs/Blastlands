@@ -14,7 +14,7 @@ namespace Blastlands.Core
             };
 
         public static IReadOnlyList<GameMode> All { get; } =
-            new[] { GameMode.Arena, GameMode.Classic, GameMode.ClassicBlinded };
+            new[] { GameMode.Classic, GameMode.ClassicBlinded, GameMode.Arena };
 
         public static bool TryRead(string token, out GameMode mode)
         {
