@@ -18,6 +18,15 @@ impl Character {
             Character::Sapper => "sapper",
         }
     }
+
+    pub fn portrait(self) -> &'static [u8] {
+        match self {
+            Character::Demolisher => include_bytes!("site/demolisher.webp"),
+            Character::Runner => include_bytes!("site/runner.webp"),
+            Character::Grenadier => include_bytes!("site/grenadier.webp"),
+            Character::Sapper => include_bytes!("site/sapper.webp"),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -35,6 +44,32 @@ mod tests {
             let read: Character = serde_json::from_str(json).expect(json);
             assert_eq!(read, character);
             assert_eq!(format!("\"{}\"", read.token()), json);
+        }
+    }
+
+    #[test]
+    fn every_character_has_its_own_webp_portrait() {
+        let all = [
+            Character::Demolisher,
+            Character::Runner,
+            Character::Grenadier,
+            Character::Sapper,
+        ];
+        for character in all {
+            let portrait = character.portrait();
+            assert_eq!(&portrait[..4], b"RIFF", "{}", character.token());
+            assert_eq!(&portrait[8..12], b"WEBP", "{}", character.token());
+        }
+        for (i, a) in all.iter().enumerate() {
+            for b in &all[i + 1..] {
+                assert_ne!(
+                    a.portrait(),
+                    b.portrait(),
+                    "{} and {}",
+                    a.token(),
+                    b.token()
+                );
+            }
         }
     }
 

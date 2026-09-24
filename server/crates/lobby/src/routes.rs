@@ -200,6 +200,7 @@ pub struct JoinAccepted {
 pub fn app(state: AppState) -> Router {
     Router::new()
         .route("/", get(landing_page))
+        .route("/characters/{character}/portrait", get(character_portrait))
         .route("/healthz", get(health))
         .route("/v1/version", get(version))
         .route("/v1/client/{version}/download", get(download_client))
@@ -227,6 +228,16 @@ async fn landing_page(State(state): State<AppState>) -> impl IntoResponse {
             state.release.current().as_ref(),
             state.release.installer().as_ref(),
         )),
+    )
+}
+
+async fn character_portrait(Path(character): Path<Character>) -> impl IntoResponse {
+    (
+        [
+            (header::CONTENT_TYPE, "image/webp"),
+            (header::CACHE_CONTROL, "public, max-age=86400"),
+        ],
+        character.portrait(),
     )
 }
 
@@ -685,6 +696,47 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::OK);
         assert!(!body_text(response).await.contains("/v1/client/"));
+    }
+
+    #[tokio::test]
+    async fn a_portrait_is_served_as_webp() {
+        let response = router()
+            .oneshot(get_request("/characters/runner/portrait"))
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.headers()[header::CONTENT_TYPE], "image/webp");
+        let bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        assert_eq!(&bytes[..], Character::Runner.portrait());
+    }
+
+    #[tokio::test]
+    async fn a_character_that_does_not_exist_has_no_portrait() {
+        let response = router()
+            .oneshot(get_request("/characters/hoarder/portrait"))
+            .await
+            .unwrap();
+
+        assert!(response.status().is_client_error());
+    }
+
+    #[tokio::test]
+    async fn every_portrait_the_landing_page_shows_is_served() {
+        let page = body_text(router().oneshot(get_request("/")).await.unwrap()).await;
+        let links: Vec<&str> = page
+            .match_indices("/characters/")
+            .map(|(start, _)| {
+                let rest = &page[start..];
+                &rest[..rest.find('"').expect("the link ends with a quote")]
+            })
+            .collect();
+
+        assert!(links.len() >= 4, "the page shows every character");
+        for link in links {
+            let response = router().oneshot(get_request(link)).await.unwrap();
+            assert_eq!(response.status(), StatusCode::OK, "{link}");
+        }
     }
 
     fn release_with_installer() -> Arc<Releases> {
