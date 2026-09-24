@@ -12,8 +12,9 @@ Download the Windows installer from [blastlands.ferrlabs.com](https://blastlands
 
 ### Playing online
 
-- Pick a name, then a character, then a mode on the match list. The character and the mode
-  are remembered on that machine; the name is asked again on every launch.
+- Pick a name, then a character, then a mode on the match list. All three are remembered on
+  that machine, so the next launch goes straight to the match list; Change next to your name
+  goes back to edit it.
 - **Host a match** lists it publicly. Others join from the list, the host can **Add bot** to
   fill seats, and starts whenever they like, from 2 to 8 players.
 - The lobby hands each player a dedicated server instance. The server runs the simulation,

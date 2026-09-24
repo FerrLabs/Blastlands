@@ -4,6 +4,7 @@ using Blastlands.Core.Lobby;
 using Blastlands.Core.Update;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Blastlands.Runtime
@@ -19,17 +20,24 @@ namespace Blastlands.Runtime
         private const float RosterCentre = -470f;
         private const float ListCentre = 300f;
 
-        public static TMP_InputField Name(RectTransform root, LobbyArt art, LobbyFlow flow, Action<string> submit)
+        public static TMP_InputField Name(
+            RectTransform root, LobbyArt art, LobbyFlow flow, string draft, Action<string> edit, Action<string> submit)
         {
             RectTransform panel = LobbyChrome.Panel(root, art, "Name", new Vector2(900f, 460f));
             LobbyChrome.Label(panel, art, "BLASTLANDS", true, new Vector2(0f, 150f), 800f);
             LobbyChrome.Label(panel, art, "Who are you?", false, new Vector2(0f, 70f), 800f);
 
             TMP_InputField field = LobbyChrome.Field(panel, art, "Your name", new Vector2(0f, -10f), new Vector2(560f, 90f));
-            field.text = flow.Player;
+            field.text = draft;
+            field.onValueChanged.AddListener(typed => edit(typed));
+            field.onSubmit.AddListener(typed => submit(typed));
 
             LobbyChrome.Press(panel, art, "Continue", new Vector2(0f, -140f), WideButton, () => submit(field.text));
             Notice(panel, art, flow, new Vector2(0f, -210f));
+
+            EventSystem.current?.SetSelectedGameObject(field.gameObject);
+            field.ActivateInputField();
+            field.MoveTextEnd(false);
             return field;
         }
 
@@ -86,10 +94,12 @@ namespace Blastlands.Runtime
             Action<CharacterKind> pick,
             Action<GameMode> pickMode,
             Action<MatchListing> join,
-            Action create)
+            Action create,
+            Action rename)
         {
             RectTransform panel = LobbyChrome.Panel(root, art, "Browse", new Vector2(1500f, 900f));
             LobbyChrome.Label(panel, art, "MATCHES", true, new Vector2(ListCentre, 390f), RowSize.x);
+            Player(panel, art, flow.Player, rename);
             Roster(panel, art, picked, portrait, pick);
             Modes(panel, art, mode, pickMode, new Vector2(ListCentre, -245f));
             LobbyChrome.Press(panel, art, "Host a match", new Vector2(ListCentre, -330f), WideButton, create);
@@ -118,6 +128,25 @@ namespace Blastlands.Runtime
 
                 MatchListing chosen = listing;
                 LobbyChrome.Press(panel, art, text, offset, RowSize, () => join(chosen));
+            }
+        }
+
+        private static void Player(RectTransform panel, LobbyArt art, string player, Action rename)
+        {
+            TMP_Text name = LobbyChrome.Label(panel, art, player, false, new Vector2(RosterCentre - 120f, 390f), 300f);
+            if (name != null)
+            {
+                name.alignment = TextAlignmentOptions.MidlineRight;
+                name.enableAutoSizing = true;
+                name.fontSizeMin = 20f;
+                name.fontSizeMax = 36f;
+            }
+
+            Button change = LobbyChrome.Press(panel, art, "Change", new Vector2(RosterCentre + 130f, 390f), new Vector2(170f, 64f), rename);
+            TMP_Text label = change.GetComponentInChildren<TMP_Text>(true);
+            if (label != null)
+            {
+                label.fontSize = 28f;
             }
         }
 
