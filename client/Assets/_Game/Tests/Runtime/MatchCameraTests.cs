@@ -93,6 +93,17 @@ namespace Blastlands.Runtime.Tests
         }
 
         [Test]
+        public void AWideStripShowsNoMoreBoardAcrossThanAFullScreen()
+        {
+            const float full = 16f / 9f;
+            const float strip = 32f / 9f;
+
+            Assert.That(MatchCamera.FollowSizeFor(4f, full), Is.EqualTo(4f));
+            Assert.That(MatchCamera.FollowSizeFor(4f, strip) * strip, Is.EqualTo(4f * full).Within(1e-4f));
+            Assert.That(MatchCamera.FollowSizeFor(4f, 4f / 3f), Is.EqualTo(4f), "a narrower screen keeps its height");
+        }
+
+        [Test]
         public void GlobalWithOneSeatIsThatSeatAlone()
         {
             Bind(1);

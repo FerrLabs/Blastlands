@@ -94,7 +94,8 @@ lobby yet.
 - Low-poly Synty art, with a 3D preview of your character in the lobby.
 - A camera that follows your player, online and alone on a couch, and a split screen when
   several people play locally. `--no-shake` on the command line turns off the screen shake.
-- Positional sound: a fuse just off screen is heard from its side.
+- Positional sound on a single screen: a fuse just off screen is heard from its side. Split
+  screen falls back to a flat mix.
 
 The design reasoning and the numbers behind the tuning are in
 [docs/GAMEPLAY.md](docs/GAMEPLAY.md).
