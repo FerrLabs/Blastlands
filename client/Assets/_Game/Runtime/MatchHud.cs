@@ -16,7 +16,7 @@ namespace Blastlands.Runtime
         [SerializeField] private float inset = 24f;
         [SerializeField] private float splitScale = 0.62f;
         [SerializeField] private float clockClearance = 96f;
-        [SerializeField] private float size = 0.8f;
+        [SerializeField, Range(0.5f, 1.5f)] private float size = 0.8f;
 
         private readonly List<HudRoster> rosters = new List<HudRoster>();
         private readonly List<HudVitals> vitals = new List<HudVitals>();
