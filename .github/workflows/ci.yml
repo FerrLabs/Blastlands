@@ -48,7 +48,7 @@ jobs:
     # lives in this comment rather than anywhere a bot can see. The rule in
     # renovate.json is what stops it happening again: drop that rule and this pin
     # together, never one without the other.
-    uses: FerrLabs/.github/.github/workflows/reusable-ci-rust.yml@d3ce80b43af8b567b503ab4c3ee44d6e33c246f5 # main
+    uses: FerrLabs/.github/.github/workflows/reusable-ci-rust.yml@b6a08e6055076c18cfa7b8f80c9925275ed407fe # main
     with:
       working-directory: server
       rust-toolchain: '1.88'
