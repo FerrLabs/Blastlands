@@ -18,6 +18,28 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
+        public void AnOptionalUpdateWaitingOnThePlayerStaysOnTheSmallButton()
+        {
+            Assert.That(Notice(UpdateVerdict.UpdateAvailable, UpdateStage.Idle).Prominent, Is.False);
+            Assert.That(Notice(UpdateVerdict.UpdateAvailable, UpdateStage.Running).Prominent, Is.False, "the button already says it is updating");
+        }
+
+        [Test]
+        public void AnOptionalUpdateThatCannotGoAheadSaysWhy()
+        {
+            foreach (UpdateStage stage in new[] { UpdateStage.Failed, UpdateStage.Unsupported, UpdateStage.Unpublished })
+            {
+                Assert.That(Notice(UpdateVerdict.UpdateAvailable, stage, "disk full").Prominent, Is.True, stage.ToString());
+            }
+        }
+
+        [Test]
+        public void AMandatoryUpdateIsAlwaysProminent()
+        {
+            Assert.That(Notice(UpdateVerdict.MustUpdate, UpdateStage.Idle).Prominent, Is.True);
+        }
+
+        [Test]
         public void ACurrentBuildIsShownNothing()
         {
             Assert.That(Notice(UpdateVerdict.UpToDate, UpdateStage.Idle).Visible, Is.False);

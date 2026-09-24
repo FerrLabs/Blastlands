@@ -5,12 +5,13 @@ namespace Blastlands.Core.Update
 {
     public readonly struct UpdateNotice
     {
-        private UpdateNotice(string headline, string detail, bool blocksPlay, bool offersUpdate)
+        private UpdateNotice(string headline, string detail, bool blocksPlay, bool offersUpdate, bool prominent)
         {
             Headline = headline;
             Detail = detail;
             BlocksPlay = blocksPlay;
             OffersUpdate = offersUpdate;
+            Prominent = prominent;
         }
 
         public string Headline { get; }
@@ -20,6 +21,8 @@ namespace Blastlands.Core.Update
         public bool BlocksPlay { get; }
 
         public bool OffersUpdate { get; }
+
+        public bool Prominent { get; }
 
         public bool Visible
         {
@@ -37,14 +40,15 @@ namespace Blastlands.Core.Update
             switch (verdict)
             {
                 case UpdateVerdict.MustUpdate:
-                    return new UpdateNotice("Update required", Blocked(stage, failure, installed, release), true, false);
+                    return new UpdateNotice("Update required", Blocked(stage, failure, installed, release), true, false, true);
 
                 case UpdateVerdict.UpdateAvailable:
                     return new UpdateNotice(
                         "Blastlands " + release.Latest + " is out",
                         Offered(stage, failure, installed, release),
                         false,
-                        stage == UpdateStage.Idle);
+                        stage == UpdateStage.Idle,
+                        stage == UpdateStage.Unpublished || stage == UpdateStage.Unsupported || stage == UpdateStage.Failed);
 
                 default:
                     return Silent;

@@ -64,8 +64,8 @@ namespace Blastlands.Runtime
 
             if (card != null)
             {
-                bool inMatch = !Notice.BlocksPlay && SceneManager.GetActiveScene().name == MatchScene;
-                bool wanted = Notice.Visible && !inMatch;
+                bool inMatch = SceneManager.GetActiveScene().name == MatchScene;
+                bool wanted = Notice.Visible && Notice.Prominent && (Notice.BlocksPlay || !inMatch);
                 if (card.activeSelf != wanted)
                 {
                     card.SetActive(wanted);
@@ -86,7 +86,7 @@ namespace Blastlands.Runtime
 
         private void Render(UpdateNotice notice)
         {
-            if (!notice.Visible)
+            if (!notice.Visible || !notice.Prominent)
             {
                 if (card != null)
                 {
