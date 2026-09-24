@@ -6,6 +6,28 @@ namespace Blastlands.Runtime.Tests
 {
     public class PlayerPaceTests
     {
+        private static readonly Gait Run = new Gait(PlayerPace.Running, 1.2f);
+        private static readonly Gait Stop = new Gait(PlayerPace.Still, PlayerPace.RestingCadence);
+
+        [Test]
+        public void OneTickWithoutMovementDoesNotDropARunIntoIdle()
+        {
+            Assert.That(PlayerPace.Held(Stop, Run, 1).Speed, Is.EqualTo(PlayerPace.Running));
+            Assert.That(PlayerPace.Held(Stop, Run, PlayerPace.StillTicksBeforeStopping).Speed, Is.EqualTo(PlayerPace.Running));
+        }
+
+        [Test]
+        public void StandingStillLongerThanThatStops()
+        {
+            Assert.That(PlayerPace.Held(Stop, Run, PlayerPace.StillTicksBeforeStopping + 1).Speed, Is.EqualTo(PlayerPace.Still));
+        }
+
+        [Test]
+        public void StartingToMoveIsNeverHeldBack()
+        {
+            Assert.That(PlayerPace.Held(Run, Stop, 0).Speed, Is.EqualTo(PlayerPace.Running));
+        }
+
         // The band SimpleCharacter_5.0 runs in, read off its own transitions: Idle below
         // 0.25, Walk to 0.50, Run above. Every test here is about which clip the number
         // selects, so asserting the number on its own would say nothing.

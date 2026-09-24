@@ -192,6 +192,7 @@ namespace Blastlands.Runtime
             if (matchCamera != null)
             {
                 matchCamera.Use(MatchCamera.ModeFor(humans));
+                matchCamera.Track(view);
                 matchCamera.Bind(state, humans);
             }
 
@@ -250,6 +251,7 @@ namespace Blastlands.Runtime
 
             if (view != null)
             {
+                view.Blend(ticks, pacer.Fraction);
                 view.Render();
             }
 

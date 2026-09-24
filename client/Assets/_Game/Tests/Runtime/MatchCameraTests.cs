@@ -13,6 +13,7 @@ namespace Blastlands.Runtime.Tests
         private GameObject host;
         private MatchCamera cameras;
         private readonly List<int> viewers = new List<int>();
+        private MatchState state;
 
         [SetUp]
         public void SetUp()
@@ -29,7 +30,7 @@ namespace Blastlands.Runtime.Tests
 
         private void Bind(int seats)
         {
-            var state = new MatchState(new Arena(9, 9), MatchSettings.Default, 1u);
+            state = new MatchState(new Arena(9, 9), MatchSettings.Default, 1u);
             for (int i = 0; i < 4; i++)
             {
                 state.AddPlayer(new GridPos(1 + i, 1));
@@ -101,6 +102,70 @@ namespace Blastlands.Runtime.Tests
             Assert.That(MatchCamera.FollowSizeFor(4f, full), Is.EqualTo(4f));
             Assert.That(MatchCamera.FollowSizeFor(4f, strip) * strip, Is.EqualTo(4f * full).Within(1e-4f));
             Assert.That(MatchCamera.FollowSizeFor(4f, 4f / 3f), Is.EqualTo(4f), "a narrower screen keeps its height");
+        }
+
+        [Test]
+        public void TheCameraClosesMoreOfABigGapThanOfASmallOneAndNeverOvershoots()
+        {
+            var curve = new AnimationCurve(new Keyframe(0f, 4f), new Keyframe(4f, 16f));
+
+            Vector3 near = MatchCamera.Follow(Vector3.zero, new Vector3(0.5f, 0f, 0f), curve, 1f / 60f);
+            Vector3 far = MatchCamera.Follow(Vector3.zero, new Vector3(4f, 0f, 0f), curve, 1f / 60f);
+
+            Assert.That(near.x / 0.5f, Is.LessThan(far.x / 4f), "a far target is caught up with faster");
+            Assert.That(far.x, Is.LessThan(4f));
+            Assert.That(MatchCamera.Follow(Vector3.zero, Vector3.one, curve, 10f).x, Is.LessThanOrEqualTo(1f));
+        }
+
+        [Test]
+        public void TheFollowDoesNotDependOnTheFrameRate()
+        {
+            var curve = new AnimationCurve(new Keyframe(0f, 6f), new Keyframe(10f, 6f));
+            var target = new Vector3(3f, 0f, 0f);
+
+            Vector3 slow = MatchCamera.Follow(Vector3.zero, target, curve, 0.1f);
+            Vector3 fast = Vector3.zero;
+            for (int frame = 0; frame < 10; frame++)
+            {
+                fast = MatchCamera.Follow(fast, target, curve, 0.01f);
+            }
+
+            Assert.That(fast.x, Is.EqualTo(slow.x).Within(0.001f));
+        }
+
+        [Test]
+        public void OnceYouAreOutTheCameraWatchesTheNearestPlayerStillStanding()
+        {
+            var state = new MatchState(new Arena(15, 15), MatchSettings.Default, 1u);
+            state.AddPlayer(new GridPos(1, 1));
+            state.AddPlayer(new GridPos(13, 13));
+            state.AddPlayer(new GridPos(3, 1));
+            state.Players[0].Alive = false;
+
+            Assert.That(MatchCamera.Spectated(state, state.Players[0]), Is.SameAs(state.Players[2]));
+
+            state.Players[1].Alive = false;
+            state.Players[2].Alive = false;
+            Assert.That(MatchCamera.Spectated(state, state.Players[0]), Is.Null, "nobody left to watch");
+        }
+
+        [Test]
+        public void ASpectatingViewportSeesThroughThePlayerItWatches()
+        {
+            Bind(1);
+            cameras.Use(CameraMode.Follow);
+            state.Players[0].Alive = false;
+
+            PlayerState watched = cameras.Spectate(0);
+            cameras.ViewersOf(0, viewers);
+
+            Assert.That(watched, Is.Not.Null);
+            Assert.That(viewers, Is.EqualTo(new[] { watched.Id }), "the fog follows the camera, or it draws nobody");
+
+            state.Players[0].Alive = true;
+            cameras.Spectate(0);
+            cameras.ViewersOf(0, viewers);
+            Assert.That(viewers, Is.EqualTo(new[] { 0 }), "back to your own eyes once you are alive");
         }
 
         [Test]

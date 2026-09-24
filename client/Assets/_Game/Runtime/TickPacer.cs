@@ -1,3 +1,5 @@
+using UnityEngine;
+
 namespace Blastlands.Runtime
 {
     // Turns however long the last frame took into a whole number of simulation ticks.
@@ -16,6 +18,11 @@ namespace Blastlands.Runtime
         {
             step = ticksPerSecond > 0 ? 1f / ticksPerSecond : 1f;
             maxCatchUp = maxCatchUpTicks > 0 ? maxCatchUpTicks : 1;
+        }
+
+        public float Fraction
+        {
+            get { return Mathf.Clamp01(accumulator / step); }
         }
 
         public int Advance(float elapsedSeconds)
