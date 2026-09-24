@@ -2,6 +2,7 @@ using System.Text;
 using Blastlands.Core;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 using PlayerInput = Blastlands.Core.PlayerInput;
 
 namespace Blastlands.Runtime
@@ -35,6 +36,7 @@ namespace Blastlands.Runtime
         [SerializeField] private uint seed;
 
         private const int MaxCatchUpTicks = 5;
+        private const string LobbyScene = "Lobby";
 
         [SerializeField] private BotSkill botSkill = BotSkill.Normal;
 
@@ -63,6 +65,7 @@ namespace Blastlands.Runtime
         private BotBrain[] bots;
         private TickPacer pacer;
         private uint activeSeed;
+        private VictoryScreen victory;
 
         public MatchState State
         {
@@ -127,6 +130,12 @@ namespace Blastlands.Runtime
 
         private void StartMatch()
         {
+            if (victory != null)
+            {
+                victory.Close();
+                victory = null;
+            }
+
             activeSeed = seed != 0u ? seed : RollSeed();
 
             ArenaSettings arenaSettings = mode == GameMode.Arena
@@ -273,12 +282,27 @@ namespace Blastlands.Runtime
                     + " | " + Score());
             }
 
+            intermissionRemaining -= Time.deltaTime;
+
+            // The same beat a round gets before the next one, so the blast that decided
+            // the series is seen before the screen covers it.
             if (series.Decided)
             {
+                if (intermissionRemaining <= 0f && victory == null)
+                {
+                    victory = VictoryScreen.Open(
+                        transform,
+                        view == null ? null : view.Art,
+                        VictoryCard.ForSeries(series, state),
+                        "Play again",
+                        () => Restart(0u),
+                        "Back to lobby",
+                        () => SceneManager.LoadScene(LobbyScene));
+                }
+
                 return;
             }
 
-            intermissionRemaining -= Time.deltaTime;
             if (intermissionRemaining <= 0f)
             {
                 // Derived rather than rolled, so a pinned seed describes the whole

@@ -48,13 +48,17 @@ namespace Blastlands.Runtime
 
         public void Show(MatchArt art, CharacterKind character)
         {
+            ShowModel(art == null ? null : art.ForCharacter(character), art == null ? null : art.PlayerAnimator);
+        }
+
+        public void ShowModel(GameObject prefab, RuntimeAnimatorController fallbackAnimator)
+        {
             if (model != null)
             {
                 Destroy(model);
                 model = null;
             }
 
-            GameObject prefab = art == null ? null : art.ForCharacter(character);
             if (prefab == null)
             {
                 return;
@@ -67,9 +71,9 @@ namespace Blastlands.Runtime
             Animator animator = model.GetComponentInChildren<Animator>(true);
             if (animator != null)
             {
-                if (animator.runtimeAnimatorController == null && art.PlayerAnimator != null)
+                if (animator.runtimeAnimatorController == null && fallbackAnimator != null)
                 {
-                    animator.runtimeAnimatorController = art.PlayerAnimator;
+                    animator.runtimeAnimatorController = fallbackAnimator;
                 }
 
                 animator.applyRootMotion = false;

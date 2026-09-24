@@ -82,6 +82,11 @@ namespace Blastlands.Runtime
             backdrop.Build(art, Camera.main);
 
             BuildCanvas();
+
+            if (!string.IsNullOrEmpty(MatchHandoff.Player) && flow.Named(MatchHandoff.Player))
+            {
+                Asked(Listing());
+            }
         }
 
         private void Update()
@@ -117,7 +122,7 @@ namespace Blastlands.Runtime
 
         private void Play()
         {
-            MatchHandoff.Leave(flow.Invite);
+            MatchHandoff.Leave(flow.Invite, flow.Player);
             enabled = false;
             SceneManager.LoadScene(MatchScene);
         }
