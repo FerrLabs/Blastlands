@@ -16,6 +16,7 @@ namespace Blastlands.Runtime
         [SerializeField] private float inset = 24f;
         [SerializeField] private float splitScale = 0.62f;
         [SerializeField] private float clockClearance = 96f;
+        [SerializeField, Range(0.5f, 1.5f)] private float size = 0.8f;
 
         private readonly List<HudRoster> rosters = new List<HudRoster>();
         private readonly List<HudVitals> vitals = new List<HudVitals>();
@@ -262,7 +263,7 @@ namespace Blastlands.Runtime
 
             CanvasScaler scaler = host.GetComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920f, 1080f);
+            scaler.referenceResolution = new Vector2(1920f, 1080f) / Mathf.Max(0.1f, size);
             scaler.matchWidthOrHeight = 0.5f;
         }
     }
