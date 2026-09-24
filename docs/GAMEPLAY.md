@@ -54,7 +54,35 @@ are a weak instrument for a mode built on information denial: a person hears a f
 a board, where a bot has only the sightings it remembers. This number is worth revisiting
 against people rather than tuned against bots.
 
-**Movement is free in all three.** Locking Classic to four axes is the one piece of period
+**Survival** is the Classic board and Classic bombs, played co-op against waves of zombies
+(`Survival.cs`, tuned in `SurvivalSettings`). It settles the open questions on #3 like this:
+
+- Five waves, a fixed ending. The first comes after 3 s and each one after a 5 s breather that
+  only starts once the last zombie of the wave is gone. A wave has `3 + 2 * (wave - 1)`
+  zombies plus half a zombie per extra player per wave, capped at 20. Speed runs from 14 to
+  22 sub-units a tick, so they stay slower than an unboosted player (26).
+- A zombie kills on contact: within half a tile of a living player on both axes.
+- Death is final for the run.
+- Fire hurts zombies only. With friendly fire on, four Normal bots lost most runs to each
+  other's bombs before the first wave was cleared. Four Hard bots, fire off, get to waves 2
+  to 4. Bots are a floor rather than the target here: a person kites far better than a bot
+  does, and the waves are tuned for people.
+- Zombies are bound by walls and bombs, which is what makes a bomb a barricade. One that
+  cannot reach anyone chews through the soft block in its way over three seconds. That
+  closes the sealed-pocket failure the issue worried about, since rebuilding walls can
+  still shut a zombie out after it spawns.
+- Spawns come from the players' reachable floor, at least five steps from everyone when
+  there is room, so a wave never starts inside a pocket nobody can get to.
+- No sudden death. The coast closing would end every run on a timer.
+
+Movement follows a breadth-first distance field from the living players over open floor.
+Each zombie steps to the neighbour one step closer, lining up with the tile centre before it
+turns so it never clips a pillar. `RoundOutcome` gained `Survived` and `Overrun`, and
+`ResolveOutcome` asks `Survival.Enabled` before anything else, so a solo run no longer ends
+at once for having fewer than two players. Bots read zombies as their sightings instead of
+other players, keep a tile's distance from them, bomb one in reach and otherwise back off.
+
+**Movement is free in all four.** Locking Classic to four axes is the one piece of period
 accuracy deliberately left out: it would mean a second movement system to maintain, and the
 corner assist under **Movement** exists precisely so a one-tile corridor feels right without
 it. The board is what makes a match read as classic, not the axis lock.

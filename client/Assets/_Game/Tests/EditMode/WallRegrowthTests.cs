@@ -82,6 +82,24 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
+        public void AWallDoesNotCloseOverABodyLeaningInFromTheNextTile()
+        {
+            MatchState state = OpenMatch(new GridPos(3, 4));
+            PlayerState player = state.Players[0];
+            player.Position = new SubPos(SubPos.CentreOf(3) + 100, SubPos.CentreOf(4));
+            state.ScheduleRegrowth(new GridPos(4, 4), TileKind.SoftBlock, 1);
+
+            Run(state, 1, PlayerInput.None);
+
+            Assert.That(state.Arena[new GridPos(4, 4)], Is.EqualTo(TileKind.SoftBlock));
+            Assert.That(PlayerBody.Covers(player.Position, Settings.PlayerRadius, new GridPos(4, 4)), Is.False,
+                "or the body inside the wall walks straight through it on the next step");
+
+            Run(state, 20, PlayerInput.Moving(Direction.Right));
+            Assert.That(player.Tile, Is.EqualTo(new GridPos(3, 4)));
+        }
+
+        [Test]
         public void AWallWaitsRatherThanCloseOverALiveBomb()
         {
             MatchState state = OpenMatch(new GridPos(1, 1), new GridPos(7, 7));

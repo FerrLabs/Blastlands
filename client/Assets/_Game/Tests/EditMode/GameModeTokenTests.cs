@@ -33,8 +33,8 @@ namespace Blastlands.Core.Tests
         public void SteppingWrapsBothWays()
         {
             Assert.That(GameModeTokens.Step(GameMode.Classic, 1), Is.EqualTo(GameMode.ClassicBlinded));
-            Assert.That(GameModeTokens.Step(GameMode.Classic, -1), Is.EqualTo(GameMode.Arena));
-            Assert.That(GameModeTokens.Step(GameMode.Arena, 1), Is.EqualTo(GameMode.Classic));
+            Assert.That(GameModeTokens.Step(GameMode.Classic, -1), Is.EqualTo(GameMode.Survival));
+            Assert.That(GameModeTokens.Step(GameMode.Survival, 1), Is.EqualTo(GameMode.Classic));
         }
 
         [Test]
@@ -43,6 +43,7 @@ namespace Blastlands.Core.Tests
             Assert.That(ArenaSettings.For(GameMode.Arena).Board, Is.EqualTo(BoardKind.Island));
             Assert.That(ArenaSettings.For(GameMode.Classic).Board, Is.EqualTo(BoardKind.Lattice));
             Assert.That(ArenaSettings.For(GameMode.ClassicBlinded).Board, Is.EqualTo(BoardKind.Lattice));
+            Assert.That(ArenaSettings.For(GameMode.Survival).Board, Is.EqualTo(BoardKind.Lattice));
         }
     }
 }

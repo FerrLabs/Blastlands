@@ -38,6 +38,15 @@ MonoBehaviour:
   - {fileID: 1137350411725084, guid: d9f6a33196dbe594b893efa7ad5f43a6, type: 3}
   - {fileID: 1612642967817046, guid: 145e4b15636b57d47bb0d069eb16834f, type: 3}
   - {fileID: 1274019000965958, guid: af169be12f376ce46a3e6b4bee8b8ffe, type: 3}
+  zombies:
+  - {fileID: 150210, guid: ffd8d0a68e87f5640819a89549abfb79, type: 3}
+  - {fileID: 121698, guid: 4b567cfc65370f04fbceead813c886d6, type: 3}
+  - {fileID: 119274, guid: 6c48ed3b2c64908448212ef062aace3e, type: 3}
+  - {fileID: 155090, guid: 6b616d5eee8e5bf4abc92b3d1fff00bf, type: 3}
+  - {fileID: 165266, guid: 1e2e55f2b72bd944baa992df728abe80, type: 3}
+  - {fileID: 102404, guid: f47fae03f2aefa243a408ff3ac3fcdc3, type: 3}
+  - {fileID: 136720, guid: 1e56599280e0eff43b580ef5c7e3dec2, type: 3}
+  - {fileID: 147980, guid: 33fe945564a51f64f8d6ea8f0c2e8be9, type: 3}
   characters:
   - {fileID: 1791362862288902, guid: 040c180181105224d8d03746446e080a, type: 3}
   - {fileID: 1612642967817046, guid: 145e4b15636b57d47bb0d069eb16834f, type: 3}

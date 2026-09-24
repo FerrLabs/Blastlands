@@ -100,5 +100,24 @@ namespace Blastlands.Core.Tests
 
             Assert.That(VictoryCard.ForSeries(series, Ended(RoundOutcome.Winner, 1)).HasWinner, Is.False);
         }
+
+        [Test]
+        public void ARunSaysHowFarItGotRatherThanWhoWon()
+        {
+            var state = new MatchState(new Arena(9, 9), MatchSettings.SurvivalMode, 1u);
+            state.AddPlayer(new GridPos(1, 1));
+            state.Wave = 3;
+            state.ZombiesSlain = 11;
+            state.Outcome = RoundOutcome.Overrun;
+
+            VictoryCard lost = VictoryCard.ForRound(state, 0);
+            Assert.That(lost.Tone, Is.EqualTo(VictoryTone.Lost));
+            Assert.That(lost.Heading, Is.EqualTo("OVERRUN"));
+            Assert.That(lost.Detail, Does.Contain("wave 3 of 5").And.Contain("11 zombies"));
+            Assert.That(lost.HasWinner, Is.False);
+
+            state.Outcome = RoundOutcome.Survived;
+            Assert.That(VictoryCard.ForRun(state).Tone, Is.EqualTo(VictoryTone.Won));
+        }
     }
 }

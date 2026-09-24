@@ -85,8 +85,14 @@ namespace Blastlands.Core
             for (int i = 0; i < state.Players.Count; i++)
             {
                 PlayerState player = state.Players[i];
-                if (!player.Alive || player.Tile != tile)
+                if (!player.Alive || !PlayerBody.Covers(player.Position, state.Settings.PlayerRadius, tile))
                 {
+                    continue;
+                }
+
+                if (player.Tile != tile)
+                {
+                    player.Position = SubPos.AtTileCentre(player.Tile);
                     continue;
                 }
 

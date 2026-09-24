@@ -32,7 +32,7 @@ Responsibilities:
   `.../download` does for the zip. Only the published version has one, and only if the release carries it.
 - `GET /v1/matches` — public list of matches accepting players.
 - `POST /v1/matches` — create a match, allocate a game server instance, return its endpoint.
-  The body may name a `mode`, `arena` (the default), `classic` or `classic_blinded`. It is on
+  The body may name a `mode`, `arena` (the default), `classic`, `classic_blinded` or `survival`. It is on
   every listing, in the create response, and in the instance's assignment, which the
   entrypoint passes to the binary as `--mode`. A client builds the same rules from the mode in
   its invite, since prediction runs them before the first snapshot lands. `bot_skill`

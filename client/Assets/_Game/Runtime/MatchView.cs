@@ -17,6 +17,7 @@ namespace Blastlands.Runtime
         [SerializeField] private ArenaTheme theme;
         [SerializeField] private float blockFootprint = 0.92f;
         [SerializeField] private float playerHeight = 1.15f;
+        [SerializeField] private Color zombieFallbackColor = new Color(0.36f, 0.52f, 0.30f);
         [SerializeField] private float ringRadius = 0.46f;
         [SerializeField] private float ringWidth = 0.1f;
 
@@ -214,6 +215,7 @@ namespace Blastlands.Runtime
             bombBaseScales.Clear();
             flamePool.Clear();
             playerViews.Clear();
+            zombieViews.Clear();
             powerUpViews.Clear();
             powerUpKinds.Clear();
             bombTiles.Clear();
@@ -304,6 +306,7 @@ namespace Blastlands.Runtime
             SyncBombs();
             SyncFlames();
             SyncPlayers();
+            SyncZombies();
         }
 
         private int Variant(GridPos tile, int salt)
@@ -1167,6 +1170,94 @@ namespace Blastlands.Runtime
             {
                 burningTiles.Add(state.Flames[i].Tile);
             }
+        }
+
+        private sealed class ZombieView
+        {
+            public GameObject Body;
+            public Animator Animator;
+            public float Heading;
+        }
+
+        private readonly Dictionary<int, ZombieView> zombieViews = new Dictionary<int, ZombieView>();
+        private readonly HashSet<int> zombiesSeen = new HashSet<int>();
+        private readonly List<int> zombiesGone = new List<int>();
+
+        private void SyncZombies()
+        {
+            zombiesSeen.Clear();
+            float perTick = state.Settings.Survival.SpeedIn(state.Wave < 1 ? 1 : state.Wave) / (float)SubPos.UnitsPerTile;
+            float tile = (ToWorld(new GridPos(1, 0), 0f) - ToWorld(new GridPos(0, 0), 0f)).magnitude;
+            float step = perTick * tile * state.Settings.TicksPerSecond * Time.deltaTime;
+
+            for (int i = 0; i < state.Zombies.Count; i++)
+            {
+                Zombie zombie = state.Zombies[i];
+                zombiesSeen.Add(zombie.Id);
+                Vector3 target = ToWorld(zombie.Position, 0f);
+
+                if (!zombieViews.TryGetValue(zombie.Id, out ZombieView shown))
+                {
+                    shown = RaiseZombie(zombie);
+                    shown.Body.transform.position = target;
+                    zombieViews[zombie.Id] = shown;
+                }
+
+                Vector3 from = shown.Body.transform.position;
+                Vector3 at = Vector3.MoveTowards(from, target, step * 1.5f);
+                shown.Body.transform.position = at;
+                shown.Heading = Mathf.MoveTowardsAngle(shown.Heading, FacingAngle(zombie.Facing), TurnDegreesPerSecond * Time.deltaTime);
+                shown.Body.transform.rotation = Quaternion.Euler(0f, shown.Heading, 0f);
+
+                if (shown.Animator != null)
+                {
+                    bool moving = (target - from).sqrMagnitude > 0.0001f;
+                    shown.Animator.speed = Mathf.MoveTowards(shown.Animator.speed, moving ? 1f : 0.25f, CadencePerSecond * Time.deltaTime);
+                }
+            }
+
+            zombiesGone.Clear();
+            foreach (KeyValuePair<int, ZombieView> entry in zombieViews)
+            {
+                if (!zombiesSeen.Contains(entry.Key))
+                {
+                    zombiesGone.Add(entry.Key);
+                }
+            }
+
+            for (int i = 0; i < zombiesGone.Count; i++)
+            {
+                ZombieView gone = zombieViews[zombiesGone[i]];
+                if (sfx != null)
+                {
+                    sfx.Died(gone.Body.transform.position);
+                }
+
+                Destroy(gone.Body);
+                zombieViews.Remove(zombiesGone[i]);
+            }
+        }
+
+        private ZombieView RaiseZombie(Zombie zombie)
+        {
+            GameObject prefab = art == null ? null : art.Zombie(zombie.Id);
+            GameObject body = Spawn(prefab, PrimitiveType.Capsule, zombieFallbackColor, "Zombie " + zombie.Id);
+            if (prefab == null)
+            {
+                body.transform.localScale = new Vector3(0.55f, 0.4f, 0.55f);
+            }
+            else
+            {
+                TileFitter.FitToHeight(body, playerHeight);
+            }
+
+            var animator = body.GetComponentInChildren<Animator>(true);
+            if (animator != null)
+            {
+                animator.applyRootMotion = false;
+            }
+
+            return new ZombieView { Body = body, Animator = animator, Heading = FacingAngle(zombie.Facing) };
         }
 
         private void BuildPlayers()

@@ -71,6 +71,7 @@ namespace Blastlands.Core
             switch (mode)
             {
                 case GameMode.Classic:
+                case GameMode.Survival:
                     return Classic;
                 case GameMode.ClassicBlinded:
                     return ClassicBlinded;

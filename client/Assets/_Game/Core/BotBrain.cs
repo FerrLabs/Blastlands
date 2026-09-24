@@ -7,6 +7,8 @@ namespace Blastlands.Core
     // randomness, directions always walked in the same order.
     public sealed class BotBrain
     {
+        private const int ZombieSighting = -1;
+
         private static readonly Direction[] Order =
         {
             Direction.Right,
@@ -140,6 +142,25 @@ namespace Blastlands.Core
                 Direction away = Escape(state, blast, player, ticksPerTile);
                 bool dash = settings.ReactionTicks > 0 && player.CanDash && away != Direction.None;
                 return Steer(player, away, dash);
+            }
+
+            if (state.Settings.Survival.Enabled && ClosestZombie(state, tile) <= 2)
+            {
+                if (player.CanDropBomb && !state.HasBombAt(tile) && ZombieInReach(state, tile, player.FireRange))
+                {
+                    Direction escape = EscapeAfterBombing(state, player, tile, ticksPerTile);
+                    if (escape != Direction.None)
+                    {
+                        plannedEscape = escape;
+                        return PlayerInput.Dropping();
+                    }
+                }
+
+                Direction away = AwayFromZombies(state, blast, tile);
+                if (away != Direction.None)
+                {
+                    return Steer(player, away, false);
+                }
             }
 
             // Shoving comes before bombing because it is the only thing here that kills
@@ -434,6 +455,12 @@ namespace Blastlands.Core
         // looks broken rather than fooled. Everything else simply ages out.
         private void Observe(MatchState state, PlayerState self)
         {
+            if (state.Settings.Survival.Enabled)
+            {
+                ObserveZombies(state);
+                return;
+            }
+
             for (int i = sightings.Count - 1; i >= 0; i--)
             {
                 Sighting stale = sightings[i];
@@ -462,6 +489,16 @@ namespace Blastlands.Core
                 {
                     Remember(other.Id, other.Tile, state.Tick);
                 }
+            }
+        }
+
+        private void ObserveZombies(MatchState state)
+        {
+            sightings.Clear();
+            for (int i = 0; i < state.Zombies.Count; i++)
+            {
+                Zombie zombie = state.Zombies[i];
+                sightings.Add(new Sighting { PlayerId = ZombieSighting - zombie.Id, Tile = zombie.Tile, Tick = state.Tick });
             }
         }
 
@@ -777,7 +814,79 @@ namespace Blastlands.Core
             return state.Arena.Contains(tile)
                 && Tiles.CanBeStoodOn(state.Arena[tile])
                 && !state.HasBombAt(tile)
-                && !IsClosing(state, tile);
+                && !IsClosing(state, tile)
+                && !NextToAZombie(state, tile);
+        }
+
+        private static int ClosestZombie(MatchState state, GridPos tile)
+        {
+            int closest = int.MaxValue;
+            for (int i = 0; i < state.Zombies.Count; i++)
+            {
+                GridPos at = state.Zombies[i].Tile;
+                int steps = System.Math.Abs(at.X - tile.X) + System.Math.Abs(at.Y - tile.Y);
+                if (steps < closest)
+                {
+                    closest = steps;
+                }
+            }
+
+            return closest;
+        }
+
+        private static bool ZombieInReach(MatchState state, GridPos tile, int range)
+        {
+            for (int i = 0; i < state.Zombies.Count; i++)
+            {
+                if (Reaches(state.Arena, tile, state.Zombies[i].Tile, range))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private Direction AwayFromZombies(MatchState state, BlastMap blast, GridPos tile)
+        {
+            Direction best = Direction.None;
+            int bestSteps = ClosestZombie(state, tile);
+
+            for (int i = 0; i < Order.Length; i++)
+            {
+                GridPos delta = Directions.Delta(Order[i]);
+                GridPos next = tile.Offset(delta.X, delta.Y);
+                if (!state.Arena.Contains(next)
+                    || !Tiles.CanBeStoodOn(state.Arena[next])
+                    || state.HasBombAt(next)
+                    || blast.TicksUntilFire(next) != BlastMap.Never)
+                {
+                    continue;
+                }
+
+                int steps = ClosestZombie(state, next);
+                if (steps > bestSteps)
+                {
+                    best = Order[i];
+                    bestSteps = steps;
+                }
+            }
+
+            return best;
+        }
+
+        private static bool NextToAZombie(MatchState state, GridPos tile)
+        {
+            for (int i = 0; i < state.Zombies.Count; i++)
+            {
+                GridPos at = state.Zombies[i].Tile;
+                if (System.Math.Abs(at.X - tile.X) <= 1 && System.Math.Abs(at.Y - tile.Y) <= 1)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         // A gap that shuts on the way through is the same death as a blast, and the

@@ -305,14 +305,15 @@ namespace Blastlands.Runtime
 
             // The same beat a round gets before the next one, so the blast that decided
             // the series is seen before the screen covers it.
-            if (series.Decided)
+            bool runOver = state.Settings.Survival.Enabled;
+            if (series.Decided || runOver)
             {
                 if (intermissionRemaining <= 0f && victory == null)
                 {
                     victory = VictoryScreen.Open(
                         transform,
                         view == null ? null : view.Art,
-                        VictoryCard.ForSeries(series, state),
+                        runOver ? VictoryCard.ForRun(state) : VictoryCard.ForSeries(series, state),
                         "Play again",
                         () => Restart(0u),
                         "Back to lobby",

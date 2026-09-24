@@ -42,6 +42,11 @@ namespace Blastlands.Core
         // An online match is one round, seen from one seat.
         public static VictoryCard ForRound(MatchState state, int localSeat)
         {
+            if (state.Settings.Survival.Enabled)
+            {
+                return ForRun(state);
+            }
+
             PlayerState winner = WinnerOf(state);
             if (winner == null)
             {
@@ -72,6 +77,22 @@ namespace Blastlands.Core
             string heading = champion.IsBot ? "DEFEAT" : "VICTORY";
 
             return new VictoryCard(tone, heading, detail, champion.Id, champion.Character);
+        }
+
+        public static VictoryCard ForRun(MatchState state)
+        {
+            int waves = state.Settings.Survival.Waves;
+            string slain = state.ZombiesSlain == 1 ? "1 zombie down" : state.ZombiesSlain + " zombies down";
+
+            if (state.Outcome == RoundOutcome.Survived)
+            {
+                return new VictoryCard(
+                    VictoryTone.Won, "SURVIVED", "All " + waves + " waves held off, " + slain + ".", NoWinner, CharacterKind.None);
+            }
+
+            return new VictoryCard(
+                VictoryTone.Lost, "OVERRUN", "The horde got through on wave " + state.Wave + " of " + waves + ", " + slain + ".",
+                NoWinner, CharacterKind.None);
         }
 
         public static string Label(PlayerState player)

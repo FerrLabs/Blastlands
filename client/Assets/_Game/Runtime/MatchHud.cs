@@ -52,10 +52,7 @@ namespace Blastlands.Runtime
 
             clock?.Render(state);
 
-            if (series != null)
-            {
-                round?.Render(series);
-            }
+            round?.Render(series, state);
 
             foreach (HudRoster roster in rosters)
             {
@@ -179,7 +176,7 @@ namespace Blastlands.Runtime
             clock = HudClock.Build(art, clockBlock, TopCentre, inset, 1f);
             Fade(clockBlock, 0);
 
-            if (series != null)
+            if (series != null || state.Settings.Survival.Enabled)
             {
                 RectTransform roundBlock = Block(area, "Round");
                 round = HudRound.Build(art, roundBlock, inset, 1f);

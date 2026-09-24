@@ -62,6 +62,7 @@ namespace Blastlands.Core
             PowerUpDropPercent = powerUpDropPercent;
             TilesPerLooseBomb = tilesPerLooseBomb;
             BombRespawnTicks = bombRespawnTicks;
+            Survival = SurvivalSettings.Off;
         }
 
         // The copy every With reaches for. Written once, as a column of `X = from.X`,
@@ -73,11 +74,13 @@ namespace Blastlands.Core
             MatchSettings from,
             RuleSet rules,
             SuddenDeathSettings suddenDeath,
-            int tilesPerLooseBomb)
+            int tilesPerLooseBomb,
+            SurvivalSettings survival)
         {
             Rules = rules;
             SuddenDeath = suddenDeath;
             TilesPerLooseBomb = tilesPerLooseBomb;
+            Survival = survival;
 
             Vision = from.Vision;
             Push = from.Push;
@@ -187,6 +190,8 @@ namespace Blastlands.Core
         // What stops a round that neither survivor can win. See #105.
         public SuddenDeathSettings SuddenDeath { get; }
 
+        public SurvivalSettings Survival { get; }
+
         // What differs between game modes. See #145.
         public RuleSet Rules { get; }
 
@@ -285,7 +290,7 @@ namespace Blastlands.Core
 
         public MatchSettings WithRules(RuleSet rules)
         {
-            return new MatchSettings(this, rules, SuddenDeath, TilesPerLooseBomb);
+            return new MatchSettings(this, rules, SuddenDeath, TilesPerLooseBomb, Survival);
         }
 
         // Classic holds its bombs rather than finding them, so the ground stays clear of
@@ -305,6 +310,11 @@ namespace Blastlands.Core
             get { return Classic.WithRules(RuleSet.ClassicBlinded); }
         }
 
+        public static MatchSettings SurvivalMode
+        {
+            get { return Classic.WithSuddenDeath(SuddenDeathSettings.Off).WithSurvival(SurvivalSettings.Default); }
+        }
+
         // The settings a mode runs under, in one place, so a caller picks a mode rather
         // than remembering which preset goes with which board.
         public static MatchSettings For(GameMode mode)
@@ -315,6 +325,8 @@ namespace Blastlands.Core
                     return Classic;
                 case GameMode.ClassicBlinded:
                     return ClassicBlinded;
+                case GameMode.Survival:
+                    return SurvivalMode;
                 default:
                     return Default;
             }
@@ -322,12 +334,17 @@ namespace Blastlands.Core
 
         public MatchSettings WithSuddenDeath(SuddenDeathSettings suddenDeath)
         {
-            return new MatchSettings(this, Rules, suddenDeath, TilesPerLooseBomb);
+            return new MatchSettings(this, Rules, suddenDeath, TilesPerLooseBomb, Survival);
+        }
+
+        public MatchSettings WithSurvival(SurvivalSettings survival)
+        {
+            return new MatchSettings(this, Rules, SuddenDeath, TilesPerLooseBomb, survival);
         }
 
         public MatchSettings WithTilesPerLooseBomb(int tilesPerBomb)
         {
-            return new MatchSettings(this, Rules, SuddenDeath, tilesPerBomb);
+            return new MatchSettings(this, Rules, SuddenDeath, tilesPerBomb, Survival);
         }
 
         public int SpeedFor(int speedSteps)
