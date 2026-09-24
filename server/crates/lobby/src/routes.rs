@@ -202,6 +202,7 @@ pub fn app(state: AppState) -> Router {
         .route("/", get(landing_page))
         .route("/logo.png", get(logo))
         .route("/characters/{character}/portrait", get(character_portrait))
+        .route("/characters/{character}/idle", get(character_idle))
         .route("/healthz", get(health))
         .route("/v1/version", get(version))
         .route("/v1/client/{version}/download", get(download_client))
@@ -239,6 +240,16 @@ async fn logo() -> impl IntoResponse {
             (header::CACHE_CONTROL, "public, max-age=86400"),
         ],
         landing::LOGO,
+    )
+}
+
+async fn character_idle(Path(character): Path<Character>) -> impl IntoResponse {
+    (
+        [
+            (header::CONTENT_TYPE, "image/webp"),
+            (header::CACHE_CONTROL, "public, max-age=86400"),
+        ],
+        character.idle(),
     )
 }
 
