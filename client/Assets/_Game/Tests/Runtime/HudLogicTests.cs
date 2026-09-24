@@ -81,5 +81,13 @@ namespace Blastlands.Runtime.Tests
         {
             Assert.That(HudFade.Covers(Rect.zero, new[] { Vector2.zero }, 24f), Is.False);
         }
+
+        [Test]
+        public void AFullLobbyRosterTakesNoMoreRoomThanFiveRows()
+        {
+            Assert.That(HudRoster.FitScale(4), Is.EqualTo(1f), "four players keep the size they always had");
+            Assert.That(HudRoster.FitScale(5), Is.EqualTo(1f));
+            Assert.That(8 * HudRoster.FitScale(8), Is.EqualTo(5f).Within(0.001f));
+        }
     }
 }

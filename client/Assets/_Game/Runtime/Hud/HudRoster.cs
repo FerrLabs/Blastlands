@@ -9,6 +9,7 @@ namespace Blastlands.Runtime
     public sealed class HudRoster
     {
         private const float RowHeight = 84f;
+        private const int FullSizeRows = 5;
 
         private readonly List<Row> rows = new List<Row>();
 
@@ -27,6 +28,7 @@ namespace Blastlands.Runtime
             HudArt art, Transform area, IReadOnlyList<int> players, MatchSeries series, bool withStats, float inset, float scale)
         {
             var roster = new HudRoster();
+            scale *= FitScale(players.Count);
 
             for (int i = 0; i < players.Count; i++)
             {
@@ -35,6 +37,11 @@ namespace Blastlands.Runtime
             }
 
             return roster;
+        }
+
+        public static float FitScale(int rows)
+        {
+            return rows > FullSizeRows ? FullSizeRows / (float)rows : 1f;
         }
 
         public void Render(MatchState state, MatchSeries series)

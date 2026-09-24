@@ -33,7 +33,6 @@ namespace Blastlands.Runtime
         private const float SecondsBetweenStatusChecks = 1.5f;
 
         [SerializeField] private LobbyArt art;
-        [SerializeField] private int maxPlayers = 4;
 
         private readonly LobbyFlow flow = new LobbyFlow();
         private LobbyClient lobby;
@@ -46,6 +45,7 @@ namespace Blastlands.Runtime
         private LobbyScreen drawn = LobbyScreen.Play;
         private bool dirty = true;
         private bool busy;
+        private bool settingUp;
         private bool polling;
         private int generation;
         private float sinceStatus;
@@ -142,6 +142,10 @@ namespace Blastlands.Runtime
                 case LobbyScreen.Name:
                     LobbyPages.Name(root, art, flow, draft, Drafted, Named);
                     break;
+                case LobbyScreen.Browse when settingUp:
+                    LobbyPages.Setup(root, art, ModeChoice.Current, HostChoice.SeatCount, HostChoice.Bots,
+                        PickMode, PickSeats, PickBots, Host, StopSettingUp);
+                    break;
                 case LobbyScreen.Browse:
                     LobbyPages.Browse(root, art, flow, CharacterChoice.Current, stage.Texture, ModeChoice.Current, Pick, PickMode, Join, Create, Practise, Rename);
                     break;
@@ -229,6 +233,36 @@ namespace Blastlands.Runtime
 
         private void Create()
         {
+            settingUp = true;
+            Redraw();
+        }
+
+        private void PickSeats(int seats)
+        {
+            HostChoice.ChooseSeats(seats);
+            Redraw();
+        }
+
+        private void PickBots(BotSkill skill)
+        {
+            HostChoice.ChooseBots(skill);
+            Redraw();
+        }
+
+        private void StopSettingUp()
+        {
+            settingUp = false;
+            Redraw();
+        }
+
+        private void Host()
+        {
+            if (busy)
+            {
+                return;
+            }
+
+            settingUp = false;
             Asked(Creating());
         }
 
@@ -296,7 +330,7 @@ namespace Blastlands.Runtime
 
         private IEnumerator Creating()
         {
-            yield return lobby.Create(DefaultMatchName, flow.Player, maxPlayers, CharacterChoice.Current, ModeChoice.Current, result =>
+            yield return lobby.Create(DefaultMatchName, flow.Player, HostChoice.SeatCount, CharacterChoice.Current, ModeChoice.Current, HostChoice.Bots, result =>
             {
                 if (result.Ok && result.Value.CanStart)
                 {

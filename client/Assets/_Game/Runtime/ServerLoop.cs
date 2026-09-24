@@ -31,7 +31,7 @@ namespace Blastlands.Runtime
         {
             state = matchState;
             inputs = new PlayerInput[state.Players.Count];
-            standIns = new StandIns(state.Players.Count, BotSettings.Normal);
+            standIns = new StandIns(state.Players.Count, BotSkills.SettingsFor(options.BotSkill));
             humans = options.ExpectedHumans;
             pacer = new TickPacer(state.Settings.TicksPerSecond, MaxCatchUpTicks);
 

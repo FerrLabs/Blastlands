@@ -15,8 +15,10 @@ Download the Windows installer from [blastlands.ferrlabs.com](https://blastlands
 - Pick a name, then a character, then a mode on the match list. All three are remembered on
   that machine, so the next launch goes straight to the match list; Change next to your name
   goes back to edit it.
-- **Host a match** lists it publicly. Others join from the list, the host can **Add bot** to
-  fill seats, and starts whenever they like, from 2 to 8 players.
+- **Host a match** asks for the mode, how many seats (2 to 8) and how hard the bots are, then
+  lists the match publicly. Both choices are remembered like the mode. Others join from the
+  list, the host can **Add bot** to fill seats, and starts whenever they like; every seat
+  nobody took goes to a bot.
 - The lobby hands each player a dedicated server instance. The server runs the simulation,
   clients only send their inputs.
 - A player who drops out mid-round is taken over by a bot.
@@ -78,8 +80,9 @@ follow whichever one is plugged in.
 
 Easy, Normal and Hard. They use the same inputs as a player and see only what a player in
 their seat would see. A harder bot plans further ahead, reacts sooner and remembers where
-it last saw you for longer. Every bot in an online match plays at Normal; the difficulty is
-an editor setting for local play.
+it last saw you for longer. The host picks the difficulty for an online match, and it covers
+the bots that fill empty seats and the ones that take over from a player who dropped out.
+Practice plays at Normal.
 
 ### Practice
 

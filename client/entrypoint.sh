@@ -55,6 +55,7 @@ while true; do
       humans="$(jq -er '.humans // .players' <"${body}")"
       # A lobby from before modes names none, and everything it ran was Arena.
       mode="$(jq -er '.mode // "arena"' <"${body}")"
+      bot_skill="$(jq -er '.bot_skill // "normal"' <"${body}")"
 
       if [ "${match}" = "${finished_match}" ]; then
         echo "blastlands: ${match} is still assigned after it ended, not replaying it" >&2
@@ -67,9 +68,9 @@ while true; do
         exit 0
       fi
 
-      echo "blastlands: taking ${mode} match ${match}, ${players} seats for ${humans} players" >&2
+      echo "blastlands: taking ${mode} match ${match}, ${players} seats for ${humans} players, ${bot_skill} bots" >&2
       /app/Blastlands.x86_64 -batchmode -nographics -logfile - \
-        --match "${match}" --players "${players}" --humans "${humans}" --mode "${mode}" &
+        --match "${match}" --players "${players}" --humans "${humans}" --mode "${mode}" --bots "${bot_skill}" &
       server_pid="$!"
       code=0
       while :; do
