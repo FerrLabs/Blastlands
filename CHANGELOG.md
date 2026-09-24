@@ -4,6 +4,13 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.106] - 2026-09-24
+
+### Bug Fixes
+
+- fix(client): draw players between ticks, smooth their turns and gait, and follow them along a curve (#108)
+- fix(server): drain an instance on rollout instead of cancelling its match (#95)
+
 ## [26.9.105] - 2026-09-24
 
 ### Features
