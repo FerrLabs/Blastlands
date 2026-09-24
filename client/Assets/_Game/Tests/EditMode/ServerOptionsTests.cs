@@ -51,6 +51,34 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
+        public void AnEntrypointThatNamesNoModeGetsArena()
+        {
+            Assert.That(ServerOptions.TryRead(Complete, NoEnvironment, out ServerOptions options, out string error), Is.True, error);
+
+            Assert.That(options.Mode, Is.EqualTo(GameMode.Arena));
+        }
+
+        [Test]
+        public void TheModeIsReadFromTheCommandLineOrTheEnvironment()
+        {
+            var arguments = new List<string>(Complete) { "--mode", "classic_blinded" };
+            Assert.That(ServerOptions.TryRead(arguments, NoEnvironment, out ServerOptions fromFlag, out string error), Is.True, error);
+            Assert.That(ServerOptions.TryRead(Complete, Environment("BLASTLANDS_MODE", "classic"), out ServerOptions fromEnv, out error), Is.True, error);
+
+            Assert.That(fromFlag.Mode, Is.EqualTo(GameMode.ClassicBlinded));
+            Assert.That(fromEnv.Mode, Is.EqualTo(GameMode.Classic));
+        }
+
+        [Test]
+        public void AModeNobodyKnowsIsRefusedRatherThanPlayedAsArena()
+        {
+            var arguments = new List<string>(Complete) { "--mode", "bomberman" };
+
+            Assert.That(ServerOptions.TryRead(arguments, NoEnvironment, out _, out string error), Is.False);
+            Assert.That(error, Does.Contain("--mode"));
+        }
+
+        [Test]
         public void WithoutAHumanCountEverySeatIsWaitedFor()
         {
             Assert.That(ServerOptions.TryRead(Complete, NoEnvironment, out ServerOptions options, out string error), Is.True, error);

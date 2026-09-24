@@ -58,6 +58,7 @@ namespace Blastlands.Runtime
             public string host;
             public int players;
             public int bots;
+            public string mode;
             public int max_players;
             public EndpointDto endpoint;
             public string game_ticket;
@@ -79,6 +80,7 @@ namespace Blastlands.Runtime
             public string host;
             public int players;
             public int bots;
+            public string mode;
             public int max_players;
             public string state;
         }
@@ -91,6 +93,7 @@ namespace Blastlands.Runtime
             public string host;
             public int players;
             public int bots;
+            public string mode;
             public int max_players;
         }
 
@@ -186,7 +189,7 @@ namespace Blastlands.Runtime
                 var listings = new List<MatchListing>(parsed.items.Length);
                 foreach (MatchSummaryDto dto in parsed.items)
                 {
-                    listings.Add(new MatchListing(dto.id, dto.name, dto.host, dto.players, dto.bots, dto.max_players));
+                    listings.Add(new MatchListing(dto.id, dto.name, dto.host, dto.players, dto.bots, dto.max_players, ModeOf(dto.mode)));
                 }
 
                 done(LobbyResult<IReadOnlyList<MatchListing>>.Success(listings));
@@ -194,11 +197,17 @@ namespace Blastlands.Runtime
         }
 
         public IEnumerator Create(
-            string name, string host, int maxPlayers, CharacterKind character, Action<LobbyResult<MatchHosting>> done)
+            string name,
+            string host,
+            int maxPlayers,
+            CharacterKind character,
+            GameMode mode,
+            Action<LobbyResult<MatchHosting>> done)
         {
             string body = "{\"name\":\"" + Escape(name)
                 + "\",\"host\":\"" + Escape(host)
-                + "\",\"max_players\":" + maxPlayers + Character(character) + "}";
+                + "\",\"max_players\":" + maxPlayers + Character(character)
+                + ",\"mode\":\"" + GameModeTokens.Write(mode) + "\"}";
 
             using (UnityWebRequest request = Post("/v1/matches", body))
             {
@@ -219,13 +228,14 @@ namespace Blastlands.Runtime
                 }
 
                 done(LobbyResult<MatchHosting>.Success(new MatchHosting(
-                    new MatchListing(dto.id, dto.name, dto.host, dto.players, dto.bots, dto.max_players),
-                    new MatchInvite(dto.id, dto.endpoint.host, dto.endpoint.port, dto.game_ticket),
+                    new MatchListing(dto.id, dto.name, dto.host, dto.players, dto.bots, dto.max_players, ModeOf(dto.mode)),
+                    new MatchInvite(dto.id, dto.endpoint.host, dto.endpoint.port, dto.game_ticket, ModeOf(dto.mode)),
                     dto.ticket)));
             }
         }
 
-        public IEnumerator Join(string id, string player, CharacterKind character, Action<LobbyResult<MatchInvite>> done)
+        public IEnumerator Join(
+            string id, string player, CharacterKind character, GameMode mode, Action<LobbyResult<MatchInvite>> done)
         {
             string body = "{\"player\":\"" + Escape(player) + "\"" + Character(character) + "}";
 
@@ -248,7 +258,7 @@ namespace Blastlands.Runtime
                 }
 
                 done(LobbyResult<MatchInvite>.Success(
-                    new MatchInvite(id, dto.endpoint.host, dto.endpoint.port, dto.ticket)));
+                    new MatchInvite(id, dto.endpoint.host, dto.endpoint.port, dto.ticket, mode)));
             }
         }
 
@@ -275,7 +285,7 @@ namespace Blastlands.Runtime
                 }
 
                 done(LobbyResult<MatchProgress>.Success(new MatchProgress(
-                    new MatchListing(dto.id, dto.name, dto.host, dto.players, dto.bots, dto.max_players),
+                    new MatchListing(dto.id, dto.name, dto.host, dto.players, dto.bots, dto.max_players, ModeOf(dto.mode)),
                     MatchProgress.Reads(dto.state))));
             }
         }
@@ -305,9 +315,15 @@ namespace Blastlands.Runtime
                 }
 
                 done(LobbyResult<MatchProgress>.Success(new MatchProgress(
-                    new MatchListing(dto.id, dto.name, dto.host, dto.players, dto.bots, dto.max_players),
+                    new MatchListing(dto.id, dto.name, dto.host, dto.players, dto.bots, dto.max_players, ModeOf(dto.mode)),
                     MatchProgress.Reads(dto.state))));
             }
+        }
+
+        // A lobby from before modes sends none, and every match it ran was Arena.
+        private static GameMode ModeOf(string token)
+        {
+            return GameModeTokens.TryRead(token, out GameMode mode) ? mode : GameMode.Arena;
         }
 
         private static T Read<T>(UnityWebRequest request) where T : class

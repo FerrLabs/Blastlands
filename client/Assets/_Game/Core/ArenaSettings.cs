@@ -72,6 +72,11 @@ namespace Blastlands.Core
             return new ArenaSettings(width, height, SoftBlockPercent, BushPercent, Island, Board);
         }
 
+        public static ArenaSettings For(GameMode mode)
+        {
+            return mode == GameMode.Arena ? Default : Classic;
+        }
+
         public static ArenaSettings Default
         {
             // 25x21, up from the 15x13 a bomberman inherits by convention. A camera that

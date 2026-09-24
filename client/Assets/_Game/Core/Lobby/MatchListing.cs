@@ -8,8 +8,9 @@ namespace Blastlands.Core.Lobby
     // fine.
     public readonly struct MatchListing
     {
-        public MatchListing(string id, string name, string host, int players, int bots, int maxPlayers)
+        public MatchListing(string id, string name, string host, int players, int bots, int maxPlayers, GameMode mode)
         {
+            Mode = mode;
             Id = id;
             Name = name;
             Host = host;
@@ -30,6 +31,8 @@ namespace Blastlands.Core.Lobby
         public int Bots { get; }
 
         public int MaxPlayers { get; }
+
+        public GameMode Mode { get; }
 
         public bool IsFull
         {

@@ -82,13 +82,16 @@ namespace Blastlands.Runtime
             LobbyFlow flow,
             CharacterKind picked,
             Texture portrait,
+            GameMode mode,
             Action<CharacterKind> pick,
+            Action<GameMode> pickMode,
             Action<MatchListing> join,
             Action create)
         {
             RectTransform panel = LobbyChrome.Panel(root, art, "Browse", new Vector2(1500f, 900f));
             LobbyChrome.Label(panel, art, "MATCHES", true, new Vector2(ListCentre, 390f), RowSize.x);
             Roster(panel, art, picked, portrait, pick);
+            Modes(panel, art, mode, pickMode, new Vector2(ListCentre, -245f));
             LobbyChrome.Press(panel, art, "Host a match", new Vector2(ListCentre, -330f), WideButton, create);
             Notice(panel, art, flow, new Vector2(0f, -405f));
 
@@ -99,11 +102,11 @@ namespace Blastlands.Runtime
             }
 
             float top = 260f;
-            for (int i = 0; i < flow.Matches.Count && i < 6; i++)
+            for (int i = 0; i < flow.Matches.Count && i < 5; i++)
             {
                 MatchListing listing = flow.Matches[i];
                 var offset = new Vector2(ListCentre, top - i * (RowSize.y + 12f));
-                string text = listing.Name + "   " + listing.Host + "   " + listing.Occupancy;
+                string text = listing.Name + "   " + listing.Host + "   " + Named(listing.Mode) + "   " + listing.Occupancy;
 
                 if (listing.IsFull)
                 {
@@ -115,6 +118,26 @@ namespace Blastlands.Runtime
 
                 MatchListing chosen = listing;
                 LobbyChrome.Press(panel, art, text, offset, RowSize, () => join(chosen));
+            }
+        }
+
+        private static void Modes(RectTransform panel, LobbyArt art, GameMode mode, Action<GameMode> pick, Vector2 at)
+        {
+            LobbyChrome.Press(panel, art, "<", at + new Vector2(-250f, 0f), ArrowButton, () => pick(GameModeTokens.Step(mode, -1)));
+            LobbyChrome.Label(panel, art, "Mode: " + Named(mode), false, at, 400f);
+            LobbyChrome.Press(panel, art, ">", at + new Vector2(250f, 0f), ArrowButton, () => pick(GameModeTokens.Step(mode, 1)));
+        }
+
+        public static string Named(GameMode mode)
+        {
+            switch (mode)
+            {
+                case GameMode.Classic:
+                    return "Classic";
+                case GameMode.ClassicBlinded:
+                    return "Classic Blinded";
+                default:
+                    return "Arena";
             }
         }
 
@@ -164,7 +187,7 @@ namespace Blastlands.Runtime
 
             MatchListing listing = Current(flow);
             LobbyChrome.Label(panel, art, listing.Name, false, new Vector2(0f, 150f), 800f);
-            LobbyChrome.Label(panel, art, listing.Occupancy + " players", false, new Vector2(0f, 80f), 800f);
+            LobbyChrome.Label(panel, art, Named(listing.Mode) + "   " + listing.Occupancy + " players", false, new Vector2(0f, 80f), 800f);
 
             if (hosting)
             {
@@ -194,7 +217,7 @@ namespace Blastlands.Runtime
                 }
             }
 
-            return new MatchListing(flow.Invite.MatchId, "Match", flow.Player, 1, 0, 1);
+            return new MatchListing(flow.Invite.MatchId, "Match", flow.Player, 1, 0, 1, flow.Invite.Mode);
         }
 
         // One line, in the player's terms. Everything the lobby refuses ends up here,

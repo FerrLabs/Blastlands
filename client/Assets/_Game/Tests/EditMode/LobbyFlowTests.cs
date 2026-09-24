@@ -8,7 +8,7 @@ namespace Blastlands.Core.Tests
     {
         private static MatchInvite Invite(string id)
         {
-            return new MatchInvite(id, "10.0.0.5", 7777, "ticket");
+            return new MatchInvite(id, "10.0.0.5", 7777, "ticket", GameMode.Arena);
         }
 
         private static LobbyFlow Browsing()
@@ -17,8 +17,8 @@ namespace Blastlands.Core.Tests
             Assert.That(flow.Named("Bryan"), Is.True);
             flow.Listed(new List<MatchListing>
             {
-                new MatchListing("a", "First", "Ana", 1, 0, 4),
-                new MatchListing("b", "Second", "Ben", 3, 0, 4),
+                new MatchListing("a", "First", "Ana", 1, 0, 4, GameMode.Arena),
+                new MatchListing("b", "Second", "Ben", 3, 0, 4, GameMode.Arena),
             });
             return flow;
         }
@@ -102,7 +102,7 @@ namespace Blastlands.Core.Tests
 
             Assert.That(flow.Running(), Is.False, "browsing is not waiting on a match");
 
-            flow.Joined(new MatchInvite("b", string.Empty, 0, string.Empty));
+            flow.Joined(new MatchInvite("b", string.Empty, 0, string.Empty, GameMode.Arena));
             Assert.That(flow.Running(), Is.False, "an invite without an endpoint connects nowhere");
             Assert.That(flow.Screen, Is.EqualTo(LobbyScreen.Wait));
 
@@ -132,7 +132,7 @@ namespace Blastlands.Core.Tests
         {
             LobbyFlow flow = Browsing();
 
-            flow.Listed(new List<MatchListing> { new MatchListing("c", "Third", "Cleo", 2, 0, 8) });
+            flow.Listed(new List<MatchListing> { new MatchListing("c", "Third", "Cleo", 2, 0, 8, GameMode.Arena) });
 
             Assert.That(flow.Matches.Count, Is.EqualTo(1));
             Assert.That(flow.Matches[0].Id, Is.EqualTo("c"));

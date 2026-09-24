@@ -6,8 +6,9 @@ namespace Blastlands.Core.Lobby
     // the match id alone is not enough to connect.
     public readonly struct MatchInvite
     {
-        public MatchInvite(string matchId, string host, int port, string ticket)
+        public MatchInvite(string matchId, string host, int port, string ticket, GameMode mode)
         {
+            Mode = mode;
             MatchId = matchId;
             Host = host;
             Port = port;
@@ -21,6 +22,11 @@ namespace Blastlands.Core.Lobby
         public int Port { get; }
 
         public string Ticket { get; }
+
+        // Carried with the invite rather than learnt from the game server, because the
+        // client has to build the same rules the server runs before the first snapshot
+        // lands: prediction steps the local player with them from the first tick.
+        public GameMode Mode { get; }
 
         public bool CanConnect
         {
