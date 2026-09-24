@@ -14,8 +14,10 @@ namespace Blastlands.Runtime
     public static class LobbyPages
     {
         private static readonly Vector2 WideButton = new Vector2(420f, 90f);
-        private static readonly Vector2 RowSize = new Vector2(860f, 84f);
-        private static readonly Vector2 CharacterButton = new Vector2(210f, 80f);
+        private static readonly Vector2 RowSize = new Vector2(760f, 84f);
+        private static readonly Vector2 ArrowButton = new Vector2(90f, 80f);
+        private const float RosterCentre = -470f;
+        private const float ListCentre = 300f;
 
         public static TMP_InputField Name(RectTransform root, LobbyArt art, LobbyFlow flow, Action<string> submit)
         {
@@ -79,27 +81,28 @@ namespace Blastlands.Runtime
             LobbyArt art,
             LobbyFlow flow,
             CharacterKind picked,
+            Texture portrait,
             Action<CharacterKind> pick,
             Action<MatchListing> join,
             Action create)
         {
-            RectTransform panel = LobbyChrome.Panel(root, art, "Browse", new Vector2(1000f, 1000f));
-            LobbyChrome.Label(panel, art, "MATCHES", true, new Vector2(0f, 450f), 900f);
-            Characters(panel, art, picked, pick, new Vector2(0f, 370f));
-            LobbyChrome.Press(panel, art, "Host a match", new Vector2(0f, -380f), WideButton, create);
-            Notice(panel, art, flow, new Vector2(0f, -445f));
+            RectTransform panel = LobbyChrome.Panel(root, art, "Browse", new Vector2(1500f, 900f));
+            LobbyChrome.Label(panel, art, "MATCHES", true, new Vector2(ListCentre, 390f), RowSize.x);
+            Roster(panel, art, picked, portrait, pick);
+            LobbyChrome.Press(panel, art, "Host a match", new Vector2(ListCentre, -330f), WideButton, create);
+            Notice(panel, art, flow, new Vector2(0f, -405f));
 
             if (flow.Matches.Count == 0)
             {
-                LobbyChrome.Label(panel, art, "Nobody is hosting. Be the first.", false, new Vector2(0f, -40f), 800f);
+                LobbyChrome.Label(panel, art, "Nobody is hosting. Be the first.", false, new Vector2(ListCentre, 0f), 680f);
                 return;
             }
 
-            float top = 200f;
+            float top = 260f;
             for (int i = 0; i < flow.Matches.Count && i < 6; i++)
             {
                 MatchListing listing = flow.Matches[i];
-                var offset = new Vector2(0f, top - i * (RowSize.y + 12f));
+                var offset = new Vector2(ListCentre, top - i * (RowSize.y + 12f));
                 string text = listing.Name + "   " + listing.Host + "   " + listing.Occupancy;
 
                 if (listing.IsFull)
@@ -115,21 +118,25 @@ namespace Blastlands.Runtime
             }
         }
 
-        private static void Characters(
-            RectTransform panel, LobbyArt art, CharacterKind picked, Action<CharacterKind> pick, Vector2 offset)
+        private static void Roster(
+            RectTransform panel, LobbyArt art, CharacterKind picked, Texture portrait, Action<CharacterKind> pick)
         {
-            float step = CharacterButton.x + 20f;
-            float left = -step * (CharacterKits.All.Count - 1) / 2f;
+            CharacterKind shown = CharacterKits.Shown(picked);
 
-            for (int i = 0; i < CharacterKits.All.Count; i++)
+            LobbyChrome.Portrait(panel, portrait, new Vector2(RosterCentre, 60f), new Vector2(360f, 540f));
+
+            LobbyChrome.Press(panel, art, "<", new Vector2(RosterCentre - 240f, -270f), ArrowButton,
+                () => pick(CharacterKits.Step(shown, -1)));
+            LobbyChrome.Label(panel, art, shown.ToString(), true, new Vector2(RosterCentre, -270f), 330f);
+            LobbyChrome.Press(panel, art, ">", new Vector2(RosterCentre + 240f, -270f), ArrowButton,
+                () => pick(CharacterKits.Step(shown, 1)));
+
+            TMP_Text about = LobbyChrome.Label(panel, art, Describes(shown), false, new Vector2(RosterCentre, -355f), 460f);
+            if (about != null)
             {
-                CharacterKind character = CharacterKits.All[i];
-                var at = new Vector2(offset.x + left + i * step, offset.y);
-                LobbyChrome.Press(panel, art, character.ToString(), at, CharacterButton, () => pick(character))
-                    .interactable = character != picked;
+                about.fontSize = 30f;
+                about.rectTransform.sizeDelta = new Vector2(460f, 110f);
             }
-
-            LobbyChrome.Label(panel, art, Describes(picked), false, offset + new Vector2(0f, -70f), 900f);
         }
 
         private static string Describes(CharacterKind character)

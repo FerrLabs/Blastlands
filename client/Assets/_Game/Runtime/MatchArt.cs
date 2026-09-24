@@ -29,6 +29,10 @@ namespace Blastlands.Runtime
         [SerializeField] private GameObject explosionBurst;
         [SerializeField] private GameObject[] players;
 
+        // One per character, in roster order. A character looks the same in the lobby
+        // and in the match, so this wins over the seat's model whenever one is known.
+        [SerializeField] private GameObject[] characters;
+
         // Drives the character prefabs. The POLYGON prefabs ship an avatar but no
         // controller, where the SIMPLE ones carried one, so without this every player
         // stands in the T-pose the rig was authored in. Held here rather than assigned
@@ -69,6 +73,18 @@ namespace Blastlands.Runtime
         public GameObject PlayerFor(int index)
         {
             return Pick(players, index);
+        }
+
+        public GameObject ForCharacter(CharacterKind character)
+        {
+            int at = CharacterKits.IndexOf(character);
+            return at < 0 || characters == null || at >= characters.Length ? null : characters[at];
+        }
+
+        public GameObject PlayerFor(int seat, CharacterKind character)
+        {
+            GameObject model = ForCharacter(character);
+            return model != null ? model : PlayerFor(seat);
         }
 
         public RuntimeAnimatorController PlayerAnimator

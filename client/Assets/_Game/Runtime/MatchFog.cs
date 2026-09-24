@@ -29,6 +29,7 @@ namespace Blastlands.Runtime
 
         private readonly List<int> viewers = new List<int>();
         private readonly List<Renderer[]> renderers = new List<Renderer[]>();
+        private readonly List<GameObject> watched = new List<GameObject>();
         private float[] lastSeen;
         private MatchState state;
 
@@ -36,6 +37,7 @@ namespace Blastlands.Runtime
         {
             state = matchState;
             renderers.Clear();
+            watched.Clear();
 
             int players = state == null ? 0 : state.Players.Count;
             lastSeen = new float[players * players];
@@ -44,6 +46,20 @@ namespace Blastlands.Runtime
             {
                 GameObject player = view == null ? null : view.PlayerViewAt(i);
                 renderers.Add(player == null ? new Renderer[0] : player.GetComponentsInChildren<Renderer>(true));
+                watched.Add(player);
+            }
+        }
+
+        private void Refresh()
+        {
+            for (int i = 0; i < watched.Count; i++)
+            {
+                GameObject player = view == null ? null : view.PlayerViewAt(i);
+                if (player != watched[i])
+                {
+                    watched[i] = player;
+                    renderers[i] = player == null ? new Renderer[0] : player.GetComponentsInChildren<Renderer>(true);
+                }
             }
         }
 
@@ -69,6 +85,8 @@ namespace Blastlands.Runtime
             {
                 return;
             }
+
+            Refresh();
 
             int players = state.Players.Count;
             for (int viewer = 0; viewer < players; viewer++)

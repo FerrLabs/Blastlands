@@ -114,6 +114,7 @@ namespace Blastlands.Runtime
         private readonly List<GridPos> brokenTiles = new List<GridPos>();
         private readonly List<bool> wasAlive = new List<bool>();
         private readonly List<Animator> playerAnimators = new List<Animator>();
+        private readonly List<CharacterKind> castAs = new List<CharacterKind>();
         private readonly List<SubPos> lastSampled = new List<SubPos>();
         private int lastSampledTick = -1;
         private readonly HashSet<GridPos> burningTiles = new HashSet<GridPos>();
@@ -201,6 +202,7 @@ namespace Blastlands.Runtime
             brokenTiles.Clear();
             wasAlive.Clear();
             playerAnimators.Clear();
+            castAs.Clear();
             lastSampled.Clear();
             lastSampledTick = -1;
             burningTiles.Clear();
@@ -1100,24 +1102,41 @@ namespace Blastlands.Runtime
         {
             for (int i = 0; i < state.Players.Count; i++)
             {
-                GameObject prefab = art == null ? null : art.PlayerFor(i);
-                GameObject view = Spawn(prefab, PrimitiveType.Capsule, MatchPalette.ForPlayer(i), "Player " + i);
-
-                if (prefab == null)
-                {
-                    view.transform.localScale = new Vector3(0.62f, 0.42f, 0.62f);
-                }
-                else
-                {
-                    TileFitter.FitToHeight(view, playerHeight);
-                }
-
-                PlayerRing.Attach(view, MatchPalette.ForPlayer(i), ringRadius, ringWidth, groundDetailLift * 4f);
+                CharacterKind character = state.Players[i].Character;
+                GameObject view = CastPlayer(i, character);
                 playerViews.Add(view);
                 playerAnimators.Add(Rig(view));
+                castAs.Add(character);
                 wasAlive.Add(state.Players[i].Alive);
                 lastSampled.Add(state.Players[i].Position);
             }
+        }
+
+        private GameObject CastPlayer(int seat, CharacterKind character)
+        {
+            GameObject prefab = art == null ? null : art.PlayerFor(seat, character);
+            GameObject view = Spawn(prefab, PrimitiveType.Capsule, MatchPalette.ForPlayer(seat), "Player " + seat);
+
+            if (prefab == null)
+            {
+                view.transform.localScale = new Vector3(0.62f, 0.42f, 0.62f);
+            }
+            else
+            {
+                TileFitter.FitToHeight(view, playerHeight);
+            }
+
+            PlayerRing.Attach(view, MatchPalette.ForPlayer(seat), ringRadius, ringWidth, groundDetailLift * 4f);
+            return view;
+        }
+
+        private void Recast(int seat, CharacterKind character)
+        {
+            playerViews[seat].SetActive(false);
+            Destroy(playerViews[seat]);
+            playerViews[seat] = CastPlayer(seat, character);
+            playerAnimators[seat] = Rig(playerViews[seat]);
+            castAs[seat] = character;
         }
 
         // Hands back the animator this view will be driven through, or null for the
@@ -1194,6 +1213,12 @@ namespace Blastlands.Runtime
             for (int i = 0; i < playerViews.Count && i < state.Players.Count; i++)
             {
                 PlayerState player = state.Players[i];
+
+                if (i < castAs.Count && castAs[i] != player.Character)
+                {
+                    Recast(i, player.Character);
+                }
+
                 GameObject view = playerViews[i];
 
                 if (!player.Alive)

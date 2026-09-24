@@ -18,6 +18,23 @@ namespace Blastlands.Core
             get { return Roster; }
         }
 
+        public static CharacterKind Shown(CharacterKind pick)
+        {
+            return pick == CharacterKind.None ? Roster[0] : pick;
+        }
+
+        public static int IndexOf(CharacterKind character)
+        {
+            return Array.IndexOf(Roster, character);
+        }
+
+        public static CharacterKind Step(CharacterKind from, int delta)
+        {
+            int at = IndexOf(Shown(from));
+            int next = (at + delta) % Roster.Length;
+            return Roster[next < 0 ? next + Roster.Length : next];
+        }
+
         // Round the roster by seat, so a full match of four has one of each and nobody
         // can end up with the only strong kit by chance.
         public static CharacterKind ForSeat(int seat)
