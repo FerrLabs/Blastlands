@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.93] - 2026-09-24
+
+### Features
+
+- feat(lobby): show the characters and the game on the download page (#78)
+
 ## [26.9.91] - 2026-09-24
 
 ### Features
