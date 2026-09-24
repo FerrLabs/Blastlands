@@ -119,6 +119,24 @@ namespace Blastlands.Runtime
             return field;
         }
 
+        public static RawImage Portrait(Transform parent, Texture texture, Vector2 offset, Vector2 size)
+        {
+            var host = new GameObject("Portrait", typeof(RectTransform), typeof(RawImage));
+            host.transform.SetParent(parent, false);
+
+            var rect = (RectTransform)host.transform;
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = offset;
+            rect.sizeDelta = size;
+
+            RawImage image = host.GetComponent<RawImage>();
+            image.texture = texture;
+            image.raycastTarget = false;
+            return image;
+        }
+
         public static RectTransform Stretch(GameObject instance, float inset)
         {
             var rect = (RectTransform)instance.transform;

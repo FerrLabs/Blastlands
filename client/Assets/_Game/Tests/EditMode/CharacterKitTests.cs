@@ -69,6 +69,25 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
+        public void NoPickShowsTheFirstOnTheRoster()
+        {
+            Assert.That(CharacterKits.Shown(CharacterKind.None), Is.EqualTo(CharacterKits.All[0]));
+            Assert.That(CharacterKits.Shown(CharacterKind.Sapper), Is.EqualTo(CharacterKind.Sapper));
+        }
+
+        [Test]
+        public void SteppingWrapsAroundTheRosterBothWays()
+        {
+            CharacterKind first = CharacterKits.All[0];
+            CharacterKind last = CharacterKits.All[CharacterKits.All.Count - 1];
+
+            Assert.That(CharacterKits.Step(last, 1), Is.EqualTo(first));
+            Assert.That(CharacterKits.Step(first, -1), Is.EqualTo(last));
+            Assert.That(CharacterKits.Step(CharacterKind.None, 1), Is.EqualTo(CharacterKits.All[1]));
+            Assert.That(CharacterKits.Step(first, CharacterKits.All.Count), Is.EqualTo(first));
+        }
+
+        [Test]
         public void AFullMatchSeatsOneOfEach()
         {
             var seen = new HashSet<CharacterKind>();

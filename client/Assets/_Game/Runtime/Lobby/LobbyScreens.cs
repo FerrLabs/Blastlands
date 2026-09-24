@@ -40,6 +40,7 @@ namespace Blastlands.Runtime
         private VersionGate gate;
         private ClientUpdater updater;
         private UpdateBadge badge;
+        private CharacterStage stage;
         private Canvas canvas;
         private RectTransform root;
         private LobbyScreen drawn = LobbyScreen.Play;
@@ -71,6 +72,10 @@ namespace Blastlands.Runtime
             lobby.Use(ClientOptions.Lobby(Environment.GetCommandLineArgs()));
 
             badge = UpdateBadge.For(Application.version, UpdateVerdict.Unknown, UpdateStage.Idle, default);
+            CharacterChoice.Choose(CharacterKits.Shown(CharacterChoice.Current));
+            stage = new GameObject("Character stage").AddComponent<CharacterStage>();
+            stage.transform.SetParent(transform, false);
+            stage.Show(art.Models, CharacterChoice.Current);
 
             BuildCanvas();
         }
@@ -126,7 +131,7 @@ namespace Blastlands.Runtime
                     LobbyPages.Name(root, art, flow, Named);
                     break;
                 case LobbyScreen.Browse:
-                    LobbyPages.Browse(root, art, flow, CharacterChoice.Current, Pick, Join, Create);
+                    LobbyPages.Browse(root, art, flow, CharacterChoice.Current, stage.Texture, Pick, Join, Create);
                     break;
                 case LobbyScreen.Host:
                     LobbyPages.Room(root, art, flow, true, Begin, AddBot, Leave);
@@ -183,6 +188,7 @@ namespace Blastlands.Runtime
         private void Pick(CharacterKind character)
         {
             CharacterChoice.Choose(character);
+            stage.Show(art.Models, character);
             Redraw();
         }
 

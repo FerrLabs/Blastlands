@@ -35,4 +35,9 @@ MonoBehaviour:
   - {fileID: 1137350411725084, guid: d9f6a33196dbe594b893efa7ad5f43a6, type: 3}
   - {fileID: 1612642967817046, guid: 145e4b15636b57d47bb0d069eb16834f, type: 3}
   - {fileID: 1274019000965958, guid: af169be12f376ce46a3e6b4bee8b8ffe, type: 3}
+  characters:
+  - {fileID: 1791362862288902, guid: 040c180181105224d8d03746446e080a, type: 3}
+  - {fileID: 1612642967817046, guid: 145e4b15636b57d47bb0d069eb16834f, type: 3}
+  - {fileID: 1399122269168980, guid: 0a08fd84400ab0c41b7a22b7fd0b90a3, type: 3}
+  - {fileID: 1467590972069000, guid: d91ede30c57f9e64cb6e7ac51e28ff35, type: 3}
   playerAnimator: {fileID: 9100000, guid: afec2cc25e3439e4bb1b43e7c09f6503, type: 2}

@@ -11,6 +11,7 @@ namespace Blastlands.Runtime
         [SerializeField] private Sprite panel;
         [SerializeField] private Sprite row;
         [SerializeField] private Sprite field;
+        [SerializeField] private MatchArt models;
 
         public GameObject Header
         {
@@ -35,6 +36,11 @@ namespace Blastlands.Runtime
         public Sprite Field
         {
             get { return field; }
+        }
+
+        public MatchArt Models
+        {
+            get { return models; }
         }
 
         public bool Complete
