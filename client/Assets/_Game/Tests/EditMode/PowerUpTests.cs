@@ -163,6 +163,20 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
+        public void APickedUpKindIsSpentOnTheBombItArms()
+        {
+            MatchState state = OpenMatch(new GridPos(1, 1));
+            PlayerState player = state.Players[0];
+            player.BombsHeld = 1;
+            player.NextBombKind = BombKind.Cluster;
+
+            Run(state, 1, PlayerInput.Dropping());
+
+            Assert.That(state.Bombs[0].Bomb.Kind, Is.EqualTo(BombKind.Cluster));
+            Assert.That(player.NextBombKind, Is.EqualTo(BombKind.Standard), "the bomb after it is plain again");
+        }
+
+        [Test]
         public void StatsStopAtTheirCap()
         {
             MatchState state = OpenMatch(new GridPos(1, 1));

@@ -254,6 +254,18 @@ namespace Blastlands.Core.Tests
             Assert.That(state.Bombs[0].FuseRemaining, Is.EqualTo(Arena.FuseTicks - 1));
         }
 
+        [Test]
+        public void AThrowSpendsAPickedUpKindTheWayADropDoes()
+        {
+            MatchState state = Grenadier(Direction.Up);
+            state.Players[0].NextBombKind = BombKind.Pierce;
+
+            Tick(state, PlayerInput.UsingAbility(), PlayerInput.None);
+
+            Assert.That(state.Bombs[0].Bomb.Kind, Is.EqualTo(BombKind.Pierce));
+            Assert.That(state.Players[0].NextBombKind, Is.EqualTo(BombKind.Cluster), "back to the Grenadier's kit");
+        }
+
         private static MatchState Sapper()
         {
             MatchState state = Match(Arena, CharacterKind.Sapper, new GridPos(4, 7), new GridPos(13, 13));

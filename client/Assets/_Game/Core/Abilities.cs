@@ -188,14 +188,14 @@ namespace Blastlands.Core
 
         private static bool Throw(MatchState state, PlayerState player)
         {
-            if (!player.CanDropBomb || !TryLanding(state, player, out GridPos landing))
+            if (!player.CanDropBomb
+                || !TryLanding(state, player, out GridPos landing)
+                || !player.TryPlaceBomb(landing, out Bomb bomb))
             {
                 return false;
             }
 
-            var bomb = new Bomb(landing, player.Id, player.FireRange, player.NextBombKind);
             state.AddBomb(new ActiveBomb(bomb, state.Settings.FuseTicks));
-            player.BombsHeld--;
             return true;
         }
 

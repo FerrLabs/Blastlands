@@ -186,14 +186,12 @@ namespace Blastlands.Core
             {
                 PlayerState player = state.Players[i];
                 bool wants = i < inputs.Count && inputs[i].DropBomb && !player.Stunned && !player.Shoved;
-                if (!wants || !player.CanDropBomb || state.HasBombAt(player.Tile))
+                if (!wants || state.HasBombAt(player.Tile) || !player.TryPlaceBomb(player.Tile, out Bomb bomb))
                 {
                     continue;
                 }
 
-                var bomb = new Bomb(player.Tile, player.Id, player.FireRange, player.NextBombKind);
                 state.AddBomb(new ActiveBomb(bomb, state.Settings.FuseTicks));
-                player.BombsHeld--;
             }
         }
 

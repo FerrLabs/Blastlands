@@ -181,7 +181,9 @@ A cluster flare is deliberately not itself a cluster. That is what bounds the re
 keeps the shape readable instead of turning every cluster into an unpredictable chain.
 
 Kinds are per-bomb rather than permanent: a pickup grants a kind, the player holds it until they
-use it. That stops one lucky drop from deciding the whole round.
+use it. That stops one lucky drop from deciding the whole round. Placing or throwing the bomb
+spends it, and the player goes back to their kit's kind: plain for most, cluster for the
+Grenadier, pierce for the Sapper. A kit is permanent, a pickup is one bomb.
 
 Kinds that change *when* a bomb goes off rather than *where* the fire lands — remote detonation,
 proximity mines, sticky bombs — are deferred until the tick loop exists, because they need a
@@ -522,12 +524,12 @@ draw or hit the harness's five-minute cap, which is why the wins sum to 196 to 2
 than 240. Not comparable with the kits table above, which was measured without sudden death. Wins
 per character:
 
-| | kits only | trigger added | all four abilities |
-|---|---|---|---|
-| Demolisher | 58 | 73 | 78 |
-| Runner | 33 | 30 | 51 |
-| Grenadier | 56 | 40 | 29 |
-| Sapper | 49 | 53 | 43 |
+| | kits only | trigger added | all four abilities | pickups spent on one bomb |
+|---|---|---|---|---|
+| Demolisher | 58 | 73 | 78 | 69 |
+| Runner | 33 | 30 | 51 | 50 |
+| Grenadier | 56 | 40 | 29 | 34 |
+| Sapper | 49 | 53 | 43 | 51 |
 
 Vanish lifts the Runner out of last place, and bots vanish about five times a match. The trigger
 keeps the Demolisher on top at about one press a match. The Grenadier falls furthest, and not
@@ -535,6 +537,11 @@ because of its own ability: bots threw only 34 times in 240 matches, so what mov
 three getting stronger around it. Bots never raised a wall, as the rule above predicts, so the
 Sapper's number says nothing about the wall. Tuning the trigger or giving bots better reasons to
 throw and build is the next balance question; these are first-pass values.
+
+The last column is the same run after a Pierce or Cluster pickup stopped outliving the bomb it
+armed. Before that fix one pickup changed every bomb its holder dropped for the rest of the round,
+which handed the Demolisher and the Runner the Sapper's and the Grenadier's kits for free. Spending
+the pickup on one bomb narrows the gap between first and last from 49 wins to 35.
 
 ## Bots
 
