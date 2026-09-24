@@ -51,6 +51,7 @@ namespace Blastlands.Runtime
         private InputActionAsset keys;
         private InputActionRebindingExtensions.RebindingOperation rebinding;
         private HudAction? waitingFor;
+        private string keyNote;
         private bool polling;
         private int generation;
         private float sinceStatus;
@@ -150,7 +151,7 @@ namespace Blastlands.Runtime
                     break;
                 case LobbyScreen.Browse when inSettings:
                     LobbyPages.Settings(root, art, SettingsChoice.Volume, SettingsChoice.Shake, SettingsChoice.Hud,
-                        action => KeyBindings.Shown(keys, action), waitingFor,
+                        action => KeyBindings.Shown(keys, action), waitingFor, keyNote,
                         PickVolume, PickShake, PickHud, Rebind, ResetKeys, CloseSettings);
                     break;
                 case LobbyScreen.Browse when settingUp:
@@ -263,6 +264,10 @@ namespace Blastlands.Runtime
         private void OnDestroy()
         {
             StopRebinding();
+            if (keys != null)
+            {
+                Destroy(keys);
+            }
         }
 
         private void OpenSettings()
@@ -282,6 +287,7 @@ namespace Blastlands.Runtime
             }
 
             inSettings = false;
+            keyNote = null;
             Redraw();
         }
 
@@ -332,10 +338,23 @@ namespace Blastlands.Runtime
 
         private void FinishRebinding(bool changed)
         {
+            HudAction? rebound = waitingFor;
             StopRebinding();
-            if (changed && keys != null)
+            keyNote = null;
+            if (changed && keys != null && rebound.HasValue)
             {
-                KeyBindings.Save(keys);
+                InputAction input = KeyBindings.ActionFor(keys, rebound.Value);
+                int index = KeyBindings.KeyboardBinding(input);
+                if (KeyBindings.Taken(keys, input, index))
+                {
+                    keyNote = input.GetBindingDisplayString(index).ToUpperInvariant() + " is already used, pick another key.";
+                    input.RemoveBindingOverride(index);
+                    KeyBindings.Apply(keys, SettingsChoice.Keys);
+                }
+                else
+                {
+                    KeyBindings.Save(keys);
+                }
             }
 
             Redraw();

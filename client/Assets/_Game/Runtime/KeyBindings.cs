@@ -46,6 +46,11 @@ namespace Blastlands.Runtime
         public static void Save(InputActionAsset asset)
         {
             SettingsChoice.ChooseKeys(asset.SaveBindingOverridesAsJson());
+            if (current != null)
+            {
+                Object.Destroy(current);
+            }
+
             current = null;
         }
 
@@ -53,6 +58,29 @@ namespace Blastlands.Runtime
         {
             asset.RemoveAllBindingOverrides();
             Save(asset);
+        }
+
+        public static bool Taken(InputActionAsset asset, InputAction rebound, int index)
+        {
+            string path = rebound.bindings[index].effectivePath;
+            foreach (InputAction action in asset)
+            {
+                for (int i = 0; i < action.bindings.Count; i++)
+                {
+                    InputBinding binding = action.bindings[i];
+                    if (binding.isComposite || (action == rebound && i == index))
+                    {
+                        continue;
+                    }
+
+                    if (string.Equals(binding.effectivePath, path, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         public static InputAction ActionFor(InputActionAsset asset, HudAction action)

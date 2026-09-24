@@ -86,6 +86,7 @@ namespace Blastlands.Runtime
 
         private void Start()
         {
+            SettingsChoice.Apply();
             if (MatchHandoff.Practising)
             {
                 enabled = false;

@@ -166,6 +166,7 @@ namespace Blastlands.Runtime
             HudSize hud,
             Func<HudAction, string> keyOf,
             HudAction? waiting,
+            string note,
             Action<int> pickVolume,
             Action<bool> pickShake,
             Action<HudSize> pickHud,
@@ -197,8 +198,13 @@ namespace Blastlands.Runtime
                 Small(LobbyChrome.Press(panel, art, "Change", new Vector2(320f, y), new Vector2(190f, 64f), () => rebind(action)));
             }
 
-            LobbyChrome.Press(panel, art, "Reset keys", new Vector2(-210f, -350f), new Vector2(380f, 84f), resetKeys);
-            LobbyChrome.Press(panel, art, "Back", new Vector2(210f, -350f), new Vector2(380f, 84f), back);
+            if (!string.IsNullOrEmpty(note))
+            {
+                LobbyChrome.Label(panel, art, note, false, new Vector2(0f, -300f), 900f);
+            }
+
+            LobbyChrome.Press(panel, art, "Reset keys", new Vector2(-210f, -370f), new Vector2(380f, 84f), resetKeys);
+            LobbyChrome.Press(panel, art, "Back", new Vector2(210f, -370f), new Vector2(380f, 84f), back);
         }
 
         private static void Small(Button button)

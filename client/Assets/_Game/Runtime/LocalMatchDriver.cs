@@ -97,6 +97,7 @@ namespace Blastlands.Runtime
 
         private void Start()
         {
+            SettingsChoice.Apply();
             // The lobby leaves an invite for NetworkedMatchDriver when it hands a real
             // match over. Starting a fresh local one on top of that would build its own
             // arena and its own bots and fight NetworkedMatchDriver for the same view,
