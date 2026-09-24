@@ -4,6 +4,16 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.103] - 2026-09-24
+
+### Features
+
+- feat(sim): settle a round the closing ring ends with everyone gone (#103)
+
+### Bug Fixes
+
+- fix(client): scale the HUD fade padding with the canvas (#105)
+
 ## [26.9.102] - 2026-09-24
 
 ### Features
