@@ -11,6 +11,7 @@ namespace Blastlands.Runtime
         private const float Padding = 24f;
 
         private readonly CanvasGroup group;
+        private readonly Canvas canvas;
         private readonly Graphic[] graphics;
         private readonly Vector3[] corners = new Vector3[4];
 
@@ -23,11 +24,13 @@ namespace Blastlands.Runtime
             }
 
             graphics = block.GetComponentsInChildren<Graphic>(true);
+            canvas = block.GetComponentInParent<Canvas>();
         }
 
         public void Update(IReadOnlyList<Vector2> players, float deltaTime)
         {
-            float target = Covers(Bounds(), players, Padding) ? Faded : 1f;
+            float padding = Padding * (canvas == null ? 1f : canvas.rootCanvas.scaleFactor);
+            float target = Covers(Bounds(), players, padding) ? Faded : 1f;
             group.alpha = Mathf.MoveTowards(group.alpha, target, Speed * deltaTime);
         }
 
