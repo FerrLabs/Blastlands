@@ -18,6 +18,7 @@ Unicode true
 Name "Blastlands"
 OutFile "${OUTFILE}"
 InstallDir "$LOCALAPPDATA\Programs\Blastlands"
+InstallDirRegKey HKCU "${UNINSTALL_KEY}" "InstallLocation"
 RequestExecutionLevel user
 SetCompressor /SOLID lzma
 BrandingText "Blastlands ${TAG}"
