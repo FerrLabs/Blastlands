@@ -14,6 +14,8 @@ namespace Blastlands.Core
 
         public Bomb Bomb { get; private set; }
 
+        public int Id { get; internal set; }
+
         public bool Remote { get; set; }
 
         public Direction Sliding { get; set; }
@@ -211,8 +213,15 @@ namespace Blastlands.Core
             return player;
         }
 
+        public int NextBombId { get; set; } = 1;
+
         public void AddBomb(ActiveBomb bomb)
         {
+            if (bomb.Id == 0)
+            {
+                bomb.Id = NextBombId++;
+            }
+
             bombs.Add(bomb);
         }
 

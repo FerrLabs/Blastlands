@@ -299,6 +299,7 @@ namespace Blastlands.Core.Tests
             Assert.That(client.Tick, Is.EqualTo(server.Tick), $"tick, depth {depth}");
             Assert.That(client.Outcome, Is.EqualTo(server.Outcome), $"outcome, depth {depth}");
             Assert.That(client.WinnerId, Is.EqualTo(server.WinnerId), $"winner, depth {depth}");
+            Assert.That(client.NextBombId, Is.EqualTo(server.NextBombId), $"next bomb id, depth {depth}");
             Assert.That(
                 client.SuddenDeathRings,
                 Is.EqualTo(server.SuddenDeathRings),
@@ -355,6 +356,7 @@ namespace Blastlands.Core.Tests
                 Assert.That(client.Bombs[i].Bomb.Kind, Is.EqualTo(server.Bombs[i].Bomb.Kind));
                 Assert.That(client.Bombs[i].FuseTicks, Is.EqualTo(server.Bombs[i].FuseTicks));
                 Assert.That(client.Bombs[i].FuseRemaining, Is.EqualTo(server.Bombs[i].FuseRemaining));
+                Assert.That(client.Bombs[i].Id, Is.EqualTo(server.Bombs[i].Id));
                 Assert.That(client.Bombs[i].Remote, Is.EqualTo(server.Bombs[i].Remote));
                 Assert.That(client.Bombs[i].Sliding, Is.EqualTo(server.Bombs[i].Sliding));
                 Assert.That(client.Bombs[i].SlideCountdown, Is.EqualTo(server.Bombs[i].SlideCountdown));

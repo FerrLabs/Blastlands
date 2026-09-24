@@ -43,6 +43,8 @@ namespace Blastlands.Core.Tests
             Run(state, 60, PlayerInput.Moving(Direction.Right), PlayerInput.None);
 
             Assert.That(bomb.Position, Is.EqualTo(new GridPos(7, 2)), "it stops against the wall");
+            Assert.That(state.Bombs[0], Is.SameAs(bomb));
+            Assert.That(bomb.Id, Is.Not.Zero, "the view tells a sliding bomb from a new one by this, not by its tile");
             Assert.That(bomb.Sliding, Is.EqualTo(Direction.None));
         }
 

@@ -39,6 +39,7 @@ namespace Blastlands.Core.Net
             writer.Byte((byte)state.Outcome);
             writer.Int16(state.WinnerId);
             writer.Int32(state.SuddenDeathRings);
+            writer.Int32(state.NextBombId);
 
             WriteArena(ref writer, state.Arena);
             WritePlayers(ref writer, state.Players);
@@ -79,13 +80,14 @@ namespace Blastlands.Core.Net
             var outcome = (RoundOutcome)reader.Byte();
             int winner = reader.Int16();
             int rings = reader.Int32();
+            int nextBomb = reader.Int32();
 
             // RoundOutcome is on the wire like the other four enums and was the only one
             // not bounded. A flipped byte gave the client an outcome that is neither
             // Running nor Winner nor Draw, so anything choosing between "keep playing"
             // and "show the result" fell through every case: the match stopped being
             // over and stopped being running at the same time, silently.
-            if (!reader.Ok || tick < 0 || (byte)outcome > HighestOutcome)
+            if (!reader.Ok || tick < 0 || (byte)outcome > HighestOutcome || nextBomb < 1)
             {
                 return false;
             }
@@ -107,6 +109,7 @@ namespace Blastlands.Core.Net
             state.Outcome = outcome;
             state.WinnerId = winner;
             state.SuddenDeathRings = rings;
+            state.NextBombId = nextBomb;
 
             for (int i = 0; i < scratch.Tiles.Count; i++)
             {
@@ -290,6 +293,7 @@ namespace Blastlands.Core.Net
             for (int i = 0; i < bombs.Count; i++)
             {
                 ActiveBomb bomb = bombs[i];
+                writer.Int32(bomb.Id);
                 writer.Int16(bomb.Bomb.Position.X);
                 writer.Int16(bomb.Bomb.Position.Y);
                 writer.Int16(bomb.Bomb.OwnerId);
@@ -313,6 +317,7 @@ namespace Blastlands.Core.Net
 
             for (int i = 0; i < count; i++)
             {
+                int id = reader.Int32();
                 var tile = new GridPos(reader.Int16(), reader.Int16());
                 int owner = reader.Int16();
                 int range = reader.Int16();
@@ -332,13 +337,14 @@ namespace Blastlands.Core.Net
                 // frame the bomb is on the board. A real total always comes from settings,
                 // so refusing zero costs nothing.
                 if (!arena.Contains(tile) || !IsBombKind(kind) || fuseTicks <= 0 || fuseRemaining < 0
-                    || !IsDirection(sliding) || slideCountdown < 0)
+                    || !IsDirection(sliding) || slideCountdown < 0 || id < 1)
                 {
                     return false;
                 }
 
                 var bomb = new ActiveBomb(new Bomb(tile, owner, range, (BombKind)kind), fuseTicks);
                 bomb.FuseRemaining = fuseRemaining;
+                bomb.Id = id;
                 bomb.Remote = remote;
                 bomb.Sliding = (Direction)sliding;
                 bomb.SlideCountdown = slideCountdown;

@@ -21,7 +21,8 @@ namespace Blastlands.Core
                     return true;
 
                 case PowerUpKind.Skull:
-                    player.Curse = (CurseKind)(1 + state.Random.NextInt((int)CurseKind.Dry));
+                    player.Curse = (CurseKind)((int)CurseKind.Slow
+                        + state.Random.NextInt((int)CurseKind.Dry - (int)CurseKind.Slow + 1));
                     player.CurseTicksRemaining = state.Settings.TicksPerSecond * CurseSeconds;
                     return true;
 
@@ -177,7 +178,7 @@ namespace Blastlands.Core
             for (int i = 0; i < state.Players.Count && i < inputs.Count; i++)
             {
                 PlayerState player = state.Players[i];
-                if (!player.Alive || !player.HasRemote || !inputs[i].Ability || player.AbilityCooldownRemaining > 0)
+                if (!player.CanUseAbility || !player.HasRemote || !inputs[i].Ability)
                 {
                     continue;
                 }
