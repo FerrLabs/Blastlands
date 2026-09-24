@@ -13,6 +13,7 @@ namespace Blastlands.Runtime
         private const int Layer = 400;
 
         private static readonly Vector2 Reference = new Vector2(1920f, 1080f);
+        private static readonly Vector2 Middle = new Vector2(0.5f, 0.5f);
         private static readonly Color Scrim = new Color(0.03f, 0.03f, 0.04f, 0.82f);
         private static readonly Color Card = new Color(0.07f, 0.08f, 0.10f, 0.95f);
         private static readonly Color Won = new Color(0.98f, 0.80f, 0.30f);
@@ -74,9 +75,7 @@ namespace Blastlands.Runtime
 
                 var portrait = new GameObject("Winner", typeof(RectTransform), typeof(RawImage));
                 portrait.transform.SetParent(panel, false);
-                var frame = (RectTransform)portrait.transform;
-                frame.anchoredPosition = new Vector2(0f, 40f);
-                frame.sizeDelta = new Vector2(300f, 420f);
+                Centre((RectTransform)portrait.transform, new Vector2(0f, 40f), new Vector2(300f, 420f));
 
                 RawImage image = portrait.GetComponent<RawImage>();
                 image.texture = stage.Texture;
@@ -139,14 +138,22 @@ namespace Blastlands.Runtime
             }
             else
             {
-                frame.anchoredPosition = offset;
-                frame.sizeDelta = size;
+                Centre(frame, offset, size);
             }
 
             Image fill = area.GetComponent<Image>();
             fill.color = colour;
             fill.raycastTarget = stretch;
             return frame;
+        }
+
+        private static void Centre(RectTransform frame, Vector2 offset, Vector2 size)
+        {
+            frame.anchorMin = Middle;
+            frame.anchorMax = Middle;
+            frame.pivot = Middle;
+            frame.anchoredPosition = offset;
+            frame.sizeDelta = size;
         }
 
         private static TMP_Text Write(
@@ -156,8 +163,7 @@ namespace Blastlands.Runtime
             area.transform.SetParent(parent, false);
 
             var frame = (RectTransform)area.transform;
-            frame.anchoredPosition = offset;
-            frame.sizeDelta = box;
+            Centre(frame, offset, box);
 
             TMP_Text text = area.AddComponent<TextMeshProUGUI>();
             text.text = content;
@@ -175,15 +181,14 @@ namespace Blastlands.Runtime
             host.transform.SetParent(parent, false);
 
             var frame = (RectTransform)host.transform;
-            frame.anchoredPosition = offset;
-            frame.sizeDelta = new Vector2(340f, 84f);
+            Centre(frame, offset, new Vector2(340f, 84f));
 
             Image face = host.GetComponent<Image>();
             face.color = ButtonFace;
 
             Button press = host.GetComponent<Button>();
             press.targetGraphic = face;
-            press.onClick.AddListener(() => clicked());
+            press.onClick.AddListener(() => clicked?.Invoke());
 
             TMP_Text text = Write(frame, label, 36f, FontStyles.Bold, ButtonText, Vector2.zero, frame.sizeDelta);
             text.raycastTarget = false;
