@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.113] - 2026-09-24
+
+### Features
+
+- feat(sim): add a co-op Survival mode against zombie waves (#126)
+
 ## [26.9.112] - 2026-09-24
 
 ### Features
