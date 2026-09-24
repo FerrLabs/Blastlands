@@ -86,6 +86,12 @@ namespace Blastlands.Runtime
 
         private void Start()
         {
+            if (MatchHandoff.Practising)
+            {
+                enabled = false;
+                return;
+            }
+
             // The lobby leaves an invite when it hands the match over. The serialized
             // fields are what is left for a scene opened by hand against a server
             // started by hand, which is how this is tested without a lobby running.

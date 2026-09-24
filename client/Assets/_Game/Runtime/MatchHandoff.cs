@@ -15,6 +15,7 @@ namespace Blastlands.Runtime
     {
         private static MatchInvite pending;
         private static GameMode? practice;
+        private static bool practising;
 
         // Who the player was when they left the lobby, so coming back from a match
         // drops them on the match list rather than asking their name again.
@@ -25,9 +26,19 @@ namespace Blastlands.Runtime
             get { return pending.CanConnect; }
         }
 
+        // Read rather than taken, and by both drivers: Start order between two
+        // components on one GameObject is undefined, so a flag the local driver
+        // consumes is a flag the networked one may never see.
+        public static bool Practising
+        {
+            get { return practising; }
+        }
+
         public static void Leave(MatchInvite invite, string player)
         {
             pending = invite;
+            practice = null;
+            practising = false;
             Player = player ?? string.Empty;
         }
 
@@ -35,6 +46,7 @@ namespace Blastlands.Runtime
         {
             pending = default;
             practice = mode;
+            practising = true;
             Player = player ?? string.Empty;
         }
 
@@ -56,6 +68,8 @@ namespace Blastlands.Runtime
         public static void Forget()
         {
             pending = default;
+            practice = null;
+            practising = false;
         }
     }
 }

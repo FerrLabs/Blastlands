@@ -40,9 +40,9 @@ namespace Blastlands.Runtime
         // Which game the match is. Arena is the open island with cover you stand in,
         // found bombs, dash and shove; Classic is the pillar lattice, bombs you own and
         // nothing else; Classic Blinded is that same board played without sight of
-        // anyone you have no line to. Serialized here rather than chosen anywhere,
-        // since this driver never plays a lobby match: the lobby itself has no mode
-        // picker yet, and every match it hosts runs Arena.
+        // anyone you have no line to. The serialized value is what a scene opened by
+        // hand runs; a practice match from the lobby overwrites it with the mode the
+        // selector showed.
         [SerializeField] private GameMode mode = GameMode.Arena;
 
         // Best of five. Long enough that one unlucky round does not decide it, short
@@ -237,14 +237,14 @@ namespace Blastlands.Runtime
                 return;
             }
 
-            // Rerolling the arena on demand is how the generator gets exercised: a
-            // layout flaw only shows up across many maps, not one.
             if (practising && LeavePressed())
             {
                 SceneManager.LoadScene(LobbyScene);
                 return;
             }
 
+            // Rerolling the arena on demand is how the generator gets exercised: a
+            // layout flaw only shows up across many maps, not one.
             if (devices.RerollPressed())
             {
                 Restart(0u);
