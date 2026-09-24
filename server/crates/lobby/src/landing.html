@@ -107,7 +107,7 @@ img { display: block; max-width: 100%; }
 
 .hero-content {
   width: 100%;
-  max-width: 34rem;
+  max-width: 40rem;
   text-align: center;
 }
 
@@ -122,7 +122,7 @@ img { display: block; max-width: 100%; }
 
 h1 {
   margin: 0 0 1.25rem;
-  font-size: clamp(3rem, 11vw, 6rem);
+  font-size: clamp(2.25rem, 12.5vw, 6rem);
   font-weight: 900;
   letter-spacing: -0.02em;
   line-height: 0.95;
@@ -413,6 +413,11 @@ footer a:hover { color: var(--text); }
   .portrait { height: 13rem; }
   .card-body { padding: 0.9rem; }
   .cooldown { float: none; display: block; }
+}
+
+@media (max-width: 420px) {
+  .roster { grid-template-columns: 1fr; }
+  .portrait { height: 16rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
