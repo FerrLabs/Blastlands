@@ -3,6 +3,8 @@ using System.Collections;
 using System.Collections.Generic;
 using Blastlands.Core;
 using Blastlands.Core.Lobby;
+using Blastlands.Core.Net;
+using Blastlands.Core.Update;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -35,6 +37,9 @@ namespace Blastlands.Runtime
 
         private readonly LobbyFlow flow = new LobbyFlow();
         private LobbyClient lobby;
+        private VersionGate gate;
+        private ClientUpdater updater;
+        private UpdateBadge badge;
         private Canvas canvas;
         private RectTransform root;
         private LobbyScreen drawn = LobbyScreen.Play;
@@ -65,11 +70,15 @@ namespace Blastlands.Runtime
             // and quietly dials whatever was saved in the scene.
             lobby.Use(ClientOptions.Lobby(Environment.GetCommandLineArgs()));
 
+            badge = UpdateBadge.For(Application.version, UpdateVerdict.Unknown, UpdateStage.Idle, default);
+
             BuildCanvas();
         }
 
         private void Update()
         {
+            WatchBuild();
+
             if (flow.Screen == LobbyScreen.Play)
             {
                 Play();
@@ -127,8 +136,39 @@ namespace Blastlands.Runtime
                     break;
             }
 
+            LobbyPages.Footer(root, art, badge, InstallUpdate);
+
             drawn = flow.Screen;
             dirty = false;
+        }
+
+        private void WatchBuild()
+        {
+            if (gate == null)
+            {
+                gate = FindAnyObjectByType<VersionGate>();
+                updater = FindAnyObjectByType<ClientUpdater>();
+            }
+
+            UpdateBadge next = UpdateBadge.For(
+                Application.version,
+                gate == null ? UpdateVerdict.Unknown : gate.Verdict,
+                updater == null ? UpdateStage.Idle : updater.Stage,
+                gate == null ? default : gate.Release);
+
+            if (next.Action != badge.Action || next.Pressable != badge.Pressable)
+            {
+                badge = next;
+                Redraw();
+            }
+        }
+
+        private void InstallUpdate()
+        {
+            if (gate != null && updater != null && badge.Pressable)
+            {
+                StartCoroutine(updater.Apply(gate.Release));
+            }
         }
 
         private void Named(string typed)
