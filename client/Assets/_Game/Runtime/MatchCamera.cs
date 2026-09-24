@@ -176,9 +176,9 @@ namespace Blastlands.Runtime
                     continue;
                 }
 
-                Vector3 watching = Watching(view);
+                Vector3 centre = Watching(view);
                 float distance = Vector2.Distance(
-                    new Vector2(at.x, at.z), new Vector2(watching.x, watching.z));
+                    new Vector2(at.x, at.z), new Vector2(centre.x, centre.z));
 
                 shakes[i].Felt(CameraShake.StrengthOf(distance, flameTiles, CameraShake.ReachTiles));
             }
