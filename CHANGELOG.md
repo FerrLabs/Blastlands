@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.94] - 2026-09-24
+
+### Features
+
+- feat: offer Classic as the first mode (#82)
+
 ## [26.9.93] - 2026-09-24
 
 ### Features
