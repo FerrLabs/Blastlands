@@ -59,6 +59,7 @@ namespace Blastlands.Runtime
 
         private readonly List<Camera> views = new List<Camera>();
         private readonly List<Vector3> leads = new List<Vector3>();
+        private readonly List<int> watching = new List<int>();
         private MatchView drawn;
         private readonly List<CameraShake> shakes = new List<CameraShake>();
 
@@ -245,6 +246,7 @@ namespace Blastlands.Runtime
 
                 views.RemoveAt(i);
                 leads.RemoveAt(i);
+                watching.RemoveAt(i);
                 shakes.RemoveAt(i);
             }
 
@@ -252,6 +254,7 @@ namespace Blastlands.Runtime
             {
                 views.Add(views.Count == 0 ? Own() : Clone(views.Count));
                 leads.Add(Vector3.zero);
+                watching.Add(-1);
 
                 // A phase per viewport, so one bomb reaching two of them does not shake
                 // both the same way at the same moment, which reads as the whole window
@@ -342,9 +345,21 @@ namespace Blastlands.Runtime
             }
 
             int seat = firstSeat + (mode == CameraMode.Split ? index : 0);
-            if (!player.Alive)
+            if (player.Alive)
             {
-                PlayerState watched = Spectated(state, player);
+                if (index < watching.Count)
+                {
+                    watching[index] = -1;
+                }
+            }
+            else
+            {
+                PlayerState watched = StillWatching(index) ?? Spectated(state, player);
+                if (index < watching.Count)
+                {
+                    watching[index] = watched == null ? -1 : watched.Id;
+                }
+
                 if (watched == null)
                 {
                     return MatchView.ToWorld(player.Position, 0f);
@@ -369,6 +384,17 @@ namespace Blastlands.Runtime
             }
 
             return at + wanted;
+        }
+
+        private PlayerState StillWatching(int index)
+        {
+            if (index >= watching.Count || watching[index] < 0 || watching[index] >= state.Players.Count)
+            {
+                return null;
+            }
+
+            PlayerState watched = state.Players[watching[index]];
+            return watched.Alive ? watched : null;
         }
 
         public static PlayerState Spectated(MatchState match, PlayerState fallen)
