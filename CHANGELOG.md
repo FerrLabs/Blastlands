@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.101] - 2026-09-24
+
+### Features
+
+- feat(client): remember the player name and make the lobby inputs feel alive (#99)
+
 ## [26.9.100] - 2026-09-24
 
 ### Features
