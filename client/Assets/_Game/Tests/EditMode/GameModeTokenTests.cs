@@ -32,8 +32,8 @@ namespace Blastlands.Core.Tests
         [Test]
         public void SteppingWrapsBothWays()
         {
-            Assert.That(GameModeTokens.Step(GameMode.ClassicBlinded, 1), Is.EqualTo(GameMode.Arena));
-            Assert.That(GameModeTokens.Step(GameMode.Arena, -1), Is.EqualTo(GameMode.ClassicBlinded));
+            Assert.That(GameModeTokens.Step(GameMode.Classic, 1), Is.EqualTo(GameMode.ClassicBlinded));
+            Assert.That(GameModeTokens.Step(GameMode.Classic, -1), Is.EqualTo(GameMode.Arena));
             Assert.That(GameModeTokens.Step(GameMode.Arena, 1), Is.EqualTo(GameMode.Classic));
         }
 

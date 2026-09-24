@@ -26,9 +26,9 @@ Download the Windows installer from [blastlands.ferrlabs.com](https://blastlands
 
 | Mode | Board | Bombs | Moves | Sight |
 |---|---|---|---|---|
-| **Arena** | 25x21 eroded island, cover in clumps, bushes to hide in | found on the ground, spent for good | walk, dash, shove, ability | only what you have a line to |
 | **Classic** | the bomberman board: 13x11 inside a border, a pillar on every other tile, corner starts | owned, each one comes back once it goes off | walk, place a bomb | the whole board |
 | **Classic Blinded** | same as Classic | same as Classic | same as Classic | only what you have a line to |
+| **Arena** | 25x21 eroded island, cover in clumps, bushes to hide in | found on the ground, spent for good | walk, dash, shove, ability | only what you have a line to |
 
 In every mode, destroyed soft blocks grow back after 20 seconds (a marker shows where), and
 after 90 seconds sudden death closes the board from the edge one ring every five seconds, so
