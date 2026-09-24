@@ -135,7 +135,7 @@ namespace Blastlands.Runtime
 
         private void Awake()
         {
-            screenShake = screenShake && ClientOptions.ScreenShake(System.Environment.GetCommandLineArgs());
+            screenShake = screenShake && SettingsChoice.Shake && ClientOptions.ScreenShake(System.Environment.GetCommandLineArgs());
         }
 
         public void Bind(MatchState matchState, int seats)

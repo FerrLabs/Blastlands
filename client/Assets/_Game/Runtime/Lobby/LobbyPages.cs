@@ -96,10 +96,12 @@ namespace Blastlands.Runtime
             Action<MatchListing> join,
             Action create,
             Action practise,
-            Action rename)
+            Action rename,
+            Action settings)
         {
             RectTransform panel = LobbyChrome.Panel(root, art, "Browse", new Vector2(1500f, 900f));
             LobbyChrome.Label(panel, art, "MATCHES", true, new Vector2(ListCentre, 390f), RowSize.x);
+            Small(LobbyChrome.Press(panel, art, "Settings", new Vector2(ListCentre + 300f, 390f), new Vector2(190f, 64f), settings));
             Player(panel, art, flow.Player, rename);
             Roster(panel, art, picked, portrait, pick);
             Modes(panel, art, mode, pickMode, new Vector2(ListCentre, -245f));
@@ -154,6 +156,64 @@ namespace Blastlands.Runtime
                 () => pickBots(BotSkills.Step(bots, -1)), () => pickBots(BotSkills.Step(bots, 1)));
             LobbyChrome.Press(panel, art, "Create", new Vector2(0f, -155f), WideButton, create);
             LobbyChrome.Press(panel, art, "Back", new Vector2(0f, -265f), WideButton, back);
+        }
+
+        public static void Settings(
+            RectTransform root,
+            LobbyArt art,
+            int volume,
+            bool shake,
+            HudSize hud,
+            Func<HudAction, string> keyOf,
+            HudAction? waiting,
+            string note,
+            Action<int> pickVolume,
+            Action<bool> pickShake,
+            Action<HudSize> pickHud,
+            Action<HudAction> rebind,
+            Action resetKeys,
+            Action back)
+        {
+            RectTransform panel = LobbyChrome.Panel(root, art, "Settings", new Vector2(1000f, 860f));
+            LobbyChrome.Label(panel, art, "SETTINGS", true, new Vector2(0f, 360f), 900f);
+
+            Stepper(panel, art, "Volume: " + (volume * 100 / ClientSettings.VolumeSteps) + "%", new Vector2(0f, 270f),
+                () => pickVolume(ClientSettings.StepVolume(volume, -1)), () => pickVolume(ClientSettings.StepVolume(volume, 1)));
+            Stepper(panel, art, "Screen shake: " + (shake ? "On" : "Off"), new Vector2(0f, 180f),
+                () => pickShake(!shake), () => pickShake(!shake));
+            Stepper(panel, art, "HUD size: " + hud, new Vector2(0f, 90f),
+                () => pickHud(ClientSettings.StepHud(hud, -1)), () => pickHud(ClientSettings.StepHud(hud, 1)));
+
+            for (int i = 0; i < KeyBindings.Rebindable.Length; i++)
+            {
+                HudAction action = KeyBindings.Rebindable[i];
+                float y = -5f - (i * 80f);
+                string key = waiting == action ? "press a key, Esc to cancel" : keyOf(action);
+                TMP_Text label = LobbyChrome.Label(panel, art, KeyBindings.Named(action) + ": " + key, false, new Vector2(-110f, y), 620f);
+                if (label != null)
+                {
+                    label.alignment = TextAlignmentOptions.MidlineLeft;
+                }
+
+                Small(LobbyChrome.Press(panel, art, "Change", new Vector2(320f, y), new Vector2(190f, 64f), () => rebind(action)));
+            }
+
+            if (!string.IsNullOrEmpty(note))
+            {
+                LobbyChrome.Label(panel, art, note, false, new Vector2(0f, -300f), 900f);
+            }
+
+            LobbyChrome.Press(panel, art, "Reset keys", new Vector2(-210f, -370f), new Vector2(380f, 84f), resetKeys);
+            LobbyChrome.Press(panel, art, "Back", new Vector2(210f, -370f), new Vector2(380f, 84f), back);
+        }
+
+        private static void Small(Button button)
+        {
+            TMP_Text label = button == null ? null : button.GetComponentInChildren<TMP_Text>(true);
+            if (label != null)
+            {
+                label.fontSize = 28f;
+            }
         }
 
         private static void Stepper(RectTransform panel, LobbyArt art, string text, Vector2 at, Action down, Action up)

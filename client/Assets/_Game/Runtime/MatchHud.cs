@@ -260,7 +260,7 @@ namespace Blastlands.Runtime
 
             CanvasScaler scaler = host.GetComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920f, 1080f) / Mathf.Max(0.1f, size);
+            scaler.referenceResolution = new Vector2(1920f, 1080f) / Mathf.Max(0.1f, size * ClientSettings.HudFactor(SettingsChoice.Hud));
             scaler.matchWidthOrHeight = 0.5f;
         }
     }
