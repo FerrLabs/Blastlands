@@ -4,6 +4,7 @@ pub mod config;
 pub mod download;
 pub mod error;
 pub mod github;
+pub mod landing;
 pub mod matches;
 pub mod names;
 pub mod ports;

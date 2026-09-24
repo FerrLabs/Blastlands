@@ -3,8 +3,8 @@ use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use axum::extract::{ConnectInfo, FromRequest, Path, Request, State};
-use axum::http::{HeaderMap, StatusCode};
-use axum::response::{IntoResponse, Redirect, Response};
+use axum::http::{header, HeaderMap, StatusCode};
+use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::routing::{delete, get, post};
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
@@ -14,6 +14,7 @@ use crate::auth::require_instance_token;
 use crate::characters::Character;
 use crate::download::DownloadLinks;
 use crate::error::LobbyError;
+use crate::landing;
 use crate::matches::{
     CreateMatch, GameServerEndpoint, HostTicket, Match, MatchDirectory, MatchId, MatchState,
 };
@@ -193,6 +194,7 @@ pub struct JoinAccepted {
 
 pub fn app(state: AppState) -> Router {
     Router::new()
+        .route("/", get(landing_page))
         .route("/healthz", get(health))
         .route("/v1/version", get(version))
         .route("/v1/client/{version}/download", get(download_client))
@@ -210,6 +212,13 @@ pub fn app(state: AppState) -> Router {
 
 async fn health() -> StatusCode {
     StatusCode::NO_CONTENT
+}
+
+async fn landing_page(State(state): State<AppState>) -> impl IntoResponse {
+    (
+        [(header::CACHE_CONTROL, "public, max-age=60")],
+        Html(landing::page(state.release.current().as_ref())),
+    )
 }
 
 // Deliberately ungated: a client too old to be allowed in still has to be able to
@@ -616,6 +625,42 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
         assert_eq!(body_json(response).await["code"], "release_unknown");
+    }
+
+    async fn body_text(response: Response) -> String {
+        let bytes = to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("body should be readable");
+        String::from_utf8(bytes.to_vec()).expect("body should be text")
+    }
+
+    #[tokio::test]
+    async fn the_root_offers_the_published_build_as_html() {
+        let response = router().oneshot(get_request("/")).await.unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert!(response
+            .headers()
+            .get(header::CONTENT_TYPE)
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .starts_with("text/html"));
+
+        let page = body_text(response).await;
+        assert!(page.contains("Install Blastlands"));
+        assert!(page.contains("/v1/client/26.9.0/download"));
+    }
+
+    #[tokio::test]
+    async fn the_root_still_answers_before_any_release_is_known() {
+        let response = router_with(unpublished())
+            .oneshot(get_request("/"))
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert!(!body_text(response).await.contains("/v1/client/"));
     }
 
     #[tokio::test]
