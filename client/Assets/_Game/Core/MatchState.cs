@@ -80,7 +80,9 @@ namespace Blastlands.Core
     {
         Running = 0,
         Winner = 1,
-        Draw = 2
+        Draw = 2,
+        Survived = 3,
+        Overrun = 4
     }
 
     public sealed class MatchState
@@ -93,6 +95,7 @@ namespace Blastlands.Core
         private readonly List<GridPos> looseBombs = new List<GridPos>();
         private readonly List<WallRegrowth> regrowingWalls = new List<WallRegrowth>();
         private readonly List<RaisedWall> raisedWalls = new List<RaisedWall>();
+        private readonly List<Zombie> zombies = new List<Zombie>();
         private int[] coastDistance;
 
         public MatchState(Arena arena, MatchSettings settings, uint seed)
@@ -108,6 +111,37 @@ namespace Blastlands.Core
             Random = new DeterministicRandom(seed);
             Outcome = RoundOutcome.Running;
             WinnerId = -1;
+            WaveCountdown = settings.Survival.FirstWaveTicks;
+        }
+
+        public IReadOnlyList<Zombie> Zombies
+        {
+            get { return zombies; }
+        }
+
+        public int Wave { get; set; }
+
+        public int WaveCountdown { get; set; }
+
+        public int ZombiesSlain { get; set; }
+
+        public int NextZombieId { get; set; }
+
+        public Zombie AddZombie(SubPos position)
+        {
+            var zombie = new Zombie(NextZombieId++, position);
+            zombies.Add(zombie);
+            return zombie;
+        }
+
+        public void RemoveZombieAt(int index)
+        {
+            zombies.RemoveAt(index);
+        }
+
+        internal void AddZombieFromSnapshot(Zombie zombie)
+        {
+            zombies.Add(zombie);
         }
 
         public Arena Arena { get; }
@@ -156,6 +190,7 @@ namespace Blastlands.Core
             looseBombs.Clear();
             regrowingWalls.Clear();
             raisedWalls.Clear();
+            zombies.Clear();
         }
 
         internal void AddPowerUpFromSnapshot(PowerUp powerUp)

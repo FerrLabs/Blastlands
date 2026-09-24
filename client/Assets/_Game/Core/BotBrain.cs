@@ -7,6 +7,8 @@ namespace Blastlands.Core
     // randomness, directions always walked in the same order.
     public sealed class BotBrain
     {
+        private const int ZombieSighting = -1;
+
         private static readonly Direction[] Order =
         {
             Direction.Right,
@@ -444,6 +446,12 @@ namespace Blastlands.Core
                 }
             }
 
+            if (state.Settings.Survival.Enabled)
+            {
+                ObserveZombies(state);
+                return;
+            }
+
             for (int i = 0; i < state.Players.Count; i++)
             {
                 PlayerState other = state.Players[i];
@@ -462,6 +470,16 @@ namespace Blastlands.Core
                 {
                     Remember(other.Id, other.Tile, state.Tick);
                 }
+            }
+        }
+
+        private void ObserveZombies(MatchState state)
+        {
+            sightings.Clear();
+            for (int i = 0; i < state.Zombies.Count; i++)
+            {
+                Zombie zombie = state.Zombies[i];
+                sightings.Add(new Sighting { PlayerId = ZombieSighting - zombie.Id, Tile = zombie.Tile, Tick = state.Tick });
             }
         }
 
@@ -777,7 +795,22 @@ namespace Blastlands.Core
             return state.Arena.Contains(tile)
                 && Tiles.CanBeStoodOn(state.Arena[tile])
                 && !state.HasBombAt(tile)
-                && !IsClosing(state, tile);
+                && !IsClosing(state, tile)
+                && !NextToAZombie(state, tile);
+        }
+
+        private static bool NextToAZombie(MatchState state, GridPos tile)
+        {
+            for (int i = 0; i < state.Zombies.Count; i++)
+            {
+                GridPos at = state.Zombies[i].Tile;
+                if (System.Math.Abs(at.X - tile.X) <= 1 && System.Math.Abs(at.Y - tile.Y) <= 1)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         // A gap that shuts on the way through is the same death as a blast, and the

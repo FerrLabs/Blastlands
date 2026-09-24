@@ -44,6 +44,7 @@ namespace Blastlands.Core
             BurnPowerUps(state);
             IgniteLooseBombs(state);
             KillPlayersInFlames(state);
+            Survival.Tick(state);
 
             // Before the outcome check, so a ring that takes the last two closes the
             // round on the tick it happens rather than the one after.
@@ -443,6 +444,20 @@ namespace Blastlands.Core
 
         private static void ResolveOutcome(MatchState state, IReadOnlyList<PlayerState> takenByTheRing)
         {
+            if (state.Settings.Survival.Enabled)
+            {
+                if (state.AliveCount == 0)
+                {
+                    state.Outcome = RoundOutcome.Overrun;
+                }
+                else if (Survival.Cleared(state))
+                {
+                    state.Outcome = RoundOutcome.Survived;
+                }
+
+                return;
+            }
+
             if (state.Players.Count < 2)
             {
                 return;

@@ -10,11 +10,12 @@ namespace Blastlands.Core
             {
                 { "arena", GameMode.Arena },
                 { "classic", GameMode.Classic },
-                { "classic_blinded", GameMode.ClassicBlinded }
+                { "classic_blinded", GameMode.ClassicBlinded },
+                { "survival", GameMode.Survival }
             };
 
         public static IReadOnlyList<GameMode> All { get; } =
-            new[] { GameMode.Classic, GameMode.ClassicBlinded, GameMode.Arena };
+            new[] { GameMode.Classic, GameMode.ClassicBlinded, GameMode.Arena, GameMode.Survival };
 
         public static bool TryRead(string token, out GameMode mode)
         {

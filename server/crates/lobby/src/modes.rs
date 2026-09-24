@@ -7,6 +7,7 @@ pub enum GameMode {
     Arena,
     Classic,
     ClassicBlinded,
+    Survival,
 }
 
 #[cfg(test)]
@@ -19,6 +20,7 @@ mod tests {
             ("\"arena\"", GameMode::Arena),
             ("\"classic\"", GameMode::Classic),
             ("\"classic_blinded\"", GameMode::ClassicBlinded),
+            ("\"survival\"", GameMode::Survival),
         ] {
             let read: GameMode = serde_json::from_str(json).expect(json);
             assert_eq!(read, mode);

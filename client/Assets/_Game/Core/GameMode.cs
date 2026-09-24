@@ -14,6 +14,8 @@ namespace Blastlands.Core
         // The same board and the same bombs, played blind. You see a player only when
         // nothing stands between you, and a lattice is nothing but things standing
         // between you.
-        ClassicBlinded = 2
+        ClassicBlinded = 2,
+
+        Survival = 3
     }
 }

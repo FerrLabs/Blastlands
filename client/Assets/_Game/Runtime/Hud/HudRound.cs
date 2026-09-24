@@ -20,9 +20,18 @@ namespace Blastlands.Runtime
             return new HudRound(HudPlacement.Text(plate));
         }
 
-        public void Render(MatchSeries series)
+        public void Render(MatchSeries series, MatchState state)
         {
-            HudPlacement.Write(text, HudText.Round(series.RoundsPlayed, series.RoundsToWin));
+            if (state.Settings.Survival.Enabled)
+            {
+                HudPlacement.Write(text, HudText.Wave(state));
+                return;
+            }
+
+            if (series != null)
+            {
+                HudPlacement.Write(text, HudText.Round(series.RoundsPlayed, series.RoundsToWin));
+            }
         }
     }
 }

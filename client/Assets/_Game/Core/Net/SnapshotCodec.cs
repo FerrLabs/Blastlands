@@ -30,6 +30,7 @@ namespace Blastlands.Core.Net
         private const int MostLooseBombs = 512;
         private const int MostRegrowing = 1024;
         private const int MostRaisedWalls = 256;
+        private const int MostZombies = 256;
 
         public static int Write(MatchState state, byte[] buffer)
         {
@@ -40,6 +41,10 @@ namespace Blastlands.Core.Net
             writer.Int16(state.WinnerId);
             writer.Int32(state.SuddenDeathRings);
             writer.Int32(state.NextBombId);
+            writer.Int16(state.Wave);
+            writer.Int16(state.WaveCountdown);
+            writer.Int32(state.ZombiesSlain);
+            writer.Int32(state.NextZombieId);
 
             WriteArena(ref writer, state.Arena);
             WritePlayers(ref writer, state.Players);
@@ -49,6 +54,7 @@ namespace Blastlands.Core.Net
             WriteLooseBombs(ref writer, state.LooseBombs);
             WriteRegrowing(ref writer, state.RegrowingWalls);
             WriteRaisedWalls(ref writer, state.RaisedWalls);
+            WriteZombies(ref writer, state.Zombies);
 
             return writer.Ok ? writer.Length : 0;
         }
@@ -81,13 +87,18 @@ namespace Blastlands.Core.Net
             int winner = reader.Int16();
             int rings = reader.Int32();
             int nextBomb = reader.Int32();
+            int wave = reader.Int16();
+            int waveCountdown = reader.Int16();
+            int slain = reader.Int32();
+            int nextZombie = reader.Int32();
 
             // RoundOutcome is on the wire like the other four enums and was the only one
             // not bounded. A flipped byte gave the client an outcome that is neither
             // Running nor Winner nor Draw, so anything choosing between "keep playing"
             // and "show the result" fell through every case: the match stopped being
             // over and stopped being running at the same time, silently.
-            if (!reader.Ok || tick < 0 || (byte)outcome > HighestOutcome || nextBomb < 1)
+            if (!reader.Ok || tick < 0 || (byte)outcome > HighestOutcome
+                || wave < 0 || waveCountdown < 0 || slain < 0 || nextZombie < 0 || nextBomb < 1)
             {
                 return false;
             }
@@ -100,7 +111,8 @@ namespace Blastlands.Core.Net
                 || !ReadPowerUps(ref reader, state.Arena, scratch)
                 || !ReadLooseBombs(ref reader, state.Arena, scratch)
                 || !ReadRegrowing(ref reader, state.Arena, scratch)
-                || !ReadRaisedWalls(ref reader, state.Arena, scratch))
+                || !ReadRaisedWalls(ref reader, state.Arena, scratch)
+                || !ReadZombies(ref reader, state.Arena, scratch))
             {
                 return false;
             }
@@ -110,6 +122,10 @@ namespace Blastlands.Core.Net
             state.WinnerId = winner;
             state.SuddenDeathRings = rings;
             state.NextBombId = nextBomb;
+            state.Wave = wave;
+            state.WaveCountdown = waveCountdown;
+            state.ZombiesSlain = slain;
+            state.NextZombieId = nextZombie;
 
             for (int i = 0; i < scratch.Tiles.Count; i++)
             {
@@ -152,6 +168,11 @@ namespace Blastlands.Core.Net
             for (int i = 0; i < scratch.RaisedWalls.Count; i++)
             {
                 state.AddRaisedWallFromSnapshot(scratch.RaisedWalls[i]);
+            }
+
+            for (int i = 0; i < scratch.Zombies.Count; i++)
+            {
+                state.AddZombieFromSnapshot(scratch.Zombies[i]);
             }
 
             return true;
@@ -546,12 +567,53 @@ namespace Blastlands.Core.Net
             return reader.Ok;
         }
 
+        private static void WriteZombies(ref NetWriter writer, System.Collections.Generic.IReadOnlyList<Zombie> zombies)
+        {
+            writer.Int32(zombies.Count);
+
+            for (int i = 0; i < zombies.Count; i++)
+            {
+                Zombie zombie = zombies[i];
+                writer.Int32(zombie.Id);
+                writer.Int32(zombie.Position.X);
+                writer.Int32(zombie.Position.Y);
+                writer.Byte((byte)zombie.Facing);
+                writer.Int16(zombie.ChewTicks);
+            }
+        }
+
+        private static bool ReadZombies(ref NetReader reader, Arena arena, Scratch scratch)
+        {
+            int count = reader.Count(MostZombies);
+            if (!reader.Ok)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < count; i++)
+            {
+                int id = reader.Int32();
+                var position = new SubPos(reader.Int32(), reader.Int32());
+                byte facing = reader.Byte();
+                int chew = reader.Int16();
+
+                if (id < 0 || !arena.Contains(position.Tile) || !IsDirection(facing) || chew < 0)
+                {
+                    return false;
+                }
+
+                scratch.Zombies.Add(new Zombie(id, position) { Facing = (Direction)facing, ChewTicks = chew });
+            }
+
+            return reader.Ok;
+        }
+
         // Range checks rather than Enum.IsDefined, which boxes and would run once per
         // tile: 525 of them per snapshot at thirty ticks a second. All four enums are
         // contiguous from zero, and a test pins these bounds against the real member
         // counts so adding a kind fails there rather than silently letting a byte that
         // means nothing through.
-        public const byte HighestOutcome = (byte)RoundOutcome.Draw;
+        public const byte HighestOutcome = (byte)RoundOutcome.Overrun;
         public const byte HighestTile = (byte)TileKind.Void;
         public const byte HighestBombKind = (byte)BombKind.Cluster;
         public const byte HighestPowerUpKind = (byte)PowerUpKind.Skull;
@@ -607,6 +669,9 @@ namespace Blastlands.Core.Net
 
             public readonly System.Collections.Generic.List<RaisedWall> RaisedWalls =
                 new System.Collections.Generic.List<RaisedWall>();
+
+            public readonly System.Collections.Generic.List<Zombie> Zombies =
+                new System.Collections.Generic.List<Zombie>();
         }
 
         private struct FlameLine

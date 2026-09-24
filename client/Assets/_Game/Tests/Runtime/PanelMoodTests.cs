@@ -74,5 +74,12 @@ namespace Blastlands.Runtime.Tests
             // look identical to the middle of it.
             Assert.That(PanelMood.Beaten, Is.LessThan(PanelMood.Dead));
         }
+
+        [Test]
+        public void ASurvivedRunKeepsEverySurvivorLit()
+        {
+            Assert.That(PanelMood.AlphaFor(true, RoundOutcome.Survived, false), Is.EqualTo(PanelMood.Full));
+            Assert.That(PanelMood.AlphaFor(false, RoundOutcome.Survived, false), Is.EqualTo(PanelMood.Dead));
+        }
     }
 }

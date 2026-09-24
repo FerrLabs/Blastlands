@@ -1,3 +1,4 @@
+using Blastlands.Core;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -88,6 +89,21 @@ namespace Blastlands.Runtime.Tests
             Assert.That(HudRoster.FitScale(4), Is.EqualTo(1f), "four players keep the size they always had");
             Assert.That(HudRoster.FitScale(5), Is.EqualTo(1f));
             Assert.That(8 * HudRoster.FitScale(8), Is.EqualTo(5f).Within(0.001f));
+        }
+
+        [Test]
+        public void TheWavePlateCountsDownBetweenWavesAndCountsZombiesDuringOne()
+        {
+            var state = new MatchState(new Arena(9, 9), MatchSettings.SurvivalMode, 1u);
+            state.AddPlayer(new GridPos(1, 1));
+            state.WaveCountdown = state.Settings.TicksPerSecond * 2 + 1;
+
+            Assert.That(HudText.Wave(state), Is.EqualTo("WAVE 1 OF 5 IN 3"));
+
+            state.Wave = 2;
+            state.AddZombie(SubPos.AtTileCentre(new GridPos(5, 5)));
+            state.AddZombie(SubPos.AtTileCentre(new GridPos(6, 5)));
+            Assert.That(HudText.Wave(state), Is.EqualTo("WAVE 2 OF 5   2 LEFT"));
         }
     }
 }

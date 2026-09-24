@@ -83,6 +83,25 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
+        public void ASurvivalRunSurvivesTheRoundTrip()
+        {
+            var buffer = new byte[SnapshotCodec.MaxSize];
+            MatchSettings settings = MatchSettings.SurvivalMode;
+            MatchState server = MatchFactory.Create(ArenaSettings.Classic, settings, 2, 11u);
+            MatchState client = MatchFactory.Create(ArenaSettings.Classic, settings, 2, 11u);
+            var inputs = new PlayerInput[2];
+            for (int tick = 0; tick < settings.Survival.FirstWaveTicks + 30; tick++)
+            {
+                MatchSim.Tick(server, inputs);
+            }
+
+            Assert.That(server.Zombies.Count, Is.GreaterThan(0), "the first wave should be on the board");
+            Assert.That(SnapshotCodec.TryApply(buffer, SnapshotCodec.Write(server, buffer), client), Is.True);
+
+            AssertSame(server, client, 0);
+        }
+
+        [Test]
         public void WhoIsABotSurvivesTheRoundTripBothWays()
         {
             var buffer = new byte[SnapshotCodec.MaxSize];
@@ -304,6 +323,18 @@ namespace Blastlands.Core.Tests
                 client.SuddenDeathRings,
                 Is.EqualTo(server.SuddenDeathRings),
                 $"sudden death rings, depth {depth}");
+            Assert.That(client.Wave, Is.EqualTo(server.Wave), $"wave, depth {depth}");
+            Assert.That(client.WaveCountdown, Is.EqualTo(server.WaveCountdown), $"wave countdown, depth {depth}");
+            Assert.That(client.ZombiesSlain, Is.EqualTo(server.ZombiesSlain), $"zombies slain, depth {depth}");
+            Assert.That(client.NextZombieId, Is.EqualTo(server.NextZombieId), $"next zombie, depth {depth}");
+            Assert.That(client.Zombies.Count, Is.EqualTo(server.Zombies.Count), $"zombies, depth {depth}");
+            for (int i = 0; i < server.Zombies.Count; i++)
+            {
+                Assert.That(client.Zombies[i].Id, Is.EqualTo(server.Zombies[i].Id), $"zombie {i} id, depth {depth}");
+                Assert.That(client.Zombies[i].Position, Is.EqualTo(server.Zombies[i].Position), $"zombie {i} position, depth {depth}");
+                Assert.That(client.Zombies[i].Facing, Is.EqualTo(server.Zombies[i].Facing), $"zombie {i} facing, depth {depth}");
+                Assert.That(client.Zombies[i].ChewTicks, Is.EqualTo(server.Zombies[i].ChewTicks), $"zombie {i} chew, depth {depth}");
+            }
 
             for (int y = 0; y < server.Arena.Height; y++)
             {

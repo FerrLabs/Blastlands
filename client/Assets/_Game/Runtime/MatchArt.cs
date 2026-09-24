@@ -28,6 +28,7 @@ namespace Blastlands.Runtime
         [SerializeField] private GameObject flame;
         [SerializeField] private GameObject explosionBurst;
         [SerializeField] private GameObject[] players;
+        [SerializeField] private GameObject[] zombies;
 
         // One per character, in roster order. A character looks the same in the lobby
         // and in the match, so this wins over the seat's model whenever one is known.
@@ -68,6 +69,11 @@ namespace Blastlands.Runtime
         public GameObject PowerUp(PowerUpKind kind)
         {
             return Pick(powerUps, (int)kind);
+        }
+
+        public GameObject Zombie(int variant)
+        {
+            return Pick(zombies, variant);
         }
 
         public GameObject PlayerFor(int index)

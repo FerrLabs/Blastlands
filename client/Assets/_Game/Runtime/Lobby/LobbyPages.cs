@@ -210,6 +210,8 @@ namespace Blastlands.Runtime
                     return "Classic";
                 case GameMode.ClassicBlinded:
                     return "Classic Blinded";
+                case GameMode.Survival:
+                    return "Survival";
                 default:
                     return "Arena";
             }

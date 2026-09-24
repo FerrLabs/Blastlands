@@ -23,7 +23,7 @@ namespace Blastlands.Runtime
 
         public static float AlphaFor(bool alive, RoundOutcome outcome, bool wonTheRound)
         {
-            if (outcome == RoundOutcome.Running)
+            if (outcome == RoundOutcome.Running || outcome == RoundOutcome.Survived)
             {
                 return alive ? Full : Dead;
             }
