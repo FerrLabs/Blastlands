@@ -67,11 +67,22 @@ namespace Blastlands.Core
                     player.SpeedSteps = System.Math.Min(player.SpeedSteps + 2, settings.MaxSpeedSteps);
                     break;
                 case CharacterKind.Grenadier:
-                    player.NextBombKind = BombKind.Cluster;
-                    break;
                 case CharacterKind.Sapper:
-                    player.NextBombKind = BombKind.Pierce;
+                    player.NextBombKind = BombKindFor(kind);
                     break;
+            }
+        }
+
+        public static BombKind BombKindFor(CharacterKind kind)
+        {
+            switch (kind)
+            {
+                case CharacterKind.Grenadier:
+                    return BombKind.Cluster;
+                case CharacterKind.Sapper:
+                    return BombKind.Pierce;
+                default:
+                    return BombKind.Standard;
             }
         }
     }

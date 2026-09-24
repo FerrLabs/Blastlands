@@ -191,9 +191,7 @@ namespace Blastlands.Core
                     continue;
                 }
 
-                var bomb = new Bomb(player.Tile, player.Id, player.FireRange, player.NextBombKind);
-                state.AddBomb(new ActiveBomb(bomb, state.Settings.FuseTicks));
-                player.BombsHeld--;
+                state.AddBomb(new ActiveBomb(player.PlaceBomb(player.Tile), state.Settings.FuseTicks));
             }
         }
 

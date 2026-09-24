@@ -23,6 +23,20 @@ namespace Blastlands.Core.Tests
             Assert.That(Spawned(CharacterKind.Grenadier, Arena).NextBombKind, Is.EqualTo(BombKind.Cluster));
         }
 
+        [Test]
+        public void APickedUpKindGivesWayToTheKitOnceItIsSpent()
+        {
+            PlayerState sapper = Spawned(CharacterKind.Sapper, Arena);
+            sapper.BombsHeld = 1;
+            sapper.NextBombKind = BombKind.Cluster;
+
+            Bomb placed = sapper.PlaceBomb(new GridPos(1, 1));
+
+            Assert.That(placed.Kind, Is.EqualTo(BombKind.Cluster));
+            Assert.That(sapper.NextBombKind, Is.EqualTo(BombKind.Pierce), "the Sapper's own bombs come back");
+            Assert.That(sapper.BombsHeld, Is.Zero);
+        }
+
         // Starting with room for one bomb is what stops a player having two blasts live
         // at once and walling themselves in. It is withheld on purpose and earned through
         // BombUp, so no kit may hand it out, now or when the roster grows.

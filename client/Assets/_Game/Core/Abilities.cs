@@ -193,9 +193,7 @@ namespace Blastlands.Core
                 return false;
             }
 
-            var bomb = new Bomb(landing, player.Id, player.FireRange, player.NextBombKind);
-            state.AddBomb(new ActiveBomb(bomb, state.Settings.FuseTicks));
-            player.BombsHeld--;
+            state.AddBomb(new ActiveBomb(player.PlaceBomb(landing), state.Settings.FuseTicks));
             return true;
         }
 
