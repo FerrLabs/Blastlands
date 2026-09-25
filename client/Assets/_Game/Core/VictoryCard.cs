@@ -55,11 +55,11 @@ namespace Blastlands.Core
 
             if (winner.Id == localSeat)
             {
-                string how = winner.Alive ? "You are the last one standing." : "The ring took everyone, and you held out nearest the middle.";
+                string how = !state.WonByHoldingOut ? "You are the last one standing." : "The ring took everyone, and you held out nearest the middle.";
                 return new VictoryCard(VictoryTone.Won, "VICTORY", how, winner.Id, winner.Character);
             }
 
-            string won = winner.Alive ? " wins." : " wins, holding out nearest the middle.";
+            string won = !state.WonByHoldingOut ? " wins." : " wins, holding out nearest the middle.";
             return new VictoryCard(VictoryTone.Lost, "DEFEAT", Label(winner) + won, winner.Id, winner.Character);
         }
 

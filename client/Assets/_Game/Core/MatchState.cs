@@ -164,6 +164,8 @@ namespace Blastlands.Core
 
         public int WinnerId { get; set; }
 
+        public bool WonByHoldingOut { get; set; }
+
         // How many rings sudden death has already closed, so a match that skips ticks
         // still closes every ring rather than only the one it happens to land on.
         public int SuddenDeathRings { get; set; }

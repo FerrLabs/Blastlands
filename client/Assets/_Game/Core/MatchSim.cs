@@ -474,6 +474,7 @@ namespace Blastlands.Core
                 PlayerState heldOut = SuddenDeath.HeldOutLongest(state, takenByTheRing);
                 state.Outcome = heldOut == null ? RoundOutcome.Draw : RoundOutcome.Winner;
                 state.WinnerId = heldOut == null ? -1 : heldOut.Id;
+                state.WonByHoldingOut = heldOut != null;
                 return;
             }
 

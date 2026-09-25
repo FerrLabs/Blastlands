@@ -14,10 +14,22 @@ namespace Blastlands.Core.Tests
             state.Players[1].Alive = false;
             state.Outcome = RoundOutcome.Winner;
             state.WinnerId = 0;
+            state.WonByHoldingOut = true;
 
             Assert.That(VictoryCard.ForRound(state, 0).Detail, Does.Contain("nearest the middle"));
             Assert.That(VictoryCard.ForRound(state, 1).Detail, Does.Contain("nearest the middle"));
             Assert.That(VictoryCard.ForRound(state, 1).Heading, Is.EqualTo("DEFEAT"));
+        }
+
+        [Test]
+        public void TheCardTrustsHowTheRoundWasWonOverABodyTheLastSnapshotNeverKilled()
+        {
+            MatchState state = Ended(RoundOutcome.Winner, 1);
+            state.WonByHoldingOut = true;
+
+            Assert.That(state.Players[1].Alive, Is.True, "the snapshot where the ring took them never arrived");
+            Assert.That(VictoryCard.ForRound(state, 1).Detail, Does.Contain("nearest the middle"));
+            Assert.That(VictoryCard.ForRound(state, 0).Detail, Does.Contain("nearest the middle"));
         }
 
         private static MatchState Ended(RoundOutcome outcome, int winner)

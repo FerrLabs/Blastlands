@@ -102,6 +102,24 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
+        public void HowTheRoundWasWonSurvivesTheRoundTrip()
+        {
+            var buffer = new byte[SnapshotCodec.MaxSize];
+            MatchState server = Blank(7u);
+            MatchState client = Blank(7u);
+            server.Outcome = RoundOutcome.Winner;
+            server.WinnerId = 2;
+            server.WonByHoldingOut = true;
+
+            Assert.That(SnapshotCodec.TryApply(buffer, SnapshotCodec.Write(server, buffer), client), Is.True);
+            Assert.That(client.WonByHoldingOut, Is.True);
+
+            server.WonByHoldingOut = false;
+            Assert.That(SnapshotCodec.TryApply(buffer, SnapshotCodec.Write(server, buffer), client), Is.True);
+            Assert.That(client.WonByHoldingOut, Is.False);
+        }
+
+        [Test]
         public void WhoIsABotSurvivesTheRoundTripBothWays()
         {
             var buffer = new byte[SnapshotCodec.MaxSize];
@@ -318,6 +336,7 @@ namespace Blastlands.Core.Tests
             Assert.That(client.Tick, Is.EqualTo(server.Tick), $"tick, depth {depth}");
             Assert.That(client.Outcome, Is.EqualTo(server.Outcome), $"outcome, depth {depth}");
             Assert.That(client.WinnerId, Is.EqualTo(server.WinnerId), $"winner, depth {depth}");
+            Assert.That(client.WonByHoldingOut, Is.EqualTo(server.WonByHoldingOut), $"held out, depth {depth}");
             Assert.That(client.NextBombId, Is.EqualTo(server.NextBombId), $"next bomb id, depth {depth}");
             Assert.That(
                 client.SuddenDeathRings,
