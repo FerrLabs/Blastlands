@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.128] - 2026-09-25
+
+### Refactoring
+
+- refactor(client): split MatchView into one class per kind of thing it draws (#150)
+
 ## [26.9.127] - 2026-09-25
 
 ### Refactoring
