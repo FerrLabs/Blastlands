@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9ba2a02cfae81af4e8ee2d86c9310473, type: 3}
+  m_Name: Theme_Military
+  m_EditorClassIdentifier: Blastlands.Runtime::Blastlands.Runtime.ArenaTheme
+  label: Military base
+  groundTint: {r: 0.39, g: 0.36, b: 0.25, a: 1}
+  floorTiles:
+  - {fileID: 3890554199827564479, guid: 5f13adf1020d9d3428e681e3b4de11ff, type: 3}
+  - {fileID: 8890560095366816334, guid: b29f790137fbc384492d6fa83ec92f54, type: 3}
+  hardBlocks:
+  - {fileID: 1107953439849880, guid: 0448a57133ebdce4dad0610b16b906c8, type: 3}
+  - {fileID: 1577977449414806, guid: 0d5569599eee0034bb67ef4bb8636cbc, type: 3}
+  - {fileID: 1815777327477194, guid: 14c36f60fdada0942b6efdc93f6be53f, type: 3}
+  softBlocks:
+  - {fileID: 1487651401178866, guid: 3810f55148750d8469322ea3aacf03de, type: 3}
+  - {fileID: 1674779952516064, guid: 17faa96b11b19294e89e20de1ddd1169, type: 3}
+  - {fileID: 1741896867869746, guid: 0cc54cbc9d66f2c49a0ea9c172726104, type: 3}
+  - {fileID: 1524254028136972, guid: 99c18b9ac82613d499c46b0aad4987e9, type: 3}
+  bushes:
+  - {fileID: 6938313185453466299, guid: 3d7b3b0cc989a8b42b09ddb0ad31ef4d, type: 3}
+  - {fileID: 8498775590324875546, guid: 046fcab6e891a844abfc53b520c8f394, type: 3}
+  - {fileID: 8198007480350305466, guid: 91ef7d7e0e16b3d439e4c76b268739aa, type: 3}
+  scenery:
+  - {fileID: 1739225600768104, guid: 808adfe0fd4d4594ca1a1a862b909636, type: 3}
+  - {fileID: 1182431360760374, guid: cf20df4b4c5ed094fac5975709fa5a9c, type: 3}
+  - {fileID: 1817434102127620, guid: 42cc77aa802f24c4fa00255608d2216b, type: 3}
+  - {fileID: 1112122440176180, guid: 7fa410500dabdde4cb375f3c7e442e92, type: 3}
+  - {fileID: 1585046746804020, guid: 2faa6c71ed9b84645b2264fb68cdf71d, type: 3}
+  - {fileID: 1701492539383096, guid: f412087be1cfed240a11d8e9ae52096e, type: 3}
+  cliffs:
+  - {fileID: 4905485108370227772, guid: ae1b00ab0436c534c8afc42e19ab6e96, type: 3}
+  - {fileID: 6415082291862398264, guid: cc6ce2b1c2cc42a4680c685604f3d642, type: 3}
+  - {fileID: 8143087844690495153, guid: ed0d53bff53cd7a4182b1cd7eb6b7802, type: 3}
+  - {fileID: 8794171678619182943, guid: e39229f251ffbf3478cb0891e878d698, type: 3}
+  groundDetail:
+  - {fileID: 1854564238752580, guid: be921efec84bab046a38beb1065891fe, type: 3}
+  - {fileID: 1229268116339154, guid: 75b666e4ef03b0c4c81ac47ee922c406, type: 3}
+  - {fileID: 1610872031058016, guid: f75d79ac09ff38646a88f11a849b8518, type: 3}
+  - {fileID: 1884103967180692, guid: 9c99fee505c7d934a8b17115316ac479, type: 3}

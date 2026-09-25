@@ -119,7 +119,8 @@ directly in the editor runs the same thing in Arena.
 
 ### Presentation
 
-- Four arena themes (Wasteland, Desert, Scorched, Overgrown), one picked per match.
+- Six arena themes (Wasteland, Desert, Scorched, Overgrown, Military base, Crypt), one picked
+  per match.
 - Low-poly Synty art, with a 3D preview of your character in the lobby.
 - A camera that follows your player, online and alone on a couch, and a split screen when
   several people play locally. `--no-shake` on the command line turns off the screen shake
