@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.127] - 2026-09-25
+
+### Refactoring
+
+- refactor(core): split BotBrain into one class per thing the bot reasons about (#152)
+
 ## [26.9.126] - 2026-09-25
 
 ### Bug Fixes
