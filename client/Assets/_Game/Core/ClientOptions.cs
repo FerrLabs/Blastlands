@@ -26,7 +26,7 @@ namespace Blastlands.Core
         {
             for (int i = 0; i < arguments.Count - 1; i++)
             {
-                if (arguments[i] == ServerOptions.LobbyFlag)
+                if (arguments[i] == HostOptions.LobbyFlag)
                 {
                     string value = arguments[i + 1].Trim();
                     if (value.StartsWith("http://", StringComparison.OrdinalIgnoreCase)

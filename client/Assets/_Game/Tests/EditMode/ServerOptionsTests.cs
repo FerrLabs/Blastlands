@@ -1,49 +1,33 @@
 using System;
-using System.Collections.Generic;
 using NUnit.Framework;
 
 namespace Blastlands.Core.Tests
 {
-    // An instance that starts on the wrong numbers is worse than one that refuses to
-    // start: a wrong port collides with a neighbour, a wrong match id releases somebody
-    // else's match, and a lobby it cannot reach means a port held until a restart. So
-    // most of these are about refusing, and about saying why.
+    // A match started on the wrong numbers is worse than one refused: a wrong match id
+    // releases somebody else's match, and a seat count the board cannot hold crashes the
+    // slot rather than telling the lobby why. So most of these are about refusing, and
+    // about saying which field of the assignment was wrong.
     public class ServerOptionsTests
     {
-        private static readonly string[] Complete =
+        private static bool Create(
+            out ServerOptions options,
+            out string error,
+            string match = "abc123",
+            string players = "4",
+            string humans = null,
+            string mode = null,
+            string bots = null)
         {
-            "--port", "7777",
-            "--match", "abc123",
-            "--players", "4",
-            "--lobby", "https://lobby.example.com",
-            "--token", "shared-secret"
-        };
-
-        private static Func<string, string> NoEnvironment
-        {
-            get { return _ => null; }
-        }
-
-        private static Func<string, string> Environment(params string[] pairs)
-        {
-            var map = new Dictionary<string, string>();
-            for (int i = 0; i + 1 < pairs.Length; i += 2)
-            {
-                map[pairs[i]] = pairs[i + 1];
-            }
-
-            return key => map.TryGetValue(key, out string value) ? value : null;
+            return ServerOptions.TryCreate(
+                7001, "https://lobby.example.com", "shared-secret", match, players, humans, mode, bots, out options, out error);
         }
 
         [Test]
-        public void AFullCommandLineIsRead()
+        public void AnAssignmentIsReadAlongsideWhatTheHostAlreadyKnows()
         {
-            Assert.That(
-                ServerOptions.TryRead(Complete, NoEnvironment, out ServerOptions options, out string error),
-                Is.True,
-                error);
+            Assert.That(Create(out ServerOptions options, out string error), Is.True, error);
 
-            Assert.That(options.ListenPort, Is.EqualTo(7777));
+            Assert.That(options.ListenPort, Is.EqualTo(7001));
             Assert.That(options.MatchId, Is.EqualTo("abc123"));
             Assert.That(options.ExpectedPlayers, Is.EqualTo(4));
             Assert.That(options.LobbyUrl, Is.EqualTo("https://lobby.example.com"));
@@ -51,59 +35,37 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
-        public void AnEntrypointThatNamesNoModeGetsArena()
+        public void AnAssignmentThatNamesNoModeOrBotsGetsArenaAndNormal()
         {
-            Assert.That(ServerOptions.TryRead(Complete, NoEnvironment, out ServerOptions options, out string error), Is.True, error);
+            Assert.That(Create(out ServerOptions options, out string error), Is.True, error);
 
-            Assert.That(options.Mode, Is.EqualTo(GameMode.Arena));
+            Assert.That(options.Mode, Is.EqualTo(GameMode.Arena), "a lobby from before modes");
+            Assert.That(options.BotSkill, Is.EqualTo(BotSkill.Normal), "a lobby from before the choice existed");
         }
 
         [Test]
-        public void TheModeIsReadFromTheCommandLineOrTheEnvironment()
+        public void TheModeAndTheBotsAreRead()
         {
-            var arguments = new List<string>(Complete) { "--mode", "classic_blinded" };
-            Assert.That(ServerOptions.TryRead(arguments, NoEnvironment, out ServerOptions fromFlag, out string error), Is.True, error);
-            Assert.That(ServerOptions.TryRead(Complete, Environment("BLASTLANDS_MODE", "classic"), out ServerOptions fromEnv, out error), Is.True, error);
+            Assert.That(Create(out ServerOptions options, out string error, mode: "classic_blinded", bots: "hard"), Is.True, error);
 
-            Assert.That(fromFlag.Mode, Is.EqualTo(GameMode.ClassicBlinded));
-            Assert.That(fromEnv.Mode, Is.EqualTo(GameMode.Classic));
+            Assert.That(options.Mode, Is.EqualTo(GameMode.ClassicBlinded));
+            Assert.That(options.BotSkill, Is.EqualTo(BotSkill.Hard));
         }
 
         [Test]
-        public void AModeNobodyKnowsIsRefusedRatherThanPlayedAsArena()
+        public void AModeOrABotSkillNobodyKnowsIsRefusedRatherThanGuessed()
         {
-            var arguments = new List<string>(Complete) { "--mode", "bomberman" };
+            Assert.That(Create(out _, out string error, mode: "bomberman"), Is.False);
+            Assert.That(error, Does.Contain(ServerOptions.ModeField));
 
-            Assert.That(ServerOptions.TryRead(arguments, NoEnvironment, out _, out string error), Is.False);
-            Assert.That(error, Does.Contain("--mode"));
-        }
-
-        [Test]
-        public void TheBotSkillIsReadAndDefaultsToNormal()
-        {
-            var arguments = new List<string>(Complete) { "--bots", "hard" };
-            Assert.That(ServerOptions.TryRead(arguments, NoEnvironment, out ServerOptions fromFlag, out string error), Is.True, error);
-            Assert.That(ServerOptions.TryRead(Complete, Environment("BLASTLANDS_BOTS", "easy"), out ServerOptions fromEnv, out error), Is.True, error);
-            Assert.That(ServerOptions.TryRead(Complete, NoEnvironment, out ServerOptions unnamed, out error), Is.True, error);
-
-            Assert.That(fromFlag.BotSkill, Is.EqualTo(BotSkill.Hard));
-            Assert.That(fromEnv.BotSkill, Is.EqualTo(BotSkill.Easy));
-            Assert.That(unnamed.BotSkill, Is.EqualTo(BotSkill.Normal), "an entrypoint from before the choice existed");
-        }
-
-        [Test]
-        public void ABotSkillNobodyKnowsIsRefused()
-        {
-            var arguments = new List<string>(Complete) { "--bots", "nightmare" };
-
-            Assert.That(ServerOptions.TryRead(arguments, NoEnvironment, out _, out string error), Is.False);
-            Assert.That(error, Does.Contain("--bots"));
+            Assert.That(Create(out _, out error, bots: "nightmare"), Is.False);
+            Assert.That(error, Does.Contain(ServerOptions.BotsField));
         }
 
         [Test]
         public void WithoutAHumanCountEverySeatIsWaitedFor()
         {
-            Assert.That(ServerOptions.TryRead(Complete, NoEnvironment, out ServerOptions options, out string error), Is.True, error);
+            Assert.That(Create(out ServerOptions options, out string error), Is.True, error);
 
             Assert.That(options.ExpectedHumans, Is.EqualTo(options.ExpectedPlayers));
         }
@@ -111,9 +73,7 @@ namespace Blastlands.Core.Tests
         [Test]
         public void TheHumanCountIsReadBesideTheSeats()
         {
-            var arguments = new List<string>(Complete) { ServerOptions.HumansFlag, "2" };
-
-            Assert.That(ServerOptions.TryRead(arguments, NoEnvironment, out ServerOptions options, out string error), Is.True, error);
+            Assert.That(Create(out ServerOptions options, out string error, humans: "2"), Is.True, error);
 
             Assert.That(options.ExpectedPlayers, Is.EqualTo(4));
             Assert.That(options.ExpectedHumans, Is.EqualTo(2));
@@ -124,119 +84,26 @@ namespace Blastlands.Core.Tests
         {
             foreach (string humans in new[] { "5", "0", "two" })
             {
-                var arguments = new List<string>(Complete) { ServerOptions.HumansFlag, humans };
-
-                Assert.That(ServerOptions.TryRead(arguments, NoEnvironment, out _, out string error), Is.False, humans);
-                Assert.That(error, Does.Contain(ServerOptions.HumansFlag));
+                Assert.That(Create(out _, out string error, humans: humans), Is.False, humans);
+                Assert.That(error, Does.Contain(ServerOptions.HumansField));
             }
         }
 
         [Test]
-        public void TheEnvironmentAnswersWhateverTheArgumentsDoNot()
+        public void AnAssignmentWithoutAMatchOrSeatsSaysWhichFieldIsMissing()
         {
-            string[] arguments = { "--port", "7777" };
+            Assert.That(Create(out _, out string error, match: " "), Is.False);
+            Assert.That(error, Does.Contain(ServerOptions.MatchField));
 
-            Assert.That(
-                ServerOptions.TryRead(
-                    arguments,
-                    Environment(
-                        ServerOptions.MatchVariable, "abc123",
-                        ServerOptions.PlayersVariable, "2",
-                        ServerOptions.LobbyVariable, "http://lobby.internal",
-                        ServerOptions.TokenVariable, "shared-secret"),
-                    out ServerOptions options,
-                    out string error),
-                Is.True,
-                error);
-
-            Assert.That(options.ListenPort, Is.EqualTo(7777));
-            Assert.That(options.ExpectedPlayers, Is.EqualTo(2));
-        }
-
-        [Test]
-        public void AnArgumentBeatsTheEnvironment()
-        {
-            // A host is configured once through the environment; an argument is how one
-            // instance out of several on that host is told which one it is. If the
-            // general setting won, every instance on the box would take the same port.
-            Assert.That(
-                ServerOptions.TryRead(
-                    Complete,
-                    Environment(ServerOptions.PortVariable, "9999"),
-                    out ServerOptions options,
-                    out _),
-                Is.True);
-
-            Assert.That(options.ListenPort, Is.EqualTo(7777));
-        }
-
-        [Test]
-        public void EachMissingSettingSaysWhichOneAndHowToSupplyIt()
-        {
-            foreach (string flag in new[]
-                     {
-                         ServerOptions.PortFlag,
-                         ServerOptions.MatchFlag,
-                         ServerOptions.PlayersFlag,
-                         ServerOptions.LobbyFlag,
-                         ServerOptions.TokenFlag
-                     })
-            {
-                var without = new List<string>(Complete);
-                int at = without.IndexOf(flag);
-                without.RemoveRange(at, 2);
-
-                Assert.That(
-                    ServerOptions.TryRead(without, NoEnvironment, out _, out string error),
-                    Is.False,
-                    $"started without {flag}");
-
-                Assert.That(error, Does.Contain(flag), "the message does not name the missing setting");
-            }
-        }
-
-        [Test]
-        public void AFlagWithNothingAfterItIsMissingRatherThanEmpty()
-        {
-            // The last argument being a bare flag is what a shell leaves behind when a
-            // variable it was expanding was empty. Reading past the end of the array
-            // would be the obvious way to crash on it.
-            string[] arguments = { "--match", "abc", "--players", "2", "--lobby", "http://x", "--token", "s", "--port" };
-
-            Assert.That(ServerOptions.TryRead(arguments, NoEnvironment, out _, out string error), Is.False);
-            Assert.That(error, Does.Contain(ServerOptions.PortFlag));
-        }
-
-        [Test]
-        public void ANumberThatIsNotOneIsRefusedRatherThanTreatedAsZero()
-        {
-            string[] arguments = { "--port", "seven", "--match", "abc", "--players", "2", "--lobby", "http://x", "--token", "s" };
-
-            Assert.That(ServerOptions.TryRead(arguments, NoEnvironment, out _, out string error), Is.False);
-            Assert.That(error, Does.Contain("seven"));
-        }
-
-        [Test]
-        public void APortOutsideTheRangeIsRefused()
-        {
-            foreach (string port in new[] { "0", "65536", "-1" })
-            {
-                string[] arguments = { "--port", port, "--match", "abc", "--players", "2", "--lobby", "http://x", "--token", "s" };
-
-                Assert.That(
-                    ServerOptions.TryRead(arguments, NoEnvironment, out _, out _),
-                    Is.False,
-                    $"accepted port {port}");
-            }
+            Assert.That(Create(out _, out error, players: null), Is.False);
+            Assert.That(error, Does.Contain(ServerOptions.PlayersField));
         }
 
         [Test]
         public void AMatchWithNobodyInItIsRefused()
         {
-            string[] arguments = { "--port", "7777", "--match", "abc", "--players", "0", "--lobby", "http://x", "--token", "s" };
-
-            Assert.That(ServerOptions.TryRead(arguments, NoEnvironment, out _, out string error), Is.False);
-            Assert.That(error, Does.Contain(ServerOptions.PlayersFlag));
+            Assert.That(Create(out _, out string error, players: "0"), Is.False);
+            Assert.That(error, Does.Contain(ServerOptions.PlayersField));
         }
 
         [Test]
@@ -246,9 +113,7 @@ namespace Blastlands.Core.Tests
             // knows and this does not. Restating a number here would be a second answer
             // to drift away from the first, so a high count is accepted and fails later
             // with the count the arena actually has.
-            string[] arguments = { "--port", "7777", "--match", "abc", "--players", "99", "--lobby", "http://x", "--token", "s" };
-
-            Assert.That(ServerOptions.TryRead(arguments, NoEnvironment, out ServerOptions options, out _), Is.True);
+            Assert.That(Create(out ServerOptions options, out string error, players: "99"), Is.True, error);
             Assert.That(options.ExpectedPlayers, Is.EqualTo(99));
 
             // Spelled TestDelegate rather than passed inline, the same way
@@ -264,65 +129,14 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
-        public void ALobbyThatIsNotAnHttpUrlIsRefused()
-        {
-            // It is handed to an HTTP client later. A bare host or a file path fails
-            // there instead, at the moment the match is trying to report its result.
-            foreach (string lobby in new[] { "lobby.example.com", "ftp://lobby", "/var/run/lobby.sock" })
-            {
-                string[] arguments = { "--port", "7777", "--match", "abc", "--players", "2", "--lobby", lobby, "--token", "s" };
-
-                Assert.That(
-                    ServerOptions.TryRead(arguments, NoEnvironment, out _, out _),
-                    Is.False,
-                    $"accepted {lobby}");
-            }
-        }
-
-        [Test]
         public void SurroundingSpaceIsTrimmedRatherThanCarried()
         {
-            // A compose file or a systemd unit quotes values, and the space inside the
-            // quotes survives. A match id with a trailing space is a different id to the
-            // lobby, and the release call would quietly 404.
-            Assert.That(
-                ServerOptions.TryRead(
-                    new[] { "--port", " 7777 ", "--match", " abc ", "--players", " 2 ", "--lobby", " http://x ", "--token", " s " },
-                    NoEnvironment,
-                    out ServerOptions options,
-                    out string error),
-                Is.True,
-                error);
+            // A match id with a trailing space is a different id to the lobby, and the
+            // release call would quietly 404.
+            Assert.That(Create(out ServerOptions options, out string error, match: " abc ", players: " 2 "), Is.True, error);
 
             Assert.That(options.MatchId, Is.EqualTo("abc"));
-            Assert.That(options.LobbyUrl, Is.EqualTo("http://x"));
-            Assert.That(options.ListenPort, Is.EqualTo(7777));
-        }
-
-        [Test]
-        public void TheSplitTheImageEntrypointUsesIsAccepted()
-        {
-            // What a pod on a fixed port actually passes: the port, the lobby and the
-            // token are the host's configuration and stay in the environment, where the
-            // token is also out of the process table. Only the two that change from one
-            // match to the next arrive as arguments.
-            Assert.That(
-                ServerOptions.TryRead(
-                    new[] { "--match", "abc123", "--players", "3" },
-                    Environment(
-                        ServerOptions.PortVariable, "7001",
-                        ServerOptions.LobbyVariable, "https://api.blastlands.ferrlabs.com",
-                        ServerOptions.TokenVariable, "shared-secret"),
-                    out ServerOptions options,
-                    out string error),
-                Is.True,
-                error);
-
-            Assert.That(options.ListenPort, Is.EqualTo(7001));
-            Assert.That(options.MatchId, Is.EqualTo("abc123"));
-            Assert.That(options.ExpectedPlayers, Is.EqualTo(3));
-            Assert.That(options.LobbyUrl, Is.EqualTo("https://api.blastlands.ferrlabs.com"));
-            Assert.That(options.InstanceToken, Is.EqualTo("shared-secret"));
+            Assert.That(options.ExpectedPlayers, Is.EqualTo(2));
         }
     }
 }
