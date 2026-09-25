@@ -217,6 +217,17 @@ namespace Blastlands.Runtime
             }
         }
 
+        private static float Expiry(GameObject instance, float lifetime)
+        {
+            float emitting = 0f;
+            foreach (ParticleSystem system in instance.GetComponentsInChildren<ParticleSystem>(true))
+            {
+                emitting = Mathf.Max(emitting, system.main.duration);
+            }
+
+            return emitting + lifetime;
+        }
+
         // One burst per bomb that went off, staged where the bomb was. Firing one per
         // burning tile meant a single range-three blast stacked nine smoke plumes on
         // top of each other and the arena stayed fogged in. The flames along the arms
@@ -294,7 +305,7 @@ namespace Blastlands.Runtime
                     GameObject burst = Object.Instantiate(prefab, MatchView.ToWorld(detonated[i], 0.05f), Quaternion.identity, stage.Root);
                     burst.transform.localScale = Vector3.one * burstScale;
                     TuneParticles(burst, burstLifetime);
-                    Object.Destroy(burst, 2f);
+                    Object.Destroy(burst, Expiry(burst, burstLifetime));
                 }
             }
 

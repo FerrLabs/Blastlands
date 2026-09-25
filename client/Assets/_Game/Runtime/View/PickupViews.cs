@@ -139,8 +139,8 @@ namespace Blastlands.Runtime
 
                 if (created)
                 {
-                    TileFitter.FitInBox(view, looseBombSize);
                     Snuff(view);
+                    TileFitter.FitInBox(view, looseBombSize);
                 }
 
                 TileFitter.PlaceOnTile(view, MatchView.ToWorld(state.LooseBombs[i], 0f));
