@@ -53,6 +53,15 @@ repository.
 Anything left untracked in the submodule stays on your machine only, which is how a pack can be
 imported whole to browse it without growing the repository.
 
+## Public domain sound
+
+The sound effects are the exception to the split. They are built from Kenney's packs, which are
+released under CC0, so nothing stops them living in this repository, and they do: under
+`client/Assets/_Game/Audio`, next to a `LICENSE.txt` that names the source pack and the source file
+of every clip. Add a sound there only if its licence is CC0 or equivalent, and record where it came
+from in that file in the same commit. Anything under a licence that forbids redistributing the raw
+file, however free to use in a game, goes in the submodule like the Synty art.
+
 ## Rendered images
 
 The download page at `blastlands.ferrlabs.com` shows the four characters. Those pictures live in
