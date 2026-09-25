@@ -45,6 +45,8 @@ namespace Blastlands.Runtime
         [SerializeField] private MatchFog fog;
         [SerializeField] private ArenaTheme[] themes;
 
+        private string matchId = string.Empty;
+
         [SerializeField] private string host = "127.0.0.1";
         [SerializeField] private int port = 7777;
         [SerializeField] private string ticket = "";
@@ -103,6 +105,7 @@ namespace Blastlands.Runtime
                 port = invite.Port;
                 ticket = invite.Ticket;
                 mode = invite.Mode;
+                matchId = invite.MatchId;
             }
 
             devices = new PlayerDevices(1);
@@ -205,7 +208,7 @@ namespace Blastlands.Runtime
 
             if (view != null)
             {
-                view.UseTheme(themes != null && themes.Length > 0 ? themes[0] : null);
+                view.UseTheme(themes != null && themes.Length > 0 ? themes[ThemePick.For(matchId, themes.Length)] : null);
                 view.Bind(state);
                 view.Interpolate(trail, clock, seat, OwnPosition);
             }
