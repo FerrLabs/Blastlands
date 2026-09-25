@@ -10,7 +10,7 @@ namespace Blastlands.Core.Tests
         {
             const string match = "05ebdca0-596e-4dc8-87a1-0a68aa901f17";
 
-            Assert.That(ThemePick.For(match, 4), Is.EqualTo(ThemePick.For(string.Copy(match), 4)));
+            Assert.That(ThemePick.For(match, 4), Is.EqualTo(3), "pinned: clients only agree while this number never moves");
         }
 
         [Test]
