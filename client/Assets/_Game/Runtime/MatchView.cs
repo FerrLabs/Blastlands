@@ -120,21 +120,21 @@ namespace Blastlands.Runtime
                 -((position.Y / (float)SubPos.UnitsPerTile) - 0.5f));
         }
 
-        // Set before Bind. Changing it later would leave an arena half built out of
-        // two themes, which is worse than either of them.
+        // Both set before Bind. Changing either later would leave an arena half built
+        // out of two themes or two art packs, which is worse than either of them.
         public void UseTheme(ArenaTheme next)
         {
             theme = next;
         }
 
-        public MatchArt Art
-        {
-            get { return art; }
-        }
-
         public void Dress(MatchArt matchArt)
         {
             art = matchArt;
+        }
+
+        public MatchArt Art
+        {
+            get { return art; }
         }
 
         public void Bind(MatchState matchState)
