@@ -342,11 +342,12 @@ namespace Blastlands.Runtime
                 return;
             }
 
-            var writer = new FastBufferWriter(sizeof(int) * 2, Unity.Collections.Allocator.Temp);
+            var writer = new FastBufferWriter(sizeof(int) * 3, Unity.Collections.Allocator.Temp);
             using (writer)
             {
                 writer.WriteValueSafe((int)state.Outcome);
                 writer.WriteValueSafe(state.WinnerId);
+                writer.WriteValueSafe(state.WonByHoldingOut ? 1 : 0);
                 network.CustomMessagingManager.SendNamedMessageToAll(
                     ResultMessage, writer, NetworkDelivery.ReliableSequenced);
             }
@@ -620,15 +621,16 @@ namespace Blastlands.Runtime
 
         private void OnResultReceived(ulong sender, FastBufferReader payload)
         {
-            if (clientState == null || payload.Length - payload.Position < sizeof(int) * 2)
+            if (clientState == null || payload.Length - payload.Position < sizeof(int) * 3)
             {
                 return;
             }
 
             payload.ReadValueSafe(out int outcome);
             payload.ReadValueSafe(out int winner);
+            payload.ReadValueSafe(out int heldOut);
 
-            if (outcome < 0 || outcome > SnapshotCodec.HighestOutcome)
+            if (outcome < 0 || outcome > SnapshotCodec.HighestOutcome || heldOut < 0 || heldOut > 1)
             {
                 return;
             }
@@ -636,6 +638,7 @@ namespace Blastlands.Runtime
             finished = true;
             clientState.Outcome = (RoundOutcome)outcome;
             clientState.WinnerId = winner;
+            clientState.WonByHoldingOut = heldOut == 1;
             MatchEnded?.Invoke((RoundOutcome)outcome, winner);
         }
 

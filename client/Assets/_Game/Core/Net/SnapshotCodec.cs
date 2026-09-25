@@ -39,6 +39,7 @@ namespace Blastlands.Core.Net
             writer.Int32(state.Tick);
             writer.Byte((byte)state.Outcome);
             writer.Int16(state.WinnerId);
+            writer.Byte(state.WonByHoldingOut ? (byte)1 : (byte)0);
             writer.Int32(state.SuddenDeathRings);
             writer.Int32(state.NextBombId);
             writer.Int16(state.Wave);
@@ -85,6 +86,7 @@ namespace Blastlands.Core.Net
             int tick = reader.Int32();
             var outcome = (RoundOutcome)reader.Byte();
             int winner = reader.Int16();
+            byte heldOut = reader.Byte();
             int rings = reader.Int32();
             int nextBomb = reader.Int32();
             int wave = reader.Int16();
@@ -97,7 +99,7 @@ namespace Blastlands.Core.Net
             // Running nor Winner nor Draw, so anything choosing between "keep playing"
             // and "show the result" fell through every case: the match stopped being
             // over and stopped being running at the same time, silently.
-            if (!reader.Ok || tick < 0 || (byte)outcome > HighestOutcome
+            if (!reader.Ok || tick < 0 || (byte)outcome > HighestOutcome || heldOut > 1
                 || wave < 0 || waveCountdown < 0 || slain < 0 || nextZombie < 0 || nextBomb < 1)
             {
                 return false;
@@ -120,6 +122,7 @@ namespace Blastlands.Core.Net
             state.Tick = tick;
             state.Outcome = outcome;
             state.WinnerId = winner;
+            state.WonByHoldingOut = heldOut == 1;
             state.SuddenDeathRings = rings;
             state.NextBombId = nextBomb;
             state.Wave = wave;

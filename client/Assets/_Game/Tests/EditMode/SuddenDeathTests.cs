@@ -80,6 +80,7 @@ namespace Blastlands.Core.Tests
             Assert.That(state.Players[1].Alive, Is.False);
             Assert.That(state.Outcome, Is.EqualTo(RoundOutcome.Winner), "the ring cannot end a round in a draw");
             Assert.That(state.WinnerId, Is.EqualTo(0), "row 6 is nearer the middle of a 15 by 15 board than row 3");
+            Assert.That(state.WonByHoldingOut, Is.True);
         }
 
         [Test]
@@ -102,6 +103,7 @@ namespace Blastlands.Core.Tests
             Run(state, 1);
 
             Assert.That(state.Outcome, Is.EqualTo(RoundOutcome.Draw), "only the ring gets a tie-break");
+            Assert.That(state.WonByHoldingOut, Is.False);
         }
 
         [Test]
