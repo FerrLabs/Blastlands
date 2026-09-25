@@ -36,6 +36,20 @@ namespace Blastlands.Core
             return false;
         }
 
+        internal static List<ActiveBomb> WithBombAt(MatchState state, PlayerState player, GridPos tile)
+        {
+            var bombs = new List<ActiveBomb>(state.Bombs.Count + 1);
+            for (int i = 0; i < state.Bombs.Count; i++)
+            {
+                bombs.Add(state.Bombs[i]);
+            }
+
+            bombs.Add(new ActiveBomb(
+                new Bomb(tile, player.Id, player.FireRange, player.NextBombKind), state.Settings.FuseTicks));
+
+            return bombs;
+        }
+
         // Whether a bomb at `from` would cover `target`.
         //
         // What this replaces, EnemyInBlastLine, walked the four cardinals. That was right

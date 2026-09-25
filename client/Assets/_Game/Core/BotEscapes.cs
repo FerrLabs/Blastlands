@@ -71,7 +71,7 @@ namespace Blastlands.Core
         internal static Direction AfterBombing(
             MatchState state, PlayerState player, GridPos tile, int ticksPerTile, int safetyMarginTicks)
         {
-            BlastMap after = BlastMap.From(state, BotTraps.WithBombAt(state, player, tile));
+            BlastMap after = BlastMap.From(state, BotGrid.WithBombAt(state, player, tile));
 
             // Only ground the hypothetical bombs cannot reach at all counts here, with
             // none of the fallback StepToSafety allows. Settling for a tile that merely
