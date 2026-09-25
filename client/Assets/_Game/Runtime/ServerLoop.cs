@@ -1,4 +1,5 @@
 #if UNITY_SERVER
+using System;
 using Blastlands.Core;
 using Blastlands.Core.Net;
 using UnityEngine;
@@ -22,14 +23,19 @@ namespace Blastlands.Runtime
         private StandIns standIns;
         private int humans;
         private string ending;
-        private int endingCode;
+        private bool endingCleanly;
+        private Action<bool> ended;
         private int ticksLeft;
         private bool started;
         private float waited;
 
-        public void Run(MatchState matchState, ServerOptions options, GameTicketVerifier tickets)
+        // `onEnded` hears whether the match ended cleanly, once the lobby has been told it
+        // is over. A process that plays several matches keeps running after this one, so
+        // the end of a match is a callback rather than the end of the process.
+        public void Run(MatchState matchState, ServerOptions options, GameTicketVerifier tickets, Action<bool> onEnded)
         {
             state = matchState;
+            ended = onEnded;
             inputs = new PlayerInput[state.Players.Count];
             standIns = new StandIns(state.Players.Count, BotSkills.SettingsFor(options.BotSkill));
             humans = options.ExpectedHumans;
@@ -41,12 +47,6 @@ namespace Blastlands.Runtime
             // rather than MaxMatchSeconds, which is 45s more in the worst case against
             // the ten minutes this reclaims from a match nobody joined.
             ticksLeft = state.Settings.TicksPerSecond * MaxMatchSeconds;
-
-            // The tick rate is the frame rate here. A server with nothing to draw will
-            // otherwise run the loop as fast as the machine allows and bill a whole core
-            // for the privilege of waiting.
-            Application.targetFrameRate = state.Settings.TicksPerSecond;
-            QualitySettings.vSyncCount = 0;
 
             // Listening before the first tick, so a client that connects the moment the
             // lobby hands out the endpoint is not refused while the process finishes
@@ -77,12 +77,12 @@ namespace Blastlands.Runtime
         {
             // The frame after the one that decided it. Everything queued on the way out,
             // the result message included, gets a network update to leave on before the
-            // socket closes and the process quits.
+            // socket closes.
             if (ending != null)
             {
                 string reason = ending;
                 ending = null;
-                Finish(reason, endingCode);
+                Finish(reason, endingCleanly);
                 return;
             }
 
@@ -141,16 +141,16 @@ namespace Blastlands.Runtime
                     }
 
                     ending = $"match {state.Outcome} after {state.Tick} ticks";
-                    endingCode = ServerBootstrap.Ok;
+                    endingCleanly = true;
                     return;
                 }
 
                 if (ticksLeft <= 0)
                 {
-                    // Non-zero: a match that ran out the clock without resolving is an
-                    // instance that has to be looked at, not one that finished.
+                    // Not clean: a match that ran out the clock without resolving is one
+                    // that has to be looked at, not one that finished.
                     ending = $"match ran {MaxMatchSeconds}s without resolving";
-                    endingCode = ServerBootstrap.FailedToStart;
+                    endingCleanly = false;
                     return;
                 }
             }
@@ -175,20 +175,19 @@ namespace Blastlands.Runtime
 
                 case Kickoff.GiveUp:
                     // A transport that never came up is not the same story: nobody
-                    // could have joined, and the exit code is the machine-readable half
-                    // of that. Reporting Ok would file a bind failure as a success.
+                    // could have joined. Reporting it as clean would file a bind failure
+                    // as a success.
                     if (transport == null)
                     {
                         ending = "the transport never came up, so nobody could join";
-                        endingCode = ServerBootstrap.FailedToStart;
+                        endingCleanly = false;
                         return false;
                     }
 
-                    // Ok rather than a failure code: an instance nobody joined did its
-                    // job. Treating it as a crash would put the pod into a restart
-                    // backoff for something that is going to happen on a quiet evening.
+                    // Clean rather than a failure: a match nobody joined did its job,
+                    // and that is going to happen on every quiet evening.
                     ending = $"nobody joined within {PatienceSeconds:F0}s, releasing the match";
-                    endingCode = ServerBootstrap.Ok;
+                    endingCleanly = true;
                     return false;
 
                 default:
@@ -196,10 +195,10 @@ namespace Blastlands.Runtime
             }
         }
 
-        // Quitting is the last step rather than the first. Application.Quit does not
-        // wait for anything in flight, so releasing after asking to quit would race the
-        // process out from under its own DELETE and strand the port.
-        private void Finish(string reason, int code)
+        // Handing the slot back is the last step rather than the first. The slot tears
+        // this object down when it hears the match is over, so telling it before the
+        // release has landed would destroy the release in flight and strand the port.
+        private void Finish(string reason, bool clean)
         {
             state = null;
             Debug.Log("Blastlands server: " + reason);
@@ -212,11 +211,11 @@ namespace Blastlands.Runtime
 
             if (lobby == null)
             {
-                Application.Quit(code);
+                ended(clean);
                 return;
             }
 
-            lobby.Release(() => Application.Quit(code));
+            lobby.Release(() => ended(clean));
         }
     }
 }

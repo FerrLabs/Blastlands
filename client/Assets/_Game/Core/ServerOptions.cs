@@ -1,39 +1,25 @@
-using System;
-using System.Collections.Generic;
 using System.Globalization;
 
 namespace Blastlands.Core
 {
-    // What an instance is told when it starts: which port to listen on, which match it
-    // is, how many players to wait for, and where to report back.
+    // One match as an instance runs it: the port it is served on, which match it is, how
+    // many players to wait for, and where to report back.
     //
-    // Every one of them is required. There is no useful default for any: a port guessed
-    // wrong collides with another instance on the same host, a wrong match id releases
-    // somebody else's match, and an instance that cannot reach the lobby holds its port
-    // until a restart. Refusing to start with a message an operator can act on beats
-    // starting into any of that.
+    // Built from the lobby's assignment rather than read at startup. A process hosts
+    // several of these over its life, one per match per slot, so what it is told when it
+    // starts is only the part that never changes (`HostOptions`), and the rest arrives
+    // with each match.
+    //
+    // Everything the assignment names is checked, and nothing is guessed. A wrong match
+    // id releases somebody else's match, and a match that cannot seat its players is
+    // better refused with a reason than started into a crash.
     public readonly struct ServerOptions
     {
-        public const string PortFlag = "--port";
-        public const string MatchFlag = "--match";
-        public const string PlayersFlag = "--players";
-        public const string HumansFlag = "--humans";
-        public const string LobbyFlag = "--lobby";
-        public const string TokenFlag = "--token";
-        public const string ModeFlag = "--mode";
-        public const string BotsFlag = "--bots";
-
-        public const string PortVariable = "BLASTLANDS_PORT";
-        public const string MatchVariable = "BLASTLANDS_MATCH";
-        public const string PlayersVariable = "BLASTLANDS_PLAYERS";
-        public const string HumansVariable = "BLASTLANDS_HUMANS";
-        public const string LobbyVariable = "BLASTLANDS_LOBBY";
-        public const string ModeVariable = "BLASTLANDS_MODE";
-        public const string BotsVariable = "BLASTLANDS_BOTS";
-
-        // The same name the lobby reads it under, because it is the same secret. Two
-        // names for one value is how they end up different on one host.
-        public const string TokenVariable = "BLASTLANDS_INSTANCE_TOKEN";
+        public const string MatchField = "match_id";
+        public const string PlayersField = "players";
+        public const string HumansField = "humans";
+        public const string ModeField = "mode";
+        public const string BotsField = "bot_skill";
 
         public ServerOptions(
             int listenPort,
@@ -70,40 +56,27 @@ namespace Blastlands.Core
         // restarts the lobby.
         public string InstanceToken { get; }
 
-        // The one option with a default. An entrypoint from before modes existed never
-        // passes it, and every match it could have been handed was an Arena one.
+        // One of the two fields with a default. A lobby from before modes existed never
+        // names one, and every match it could have handed out was an Arena one.
         public GameMode Mode { get; }
 
         public BotSkill BotSkill { get; }
 
-        // Arguments win over the environment. The environment is how a host is
-        // configured once; the arguments are how one instance out of several on that
-        // host is told what it is, so the more specific of the two has to be the one
-        // that counts.
-        //
-        // `environment` is passed in rather than read, so this stays engine-free and so
-        // a test does not have to mutate the process it runs in.
-        public static bool TryRead(
-            IReadOnlyList<string> arguments,
-            Func<string, string> environment,
+        // The port, the lobby and the token belong to the host and were checked when it
+        // started, so they are taken as they are. The rest is the assignment's text.
+        public static bool TryCreate(
+            int port,
+            string lobbyUrl,
+            string instanceToken,
+            string rawMatch,
+            string rawPlayers,
+            string rawHumans,
+            string rawMode,
+            string rawBots,
             out ServerOptions options,
             out string error)
         {
             options = default;
-
-            string rawPort = Read(arguments, environment, PortFlag, PortVariable);
-            string rawMatch = Read(arguments, environment, MatchFlag, MatchVariable);
-            string rawPlayers = Read(arguments, environment, PlayersFlag, PlayersVariable);
-            string rawHumans = Read(arguments, environment, HumansFlag, HumansVariable);
-            string rawLobby = Read(arguments, environment, LobbyFlag, LobbyVariable);
-            string rawToken = Read(arguments, environment, TokenFlag, TokenVariable);
-            string rawMode = Read(arguments, environment, ModeFlag, ModeVariable);
-            string rawBots = Read(arguments, environment, BotsFlag, BotsVariable);
-
-            if (!TryPort(rawPort, out int port, out error))
-            {
-                return false;
-            }
 
             if (!TryMatchId(rawMatch, out string matchId, out error))
             {
@@ -120,16 +93,6 @@ namespace Blastlands.Core
                 return false;
             }
 
-            if (!TryLobby(rawLobby, out string lobby, out error))
-            {
-                return false;
-            }
-
-            if (!TryToken(rawToken, out string token, out error))
-            {
-                return false;
-            }
-
             if (!TryMode(rawMode, out GameMode mode, out error))
             {
                 return false;
@@ -140,7 +103,7 @@ namespace Blastlands.Core
                 return false;
             }
 
-            options = new ServerOptions(port, matchId, players, humans, lobby, token, mode, bots);
+            options = new ServerOptions(port, matchId, players, humans, lobbyUrl, instanceToken, mode, bots);
             error = null;
             return true;
         }
@@ -159,7 +122,7 @@ namespace Blastlands.Core
                 return true;
             }
 
-            error = $"{ModeFlag} must be arena, classic or classic_blinded, not \"{raw.Trim()}\".";
+            error = $"{ModeField} must be arena, classic, classic_blinded or survival, not \"{raw.Trim()}\".";
             return false;
         }
 
@@ -177,34 +140,13 @@ namespace Blastlands.Core
                 return true;
             }
 
-            error = $"{BotsFlag} must be easy, normal or hard, not \"{raw.Trim()}\".";
+            error = $"{BotsField} must be easy, normal or hard, not \"{raw.Trim()}\".";
             return false;
-        }
-
-        private static bool TryPort(string raw, out int port, out string error)
-        {
-            port = 0;
-
-            if (!TryNumber(raw, PortFlag, PortVariable, out port, out error))
-            {
-                return false;
-            }
-
-            // The whole range is allowed rather than only the unprivileged part. The
-            // lobby hands out the port from its own pool, and refusing what it just
-            // allocated would be this process arguing with the thing that placed it.
-            if (port < 1 || port > 65535)
-            {
-                error = $"{PortFlag} must be a port between 1 and 65535, not {port}.";
-                return false;
-            }
-
-            return true;
         }
 
         private static bool TryPlayers(string raw, out int players, out string error)
         {
-            if (!TryNumber(raw, PlayersFlag, PlayersVariable, out players, out error))
+            if (!TryNumber(raw, PlayersField, out players, out error))
             {
                 return false;
             }
@@ -215,7 +157,7 @@ namespace Blastlands.Core
             // drift away from the first.
             if (players < 1)
             {
-                error = $"{PlayersFlag} must be at least 1, not {players}.";
+                error = $"{PlayersField} must be at least 1, not {players}.";
                 return false;
             }
 
@@ -224,21 +166,21 @@ namespace Blastlands.Core
 
         private static bool TryHumans(string raw, int players, out int humans, out string error)
         {
-            if (string.IsNullOrEmpty(raw))
+            if (string.IsNullOrWhiteSpace(raw))
             {
                 humans = players;
                 error = null;
                 return true;
             }
 
-            if (!TryNumber(raw, HumansFlag, HumansVariable, out humans, out error))
+            if (!TryNumber(raw, HumansField, out humans, out error))
             {
                 return false;
             }
 
             if (humans < 1 || humans > players)
             {
-                error = $"{HumansFlag} must be between 1 and {PlayersFlag} ({players}), not {humans}.";
+                error = $"{HumansField} must be between 1 and {PlayersField} ({players}), not {humans}.";
                 return false;
             }
 
@@ -251,7 +193,7 @@ namespace Blastlands.Core
 
             if (string.IsNullOrEmpty(matchId))
             {
-                error = Missing(MatchFlag, MatchVariable);
+                error = Missing(MatchField);
                 return false;
             }
 
@@ -259,48 +201,13 @@ namespace Blastlands.Core
             return true;
         }
 
-        private static bool TryLobby(string raw, out string lobby, out string error)
-        {
-            lobby = raw == null ? null : raw.Trim();
-
-            if (string.IsNullOrEmpty(lobby))
-            {
-                error = Missing(LobbyFlag, LobbyVariable);
-                return false;
-            }
-
-            if (!lobby.StartsWith("http://", StringComparison.Ordinal)
-                && !lobby.StartsWith("https://", StringComparison.Ordinal))
-            {
-                error = $"{LobbyFlag} must be an http or https URL, not \"{lobby}\".";
-                return false;
-            }
-
-            error = null;
-            return true;
-        }
-
-        private static bool TryToken(string raw, out string token, out string error)
-        {
-            token = raw == null ? null : raw.Trim();
-
-            if (string.IsNullOrEmpty(token))
-            {
-                error = Missing(TokenFlag, TokenVariable);
-                return false;
-            }
-
-            error = null;
-            return true;
-        }
-
-        private static bool TryNumber(string raw, string flag, string variable, out int value, out string error)
+        private static bool TryNumber(string raw, string field, out int value, out string error)
         {
             value = 0;
 
-            if (string.IsNullOrEmpty(raw))
+            if (string.IsNullOrWhiteSpace(raw))
             {
-                error = Missing(flag, variable);
+                error = Missing(field);
                 return false;
             }
 
@@ -308,7 +215,7 @@ namespace Blastlands.Core
             // number differently from the one that wrote it.
             if (!int.TryParse(raw.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out value))
             {
-                error = $"{flag} must be a whole number, not \"{raw}\".";
+                error = $"{field} must be a whole number, not \"{raw}\".";
                 return false;
             }
 
@@ -316,26 +223,9 @@ namespace Blastlands.Core
             return true;
         }
 
-        private static string Missing(string flag, string variable)
+        private static string Missing(string field)
         {
-            return $"{flag} is required, either as an argument or as {variable}.";
-        }
-
-        private static string Read(
-            IReadOnlyList<string> arguments, Func<string, string> environment, string flag, string variable)
-        {
-            if (arguments != null)
-            {
-                for (int i = 0; i < arguments.Count - 1; i++)
-                {
-                    if (string.Equals(arguments[i], flag, StringComparison.Ordinal))
-                    {
-                        return arguments[i + 1];
-                    }
-                }
-            }
-
-            return environment == null ? null : environment(variable);
+            return $"the assignment has no {field}.";
         }
     }
 }

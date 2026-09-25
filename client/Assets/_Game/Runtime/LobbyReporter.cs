@@ -120,7 +120,7 @@ namespace Blastlands.Runtime
         //
         // Found by running the container. The editor does not enforce the player's
         // insecure-http setting, so an http lobby works there and refuses here.
-        private static UnityWebRequestAsyncOperation Begin(UnityWebRequest request)
+        internal static UnityWebRequestAsyncOperation Begin(UnityWebRequest request)
         {
             try
             {
@@ -160,7 +160,7 @@ namespace Blastlands.Runtime
             return suffix == null ? match : match + "/" + suffix;
         }
 
-        private static string Describe(UnityWebRequest request)
+        internal static string Describe(UnityWebRequest request)
         {
             return request.responseCode > 0
                 ? $"HTTP {request.responseCode}"

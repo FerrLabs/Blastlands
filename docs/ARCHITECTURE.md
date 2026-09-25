@@ -34,10 +34,9 @@ Responsibilities:
 - `POST /v1/matches` — create a match, allocate a game server instance, return its endpoint.
   The body may name a `mode`, `arena` (the default), `classic`, `classic_blinded` or `survival`. It is on
   every listing, in the create response, and in the instance's assignment, which the
-  entrypoint passes to the binary as `--mode`. A client builds the same rules from the mode in
-  its invite, since prediction runs them before the first snapshot lands. `bot_skill`
-  (`easy`, `normal` by default, or `hard`) travels the same way, as `--bots`, and only the
-  server reads it. `max_players` runs from 2 to 8, the most spawns a board generates.
+  slot serving it reads. A client builds the same rules from the mode in its invite, since
+  prediction runs them before the first snapshot lands. `bot_skill` (`easy`, `normal` by
+  default, or `hard`) travels the same way, and only the server reads it. `max_players` runs from 2 to 8, the most spawns a board generates.
 - `POST /v1/matches/{id}/join` — reserve a slot, return the endpoint and a join ticket.
 - `POST /v1/matches/{id}/bots` — host-only, claims an open seat for a bot instead of
   waiting for someone to join it. A game server instance already fills every seat nobody
@@ -94,7 +93,8 @@ store, not this one.
 ### Game server (`client/`, Unity Dedicated Server build)
 
 The same Unity project as the client, built for the Dedicated Server platform (headless
-Linux, no rendering). One process per match, one container per process.
+Linux, no rendering). One process per pod, carrying up to `BLASTLANDS_MATCHES_PER_SERVER`
+matches side by side, one per port.
 
 It runs the authoritative simulation and is the only thing allowed to decide that a player
 died. Clients send inputs; the server sends state. Bots are just players whose inputs come
@@ -107,11 +107,21 @@ bomb, blast and power-up rule twice, in two languages, and keeping them bit-iden
 forever.
 
 It starts itself. `ServerBootstrap` runs on load in a server build, so there is no scene to
-wire and no inspector to fill in: everything it needs comes from `--port`, `--match`,
-`--players` and `--lobby`, or from `BLASTLANDS_PORT` and friends when the host is configured
-once and the arguments name the instance. All four are required, an argument beats the
-environment, and a bad one refuses to start rather than guessing. A wrong port collides with
-a neighbour, a wrong match id releases somebody else's match.
+wire and no inspector to fill in. What stays the same for the life of the process comes from
+`HostOptions`: the first port (`--port` or `BLASTLANDS_PORT`, or `BLASTLANDS_PORT_BASE` with
+the pod's ordinal), how many slots it carries, the lobby and the instance token. An argument
+beats the environment, and a bad value refuses to start rather than guessing: a wrong port
+collides with a neighbour. What changes from one match to the next, the match id, the seats,
+the mode and the bots, arrives with each assignment and is checked by
+`ServerOptions.TryCreate` before the slot builds anything. A wrong match id releases somebody
+else's match.
+
+A process hosts several matches at once, each with its own `MatchState`, its own
+`NetworkManager` and `UnityTransport` bound to its own port, and its own `ServerLoop`. They
+share the engine, the main thread and the 30 Hz frame, and nothing else. Netcode keeps one
+`NetworkManager.Singleton`, which several managers overwrite; the game never reads it, and
+named messages go through each manager's own `CustomMessagingManager`, so a match only ever
+hears its own clients.
 
 The guard is `UNITY_SERVER`, which Unity defines for the Dedicated Server subtarget itself,
 rather than a hand-added `SERVER` define somebody has to keep in step with `build.yml`.
@@ -383,10 +393,11 @@ listening on. The crate has no process spawning and no container client at all: 
 dependency list is axum, serde, thiserror, tokio, tower-http, tracing and uuid, and the only
 `spawn` in it is the tokio task that reaps silent matches.
 
-**A warm pool, and the instance asks which match it has.** Instances are not created per
-match. N of them run permanently, one per port of the range, and each owns its port for
-good. What changes from one match to the next is which match that port is serving, so the
-instance is the one that asks:
+**A warm pool, and each slot asks which match it has.** Instances are not created per
+match. The StatefulSet's pods run permanently, each carrying `BLASTLANDS_MATCHES_PER_SERVER`
+slots, and each slot owns one port of the range for good: pod `n` serves
+`BLASTLANDS_PORT_BASE + n * slots` and the next `slots - 1` ports. What changes from one match
+to the next is which match a port is serving, so the slot is the one that asks:
 
 ```
 GET /internal/instances/{port}   Authorization: Bearer <BLASTLANDS_INSTANCE_TOKEN>
@@ -409,18 +420,36 @@ to a board built on a guess. The alternative, both ends carrying the same number
 fails silently: the snapshot refuses a board of a different size rather than writing tiles
 into the wrong rows, so the match looks connected and stands perfectly still.
 
-The image's entrypoint is that loop rather than the player: it polls, and on an answer
-runs the binary with `--match`, `--players`, `--humans`, `--mode` and `--bots`. The port, the lobby URL and the token
-stay in the environment, which is where the binary already reads them from and, for the
-token, keeps it out of the process table.
+`MatchSlot` is that loop, inside the process: it polls, and on an answer builds the match
+and runs it on its port. The lobby cannot tell whether two ports belong to one process or to
+two, so capacity is pods times slots, and the lobby's `BLASTLANDS_PORT_RANGE` has to cover
+exactly those ports. How many slots a process can carry is a question of CPU as much as
+memory: every match in it ticks on the one main thread.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> Idle: poll, 204 nothing assigned
+    Idle --> Idle: 200 for the match it just finished, not replayed
+    Idle --> Playing: poll, 200 new match
+    Playing --> Releasing: outcome, 600 s ceiling, or nobody joined in 45 s
+    Releasing --> Idle: DELETE answered, match torn down
+    Idle --> Drained: drain file seen
+    Drained --> [*]: every slot idle, process exits 0
+```
+
+A slot that is `Playing` or `Releasing` when the drain file appears finishes first, then
+reaches `Idle` and stops there, which is what the process waits for.
 
 **A rollout waits for the match, and the pool only offers live instances.** Two rules keep
 a deploy from cancelling what is being played.
 
-On `SIGTERM` the entrypoint stops taking new matches and lets the one it is running finish,
-then exits 0. An image bump therefore drains a pod instead of killing a match mid-round, and
+On `SIGTERM` the entrypoint, which is PID 1 and the only process the signal reaches, writes
+`BLASTLANDS_DRAIN_FILE`. The server sees it within a second, every slot stops taking new
+matches, and the ones playing finish; once none is busy, the process exits 0. An image bump
+therefore drains a pod instead of killing its matches mid-round, and
 `terminationGracePeriodSeconds` on the StatefulSet is the ceiling on that wait rather than a
-delay: an idle pod leaves at once. A match that is assigned while a pod is draining is left
+delay: an idle pod leaves at once, and a busy one leaves when its longest match does. A match that is assigned while a pod is draining is left
 for its replacement, which picks it up on the same port, because an assignment belongs to the
 port and not to the pod. That handover is bounded by the lobby's `silent_ttl` (30 s by
 default), not by how fast the pod comes back: the declined match is already running with its
@@ -428,35 +457,37 @@ default), not by how fast the pod comes back: the declined match is already runn
 image and start heartbeating finds the match reaped. Raise `silent_ttl` if that starts to bite.
 
 `PortPool` only hands out a port whose instance polled for an assignment within
-`INSTANCE_READY_TTL`. An instance polls every two seconds while idle and not at all while it
-is running a match, so a port with no pod behind it, or one whose pod is busy, is not
-offered. The two numbers are coupled: the widest gap between two polls is the entrypoint's
-`BLASTLANDS_POLL_SECONDS` (2) plus curl's 10 s timeout, and `INSTANCE_READY_TTL` (15 s) has to
-stay above it. Raise the poll interval past that and every create answers `no_capacity` with
-nothing in the logs pointing at the poll. This is what makes the pool survive a lobby
+`INSTANCE_READY_TTL`. A slot polls every two seconds while idle and not at all while it is
+running a match, so a port with no pod behind it, or one whose slot is busy, is not offered.
+The two numbers are coupled: the widest gap between two polls is `BLASTLANDS_POLL_SECONDS` (2)
+plus the request's 10 s timeout, and `INSTANCE_READY_TTL` (15 s) has to stay above it.
+`HostOptions` refuses an interval above 4 s for that reason; past it, every create would
+answer `no_capacity` with nothing in the logs pointing at the poll. This is what makes the pool survive a lobby
 restart: the lobby keeps its directory in memory, so it comes back believing every port is
 free, and without the rule it would put a new match on a port where a match is still being
 played.
 
-The binary runs as a child rather than replacing the script, so a finished match returns
-to the loop instead of ending the container. `restartPolicy: Always` would restart it,
-but through kubelet's backoff, which reaches five minutes after a few short matches and
-leaves the lobby handing out a port nobody is listening on. A crash, meaning any non-zero
-exit, does end the container: that is the case where the backoff is what you want. One
-match per process either way, which is what the one-process-one-match design in
-`ServerBootstrap` requires.
+A finished match returns its slot to polling rather than ending anything, so the process
+and its container outlive every match they play. `restartPolicy: Always` would restart a
+process that quit after each match, but through kubelet's backoff, which reaches five minutes
+after a few short matches and leaves the lobby handing out a port nobody is listening on. A
+match that goes wrong, a bind failure or one that ran out its 600 s ceiling, is released,
+logged as an error, and its slot carries on; the other slots never notice. A crash of the
+process, meaning any non-zero exit, does end the container: that is the case where the
+backoff is what you want.
 
 **The instance reaches the lobby over HTTPS**, `BLASTLANDS_LOBBY=https://api.blastlands.ferrlabs.com`,
 even from a pod next to the lobby's own Service. `insecureHttpOption` is `NotAllowed` in the
 project settings, so the player refuses a cleartext URL and fails every heartbeat before it
-connects, while the entrypoint's curl takes one happily. An internal `http://` therefore gives
-an instance that picks up a match and then goes silent, which the lobby reaps mid-game. The
+connects. An internal `http://` therefore gives an instance whose slots cannot even ask for a
+match, with an error in the log saying the call was refused outright. The
 `/internal/*` routes are served publicly on purpose for the same reason, and guarded by
 `BLASTLANDS_INSTANCE_TOKEN`.
 
-The supervisor also refuses a match it has just finished. Seeing the same id again means
-the release never landed, and replaying it would run a finished game on a loop; stalling
-instead lets the lobby's reaper free the port.
+A slot also refuses the match it has just finished. Seeing the same id again means the
+release never landed, and replaying it would run a finished game on a loop; stalling instead
+lets the lobby's reaper free the port. An assignment it cannot start, a seat count the board
+cannot hold or a mode it does not know, is refused the same way and logged with the reason.
 
 This is why the lobby needs no Kubernetes client and no RBAC: it decides which port serves
 what, and says so when asked.
