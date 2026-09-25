@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.129] - 2026-09-25
+
+### Refactoring
+
+- refactor(core): move the hypothetical bomb list into BotGrid (#153)
+
 ## [26.9.128] - 2026-09-25
 
 ### Refactoring
