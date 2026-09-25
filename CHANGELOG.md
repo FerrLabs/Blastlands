@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.125] - 2026-09-25
+
+### Features
+
+- feat(client): add Military base and Crypt arena themes (#147)
+
 ## [26.9.124] - 2026-09-25
 
 ### Bug Fixes
