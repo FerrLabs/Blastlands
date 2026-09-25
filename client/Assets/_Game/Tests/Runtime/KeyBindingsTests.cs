@@ -61,6 +61,9 @@ namespace Blastlands.Runtime.Tests
             dash.ApplyBindingOverride(index, "<Keyboard>/space");
             Assert.That(KeyBindings.Label(dash, index), Is.EqualTo("SPACE"));
 
+            dash.ApplyBindingOverride(index, "<Keyboard>/f");
+            Assert.That(KeyBindings.Label(dash, index), Is.EqualTo("F"));
+
             dash.ApplyBindingOverride(index, "<Mouse>/leftButton");
             Assert.That(KeyBindings.Label(dash, index), Is.EqualTo("LMB"));
             Object.DestroyImmediate(asset);
