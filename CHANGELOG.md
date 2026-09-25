@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.132] - 2026-09-25
+
+### Features
+
+- feat(client): add a volcano arena theme (#159)
+
 ## [26.9.131] - 2026-09-25
 
 ### Features
