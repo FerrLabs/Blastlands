@@ -125,7 +125,8 @@ directly in the editor runs the same thing in Arena.
   several people play locally. `--no-shake` on the command line turns off the screen shake
   whatever Settings says.
 - Positional sound on a single screen: a fuse just off screen is heard from its side. Split
-  screen falls back to a flat mix.
+  screen falls back to a flat mix. The effects are built from Kenney's CC0 packs, see
+  `client/Assets/_Game/Audio/LICENSE.txt`.
 
 The design reasoning and the numbers behind the tuning are in
 [docs/GAMEPLAY.md](docs/GAMEPLAY.md).

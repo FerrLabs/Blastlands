@@ -335,10 +335,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e0f2d46a8e02f9748a3c5ff7dcb99500, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Blastlands.Runtime::Blastlands.Runtime.MatchAudio
-  bombDrop: {fileID: 0}
-  explosion: {fileID: 0}
-  pickup: {fileID: 0}
-  death: {fileID: 0}
+  bombDrop: {fileID: 8300000, guid: 9b7f200ae23846a0bfee9e6848bfe04f, type: 3}
+  explosion: {fileID: 8300000, guid: 8a88f102d4584dc3a9f0f84d7cac9de9, type: 3}
+  pickup: {fileID: 8300000, guid: 6948031311894645b9f4177fb0d4e31c, type: 3}
+  death: {fileID: 8300000, guid: 8d9cf4590550453a849424fdebf30bfb, type: 3}
+  blockBreak: {fileID: 8300000, guid: 560d808f05f947e88e7989c1ca338501, type: 3}
+  fuse: {fileID: 8300000, guid: ebde9db499e040efa1fb919455e56d7d, type: 3}
   volume: 0.8
 --- !u!82 &613233829
 AudioSource:

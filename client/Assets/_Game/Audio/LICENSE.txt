@@ -1,0 +1,13 @@
+The sound effects in this folder are built from three Kenney packs, all released
+under Creative Commons Zero (CC0): https://creativecommons.org/publicdomain/zero/1.0/
+
+- Impact Sounds 1.0      https://kenney.nl/assets/impact-sounds
+- Sci-fi Sounds 1.0      https://kenney.nl/assets/sci-fi-sounds
+- Interface Sounds 1.0   https://kenney.nl/assets/interface-sounds
+
+Explosion.ogg   lowFrequency_explosion_001 + explosionCrunch_002 (Sci-fi Sounds)
+BombDrop.ogg    impactSoft_heavy_002 (Impact Sounds)
+BlockBreak.ogg  impactPlank_medium_001 (Impact Sounds)
+Fuse.ogg        thrusterFire_003, cut to 0.9 s with fades (Sci-fi Sounds)
+Pickup.ogg      confirmation_001 (Interface Sounds)
+Death.ogg       impactPunch_heavy_002 (Impact Sounds) + minimize_006 (Interface Sounds)
