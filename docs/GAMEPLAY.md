@@ -663,31 +663,37 @@ separates the difficulties. See **Vision**.
 
 ## Art direction
 
-Low-poly 3D, Synty **SIMPLE Apocalypse**: dirt and rubble, rusted barrels, burnt-out vehicles
-and building ruins. The setting earns the mechanics — a game about blowing things up reads
-better in a wasteland than in a tidy park.
+Low-poly 3D, Synty **POLYGON** for the arenas, the characters, the bombs and the pickups. The
+game started on the SIMPLE packs, and three things still come from SIMPLE Apocalypse: the
+zombies, the death stains and the characters' animator controller. The setting earns the
+mechanics: a game about blowing things up reads better in a wasteland or a crypt than in a
+tidy park.
 
-SIMPLE rather than POLYGON: a POLYGON pack is 130 MB and change against roughly 30 MB for a
-SIMPLE one, and SIMPLE's flat chunky shapes read better at the size a tile occupies on screen.
+**Seven arena themes** (`ArenaTheme` assets in `_Game/Art`), one per match: Wasteland,
+Overgrown, Desert and Boneyard from POLYGON Apocalypse, Military base from POLYGON Military,
+Crypt from POLYGON Dungeon, and Volcano from the hell set in POLYGON Dungeon Realms. A local
+match picks from its seed, an online one from its match id (`ThemePick`), so every client of
+a match dresses it the same way.
 
-**Variety in form, never in meaning.** Destructible blocks are always barrels — three colours,
-one silhouette. An earlier pass mixed in medical crates and toolboxes, and they read as
-pickups to grab rather than blocks to destroy. Indestructible blocks are always grey rock,
-which is also why the ground is uniform dirt: a mixed concrete-and-dirt floor produced a grey
-checkerboard that camouflaged the grey walls standing on it.
+**Variety in form, never in meaning.** Inside a theme, every indestructible pillar is the same
+mesh, square to the grid, so the lattice reads as structure and the eye goes to the lanes. The
+walls vary their mesh but keep one family and one silhouette size, and they have to contrast
+with the pillars: an early pass mixed medical crates and toolboxes in, and they read as pickups
+to grab rather than blocks to destroy. Flat ground detail that scales up into large pale plates
+(pebbles, loose tiles) is left out of every theme for the same reason, it reads as something on
+the floor.
 
-Fixed isometric-ish camera framing the whole arena — no camera control, the arena always fits
-on screen. Readability beats spectacle: a player must be able to tell at a glance which tiles
-are about to be on fire.
+Readability beats spectacle: a player must be able to tell at a glance which tiles are about to
+be on fire. The camera is covered in [Camera](#camera).
 
 Two things bite when using Synty art on a grid, both handled in `TileFitter` and `MatchView`
 rather than by hand-tuning numbers per prefab:
 
 - Prefabs come in their own world scale with off-centre pivots, so they are measured from
-  their renderer bounds and normalised into a tile-sized box. The ground sections are the
-  exception: they are 15x15 unit slabs meant to be laid as-is, so the floor is one stretched
-  slab rather than one shrunk copy per tile, which would squeeze a whole texture into each
-  tile and turn the floor into noise.
+  their renderer bounds (particles excluded) and normalised into a tile-sized box. The ground
+  is the exception: it is built tile by tile from plain blocks in the theme's ground colour, so
+  an irregular island has an edge, and the theme's ground sections go over the top as detail
+  patches at a size where their texture still reads.
 - The FX prefabs are authored for set dressing: they simulate in world space, ignore transform
   scale for particle size, and live for seconds. Pooled flame objects move between tiles, so
   those defaults smear fire across the arena. The instances are retuned on spawn; the source
@@ -704,3 +710,10 @@ The bomb is POLYGON Pirate's round bomb with a spark on its fuse (`_Game/Art/Bom
 spark is what says "lit" from across the board, where a dark bomb among dark rocks does not. A
 loose bomb lying in Arena is the same prefab with the spark put out, so it reads as a bomb that
 is not ticking.
+
+Power-ups are POLYGON Icons, one symbol per effect, floating and turning above their tile: a
+bomb for Bomb up, a flame for Fire up, a lightning bolt for Speed up (the HUD's speed symbol), a
+dagger for Pierce, a frag grenade for Cluster, boots for Kick, a radio for Remote and a skull for
+the curse. They replace a mix of SIMPLE props (a fuel can for fire range, a drill for Pierce)
+that a player had to learn rather than read. The icons carry their own colours, so nothing is
+tinted at runtime.
