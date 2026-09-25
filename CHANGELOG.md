@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.135] - 2026-09-25
+
+### Features
+
+- feat(server): run several matches in one game server process (#164)
+
 ## [26.9.134] - 2026-09-25
 
 ### Features
