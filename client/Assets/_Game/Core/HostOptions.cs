@@ -167,7 +167,7 @@ namespace Blastlands.Core
             // lobby hands out ports from its own range, and refusing one it allocates
             // would be this process arguing with the thing that placed it.
             int last = port + slots - 1;
-            if (port < 1 || last > 65535)
+            if (port < 1 || port > 65535 || last > 65535)
             {
                 error = slots == 1
                     ? $"{PortFlag} must be a port between 1 and 65535, not {port}."

@@ -94,7 +94,7 @@ namespace Blastlands.Runtime
                         break;
 
                     case 200:
-                        Take(request.downloadHandler.text);
+                        TakeSafely(request.downloadHandler.text);
                         break;
 
                     default:
@@ -105,9 +105,47 @@ namespace Blastlands.Runtime
             }
         }
 
+        // Anything thrown while taking a match would leave the polling coroutine, and
+        // Unity stops a coroutine that throws. The slot would never ask again, still
+        // count as idle, and the pod would serve one port fewer with the container green.
+        // When a match was one process, the same throw ended the container and kubelet
+        // brought it back; here it has to be caught.
+        private void TakeSafely(string body)
+        {
+            try
+            {
+                Take(body);
+            }
+            catch (Exception failed)
+            {
+                Debug.LogError($"Blastlands server: taking a match on {port} failed, {failed}");
+
+                if (running != null)
+                {
+                    Destroy(running);
+                    running = null;
+                }
+            }
+        }
+
         private void Take(string body)
         {
-            AssignmentDto assignment = JsonUtility.FromJson<AssignmentDto>(body);
+            AssignmentDto assignment;
+            try
+            {
+                assignment = JsonUtility.FromJson<AssignmentDto>(body);
+            }
+            catch (Exception bad)
+            {
+                Debug.LogError($"Blastlands server: the lobby's answer for {port} could not be read, {bad.Message}");
+                return;
+            }
+
+            if (assignment == null || string.IsNullOrWhiteSpace(assignment.match_id))
+            {
+                Debug.LogError($"Blastlands server: the lobby's answer for {port} named no match");
+                return;
+            }
 
             // Seeing the match this slot just finished means the release never landed.
             // Replaying it would run a finished game on a loop; waiting instead lets the

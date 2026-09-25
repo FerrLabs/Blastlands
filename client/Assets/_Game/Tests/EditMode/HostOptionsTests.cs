@@ -129,6 +129,18 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
+        public void APortSoLargeTheRunWrapsIsRefused()
+        {
+            // port + slots - 1 overflows int, and a wrapped negative "last port" would
+            // slip under the upper bound and bind whatever the ushort cast made of it.
+            string[] arguments = { "--port", "2147483647", "--lobby", "http://x", "--token", "s" };
+
+            Assert.That(
+                HostOptions.TryRead(arguments, Environment(HostOptions.SlotsVariable, "2"), out _, out _),
+                Is.False);
+        }
+
+        [Test]
         public void APortOutsideTheRangeIsRefused()
         {
             foreach (string port in new[] { "0", "65536", "-1", "seven" })
