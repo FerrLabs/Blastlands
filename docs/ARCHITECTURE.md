@@ -335,7 +335,9 @@ On Windows a running executable cannot replace itself, so `ClientUpdater`:
 2. checks it against the published SHA-256 and stops on a mismatch. Installing whatever was
    downloaded would be a remote code execution vector, so this is not optional;
 3. extracts it into a sibling of the install, `<install>.update-<version>`, refusing any entry
-   that is absolute or climbs out with `..`;
+   that is absolute or climbs out with `..`, and any that would land past Windows' 260-character
+   path limit there. The same depth check runs on the current install before the download, so a
+   game unzipped somewhere too deep says so instead of fetching an archive it cannot unpack;
 4. writes a PowerShell script, starts it and quits.
 
 The script waits for the game to exit, renames the install to `<install>.previous`, renames the

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using Blastlands.Core.Net;
 
@@ -6,6 +7,8 @@ namespace Blastlands.Core.Update
 {
     public readonly struct UpdateLayout
     {
+        public const int LongestPath = 259;
+
         public UpdateLayout(string installDirectory, GameVersion version)
         {
             if (string.IsNullOrEmpty(installDirectory))
@@ -32,5 +35,23 @@ namespace Blastlands.Core.Update
         public string Staged { get; }
 
         public string Previous { get; }
+
+        public string TooDeepFor(IEnumerable<string> relativePaths)
+        {
+            int longest = 0;
+            foreach (string relative in relativePaths)
+            {
+                int length = Path.Combine(Staged, relative).Length;
+                if (length > longest)
+                {
+                    longest = length;
+                }
+            }
+
+            return longest > LongestPath
+                ? "the game's folder is too deep for Windows to unpack the update beside it ("
+                    + longest + " characters, the limit is " + LongestPath + "), so move it to a shorter folder"
+                : null;
+        }
     }
 }
