@@ -26,7 +26,7 @@ namespace Blastlands.Core
                 return false;
             }
 
-            BlastMap after = BlastMap.From(state, WithBombAt(state, player, tile));
+            BlastMap after = BlastMap.From(state, BotGrid.WithBombAt(state, player, tile));
 
             for (int i = 0; i < sightings.Count; i++)
             {
@@ -88,20 +88,6 @@ namespace Blastlands.Core
             }
 
             return false;
-        }
-
-        internal static List<ActiveBomb> WithBombAt(MatchState state, PlayerState player, GridPos tile)
-        {
-            var bombs = new List<ActiveBomb>(state.Bombs.Count + 1);
-            for (int i = 0; i < state.Bombs.Count; i++)
-            {
-                bombs.Add(state.Bombs[i]);
-            }
-
-            bombs.Add(new ActiveBomb(
-                new Bomb(tile, player.Id, player.FireRange, player.NextBombKind), state.Settings.FuseTicks));
-
-            return bombs;
         }
 
         private static int WaysOut(MatchState state, BlastMap after, GridPos target, int ticksPerTile)
