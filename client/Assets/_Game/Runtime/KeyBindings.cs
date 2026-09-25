@@ -115,7 +115,7 @@ namespace Blastlands.Runtime
         {
             string local = input.GetBindingDisplayString(index);
             string path = input.bindings[index].effectivePath;
-            if (local.Length <= 1 || !path.StartsWith("<Keyboard>", StringComparison.Ordinal))
+            if (local.Trim().Length == 1 || !path.StartsWith("<Keyboard>", StringComparison.Ordinal))
             {
                 return local.ToUpperInvariant();
             }
