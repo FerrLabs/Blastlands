@@ -291,10 +291,10 @@ MonoBehaviour:
   telegraphColor: {r: 0.95, g: 0.35, b: 0.12, a: 1}
   sfx: {fileID: 613233828}
   cameras: {fileID: 1120936999}
-  flameScale: 0.55
-  burstScale: 0.22
+  flameScale: 0.8
+  burstScale: 0.5
   flameLifetime: 0.4
-  burstLifetime: 0.7
+  burstLifetime: 1
   sceneryRing: 5
   sceneryDensityPercent: 26
   sceneryMinSize: 0.8

@@ -140,12 +140,24 @@ namespace Blastlands.Runtime
                 if (created)
                 {
                     TileFitter.FitInBox(view, looseBombSize);
+                    Snuff(view);
                 }
 
                 TileFitter.PlaceOnTile(view, MatchView.ToWorld(state.LooseBombs[i], 0f));
             }
 
             ViewStage.HideFrom(looseBombPool, state.LooseBombs.Count);
+        }
+
+        private static void Snuff(GameObject view)
+        {
+            foreach (ParticleSystem fuse in view.GetComponentsInChildren<ParticleSystem>(true))
+            {
+                if (fuse.gameObject != view)
+                {
+                    fuse.gameObject.SetActive(false);
+                }
+            }
         }
     }
 }
