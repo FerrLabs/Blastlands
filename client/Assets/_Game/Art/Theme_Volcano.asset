@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9ba2a02cfae81af4e8ee2d86c9310473, type: 3}
+  m_Name: Theme_Volcano
+  m_EditorClassIdentifier: Blastlands.Runtime::Blastlands.Runtime.ArenaTheme
+  label: Volcano
+  groundTint: {r: 0.24, g: 0.16, b: 0.12, a: 1}
+  floorTiles:
+  - {fileID: 1903257640088410, guid: 63225b1817d58a342ad564b15a425f41, type: 3}
+  hardBlocks:
+  - {fileID: 1025350984500770, guid: 47eb2556e91c61549b8efa43e8d534fd, type: 3}
+  - {fileID: 1096859341218256, guid: e768c96fc268fe54e88b5c34911b60e8, type: 3}
+  - {fileID: 1059320481071284, guid: 42479dc3b0653044899d1da06fa918a0, type: 3}
+  softBlocks:
+  - {fileID: 1608311704215200, guid: 8b4ae8be0524a894fbe15b76b4a76c04, type: 3}
+  - {fileID: 142700, guid: 14a2a6aefc4a6e7469991cd18bc527d1, type: 3}
+  - {fileID: 1099065627346344, guid: 6980ecd2d90453a488f915f006ee93ed, type: 3}
+  bushes:
+  - {fileID: 1193050285708104, guid: b3ea28ad9ce04ee4182d26e1605c674d, type: 3}
+  - {fileID: 1195570329910516, guid: 99104113e60aced47bfd36eb0758c6c2, type: 3}
+  - {fileID: 1153863997325968, guid: c20f45e06be0ebe43aa33b74913eba10, type: 3}
+  scenery:
+  - {fileID: 1242169769278348, guid: 58ec8aaca45a85148964d3d01a86fb64, type: 3}
+  - {fileID: 1290892660575886, guid: 41cb659555c7a9c4bb0482150158796e, type: 3}
+  - {fileID: 1885276984931104, guid: 2d20942acb6760d4c905893fe82e9626, type: 3}
+  - {fileID: 1048357940420298, guid: 8ff94f8665d36b6419b9c053865dd1c9, type: 3}
+  - {fileID: 1504110541172260, guid: 1d09befa46fc5bd4284c3891627bfc53, type: 3}
+  - {fileID: 1026717319317648, guid: d50d61a0618cfeb4e952a193f42a0be2, type: 3}
+  - {fileID: 1317291879120574, guid: d84457d2342b7a149ab5f10f194fffdb, type: 3}
+  - {fileID: 1481292745760412, guid: 42e59e52ccf127a41a92cf3cd3cdd98a, type: 3}
+  - {fileID: 1479448311030162, guid: e7045812ae5453b40adc0882141d4101, type: 3}
+  cliffs:
+  - {fileID: 1671316578629612, guid: 0a518d37ed1bbf64fb73b8c7004f6715, type: 3}
+  - {fileID: 1917769039345598, guid: a72364b64b3334b428d4de5c934a26c0, type: 3}
+  - {fileID: 1067739127553902, guid: 1d6e173159d44574b8c05028adfd552c, type: 3}
+  - {fileID: 1766648064137040, guid: 2026e130b04e76e4f8e57ff40ea8aeec, type: 3}
+  groundDetail:
+  - {fileID: 1903257640088410, guid: 63225b1817d58a342ad564b15a425f41, type: 3}
+  - {fileID: 1240743412825602, guid: c42dd32ca0e5a8e43bf986fe5a9d19b0, type: 3}
+  - {fileID: 1715385869280054, guid: 2d2f0e23c0daa564eabf5c4feaa85105, type: 3}
