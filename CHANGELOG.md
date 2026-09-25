@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.116] - 2026-09-25
+
+### Bug Fixes
+
+- fix(net): carry how a round was won so the online victory card reads right (#130)
+
 ## [26.9.114] - 2026-09-24
 
 ### Features
