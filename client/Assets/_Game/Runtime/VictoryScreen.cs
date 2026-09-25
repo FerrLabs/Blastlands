@@ -22,7 +22,7 @@ namespace Blastlands.Runtime
         private static readonly Color ButtonFace = new Color(0.20f, 0.22f, 0.26f, 1f);
         private static readonly Color ButtonText = new Color(0.95f, 0.93f, 0.88f);
 
-        private const float PortraitSpace = 380f;
+        private const float NoPortraitShrink = 380f;
 
         private CharacterStage stage;
 
@@ -65,7 +65,7 @@ namespace Blastlands.Runtime
             scaler.matchWidthOrHeight = 0.5f;
 
             bool showsWinner = card.HasWinner && art != null;
-            float lift = showsWinner ? 0f : PortraitSpace / 2f;
+            float lift = showsWinner ? 0f : NoPortraitShrink / 2f;
 
             Fill(canvasHost.transform, "Scrim", Scrim, Vector2.zero, Vector2.zero, true);
             RectTransform panel = Fill(
