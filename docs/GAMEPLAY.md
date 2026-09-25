@@ -173,7 +173,7 @@ a disc there reached tiles off the bomb's row and column wherever the pillars le
 which nobody expects from a bomberman board. The cross is the disc cut down to its two axes (`RuleSet.Blast`), so both stop at the
 same walls and the resolver has one path for either.
 
-Over twelve four-bot matches each, the cross took Classic from 2 draws to none and Classic
+Over twelve seeded bot matches each, the cross took Classic from 2 draws to 1 and Classic
 Blinded from 2 to none, and left Arena and Survival bit for bit the same.
 
 The occlusion is the load-bearing half. A plain distance check is far cheaper to write and
@@ -212,7 +212,7 @@ tiles are safe and therefore how players move.
 |---|---|---|
 | **Standard** | Cross blast. Destroys the first soft block in each arm and stops there. | The baseline, readable at a glance. |
 | **Pierce** | Punches through soft blocks, destroying every one in the arm until a hard block stops it. | Turns a wall of blocks from cover into a liability, and opens the map fast. |
-| **Cluster** | Normal cross, then each arm flares one tile in every direction around where it stopped. | Reaches past its own range and around corners, so the safe-tile maths a player does at a glance stops working. |
+| **Cluster** | Normal blast, then each arm flares one tile in every direction around where it stopped. On a Classic board the flare only carries the arm one tile further, so the cross stays a cross. | Reaches past its own range and around corners, so the safe-tile maths a player does at a glance stops working. |
 
 A cluster flare is deliberately not itself a cluster. That is what bounds the recursion, and it
 keeps the shape readable instead of turning every cluster into an unpredictable chain.

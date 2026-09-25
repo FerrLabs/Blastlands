@@ -118,7 +118,7 @@ namespace Blastlands.Core
                         GridPos tip = FurthestBurning(bomb.Position, direction, range);
                         if (tip != bomb.Position)
                         {
-                            Scatter(tip);
+                            Scatter(tip, direction);
                         }
                     }
                 }
@@ -186,10 +186,17 @@ namespace Blastlands.Core
 
             // Cluster arms flare one tile around where they stopped. The flare is
             // deliberately not itself a cluster, which is what bounds the recursion.
-            private void Scatter(GridPos origin)
+            // Under a cross it only carries the arm one tile on: fanning out would burn
+            // off the row and column, the one thing a cross promises never burns.
+            private void Scatter(GridPos origin, GridPos arm)
             {
                 foreach (GridPos direction in Cardinals)
                 {
+                    if (shape == BlastShape.Cross && direction != arm)
+                    {
+                        continue;
+                    }
+
                     GridPos tile = origin.Offset(direction.X, direction.Y);
                     if (!arena.Contains(tile))
                     {

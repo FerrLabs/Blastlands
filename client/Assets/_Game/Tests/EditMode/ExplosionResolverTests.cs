@@ -293,6 +293,24 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
+        public void Cross_ClusterFlareCarriesAnArmOnButNeverOffIt()
+        {
+            var arena = new Arena(11, 11);
+            var bombs = new[] { new Bomb(new GridPos(5, 5), 0, 2, BombKind.Cluster) };
+
+            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 }, BlastShape.Cross);
+
+            foreach (GridPos tile in result.FlameTiles)
+            {
+                Assert.That(tile.X == 5 || tile.Y == 5, Is.True, $"{tile} burnt off the row and column");
+            }
+
+            Assert.That(result.FlameTiles, Has.Member(new GridPos(8, 5)), "the flare carries the arm one tile on");
+            Assert.That(result.FlameTiles, Has.Member(new GridPos(5, 2)));
+            Assert.That(result.FlameTiles, Has.No.Member(new GridPos(9, 5)));
+        }
+
+        [Test]
         public void Resolve_RejectsABombIndexOutsideTheList()
         {
             var arena = new Arena(7, 7);
