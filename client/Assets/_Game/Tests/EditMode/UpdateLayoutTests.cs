@@ -23,6 +23,28 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
+        public void ABuildThatFitsBesideTheInstallIsNotTooDeep()
+        {
+            var layout = new UpdateLayout(Path.Combine(Parent, "Blastlands"), Version);
+
+            Assert.That(layout.TooDeepFor(new[] { "Blastlands.exe", Path.Combine("Blastlands_Data", "Managed", "Core.dll") }), Is.Null);
+        }
+
+        [Test]
+        public void TheLimitIsTheLongestPathTheStagedCopyNeeds()
+        {
+            var layout = new UpdateLayout(Path.Combine(Parent, "Blastlands"), Version);
+            int room = UpdateLayout.LongestPath - layout.Staged.Length - 1;
+
+            string fits = new string('a', room);
+            string over = new string('a', room + 1);
+
+            Assert.That(layout.TooDeepFor(new[] { "Blastlands.exe", fits }), Is.Null, "259 characters is still a path Windows takes");
+            Assert.That(layout.TooDeepFor(new[] { "Blastlands.exe", over }), Does.Contain("260 characters"));
+            Assert.That(layout.TooDeepFor(new[] { "Blastlands.exe", over }), Does.Contain("shorter folder"));
+        }
+
+        [Test]
         public void ATrailingSeparatorDoesNotMoveTheSiblings()
         {
             string install = Path.Combine(Parent, "Blastlands") + Path.DirectorySeparatorChar;

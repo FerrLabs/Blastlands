@@ -3,6 +3,7 @@ using System.Collections;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Blastlands.Core.Lobby;
@@ -64,6 +65,15 @@ namespace Blastlands.Runtime
 
             var layout = new UpdateLayout(install, version);
             string archive = Path.Combine(Application.temporaryCachePath, "Blastlands-" + version + ".zip");
+
+            string tooDeep = layout.TooDeepFor(
+                Directory.EnumerateFiles(install, "*", SearchOption.AllDirectories)
+                    .Select(file => file.Substring(install.Length + 1)));
+            if (tooDeep != null)
+            {
+                Fail(tooDeep);
+                yield break;
+            }
 
             Stage = UpdateStage.Running;
             Debug.Log("Blastlands: downloading " + version + ".");
@@ -137,6 +147,12 @@ namespace Blastlands.Runtime
 
                 using (ZipArchive zip = ZipFile.OpenRead(archive))
                 {
+                    string tooDeep = layout.TooDeepFor(zip.Entries.Select(entry => entry.FullName));
+                    if (tooDeep != null)
+                    {
+                        return tooDeep;
+                    }
+
                     foreach (ZipArchiveEntry entry in zip.Entries)
                     {
                         if (!ArchivePath.IsSafe(entry.FullName))
