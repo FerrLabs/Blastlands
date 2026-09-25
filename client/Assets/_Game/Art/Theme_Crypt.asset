@@ -1,0 +1,48 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9ba2a02cfae81af4e8ee2d86c9310473, type: 3}
+  m_Name: Theme_Crypt
+  m_EditorClassIdentifier: Blastlands.Runtime::Blastlands.Runtime.ArenaTheme
+  label: Crypt
+  groundTint: {r: 0.25, g: 0.22, b: 0.22, a: 1}
+  floorTiles:
+  - {fileID: 5388214276094364910, guid: 41a52686721349748946e63dfcf775e0, type: 3}
+  - {fileID: 52144190322191893, guid: c7291645b957c444b8e4bfc1d41aaf80, type: 3}
+  hardBlocks:
+  - {fileID: 150720, guid: 07d8e21504c5ced46b0e0d81a1698023, type: 3}
+  - {fileID: 151256, guid: f2e183d3a4ac7cc44ad43fb988762f28, type: 3}
+  - {fileID: 115584, guid: faa8739308e4c154f9332d2624b6e47c, type: 3}
+  softBlocks:
+  - {fileID: 182792, guid: 27ac44c94d7f6e741a7e270ce72ccd9b, type: 3}
+  - {fileID: 123292, guid: df22dae66d96c2944adb65e1661878de, type: 3}
+  - {fileID: 133660, guid: 971412afe90b27640b1c78c0641deec9, type: 3}
+  - {fileID: 185252, guid: ac72a98c062e432478eb557db53fdc1d, type: 3}
+  bushes:
+  - {fileID: 145504, guid: 371c6e69303486e42a3a5555de0a5397, type: 3}
+  - {fileID: 197086, guid: 8a68af0bd68405547a95cab80ee8bba8, type: 3}
+  - {fileID: 137880, guid: d74d4ec61fec68b42bdb97019a7926ad, type: 3}
+  scenery:
+  - {fileID: 164760, guid: 8ed44b12ca34ce34e9754ece5b325562, type: 3}
+  - {fileID: 122796, guid: 146879b9a407b4947a38bacaa6fc4dd8, type: 3}
+  - {fileID: 116140, guid: deb03c74d28f60441b068b11f38269ea, type: 3}
+  - {fileID: 166584, guid: 184f44cf58e82434ab30e27aaaf9b05f, type: 3}
+  - {fileID: 140460, guid: cd24b009c944b1848a4b3e5904c18513, type: 3}
+  - {fileID: 131856, guid: f58bdefe414a9a744ab284e383341fea, type: 3}
+  cliffs:
+  - {fileID: 4905485108370227772, guid: ae1b00ab0436c534c8afc42e19ab6e96, type: 3}
+  - {fileID: 6415082291862398264, guid: cc6ce2b1c2cc42a4680c685604f3d642, type: 3}
+  - {fileID: 8143087844690495153, guid: ed0d53bff53cd7a4182b1cd7eb6b7802, type: 3}
+  - {fileID: 8794171678619182943, guid: e39229f251ffbf3478cb0891e878d698, type: 3}
+  groundDetail:
+  - {fileID: 151284, guid: ddc413674fbd6094fb373197897aadbf, type: 3}
+  - {fileID: 103834, guid: e1d591a8f2f69f047ba3bdd96192ccde, type: 3}
+  - {fileID: 1776397137903854, guid: d899f517447fbee45aec80b0bb020f60, type: 3}
