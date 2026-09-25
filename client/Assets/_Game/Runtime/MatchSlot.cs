@@ -36,6 +36,7 @@ namespace Blastlands.Runtime
         private byte[] ticketKey;
         private GameObject running;
         private string finishedMatch;
+        private string taking;
         private bool draining;
 
         public bool Busy
@@ -110,8 +111,14 @@ namespace Blastlands.Runtime
         // count as idle, and the pod would serve one port fewer with the container green.
         // When a match was one process, the same throw ended the container and kubelet
         // brought it back; here it has to be caught.
+        //
+        // The match is remembered like a refused one. A throw that comes from the
+        // assignment itself would otherwise repeat on every poll, building and tearing
+        // down the same match until the pod is replaced.
         private void TakeSafely(string body)
         {
+            taking = null;
+
             try
             {
                 Take(body);
@@ -124,6 +131,11 @@ namespace Blastlands.Runtime
                 {
                     Destroy(running);
                     running = null;
+                }
+
+                if (taking != null)
+                {
+                    finishedMatch = taking;
                 }
             }
         }
@@ -146,6 +158,8 @@ namespace Blastlands.Runtime
                 Debug.LogError($"Blastlands server: the lobby's answer for {port} named no match");
                 return;
             }
+
+            taking = assignment.match_id;
 
             // Seeing the match this slot just finished means the release never landed.
             // Replaying it would run a finished game on a loop; waiting instead lets the
