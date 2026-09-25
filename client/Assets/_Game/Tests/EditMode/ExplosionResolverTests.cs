@@ -14,7 +14,7 @@ namespace Blastlands.Core.Tests
             var arena = new Arena(9, 9);
             var bombs = new[] { new Bomb(new GridPos(4, 4), 0, 2) };
 
-            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 });
+            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 }, BlastShape.Disc);
 
             Assert.That(result.FlameTiles, Has.Member(new GridPos(4, 4)), "the bomb tile");
             Assert.That(result.FlameTiles, Has.Member(new GridPos(6, 4)), "out to the range");
@@ -36,7 +36,7 @@ namespace Blastlands.Core.Tests
             var arena = new Arena(5, 5);
             var bombs = new[] { new Bomb(new GridPos(0, 0), 0, 3) };
 
-            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 });
+            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 }, BlastShape.Disc);
 
             foreach (GridPos tile in result.FlameTiles)
             {
@@ -60,7 +60,7 @@ namespace Blastlands.Core.Tests
 
             var bombs = new[] { new Bomb(new GridPos(3, 3), 0, 4) };
 
-            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 });
+            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 }, BlastShape.Disc);
 
             Assert.That(result.FlameTiles, Has.No.Member(new GridPos(6, 3)), "the wall stopped it");
             Assert.That(result.FlameTiles, Has.No.Member(new GridPos(6, 2)), "and it did not bend around");
@@ -80,7 +80,7 @@ namespace Blastlands.Core.Tests
 
             var bombs = new[] { new Bomb(new GridPos(4, 4), 0, 3) };
 
-            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 });
+            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 }, BlastShape.Disc);
 
             Assert.That(result.FlameTiles, Has.Member(new GridPos(5, 5)), "it slips through the corner");
         }
@@ -96,7 +96,7 @@ namespace Blastlands.Core.Tests
 
             var bombs = new[] { new Bomb(new GridPos(3, 4), 0, 4) };
 
-            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 });
+            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 }, BlastShape.Disc);
 
             Assert.That(result.FlameTiles, Has.Member(new GridPos(5, 4)), "the crate itself is hit");
             Assert.That(result.DestroyedSoftBlocks, Has.Member(new GridPos(5, 4)));
@@ -110,7 +110,7 @@ namespace Blastlands.Core.Tests
             arena[new GridPos(5, 3)] = TileKind.HardBlock;
             var bombs = new[] { new Bomb(new GridPos(3, 3), 0, 3) };
 
-            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 });
+            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 }, BlastShape.Disc);
 
             Assert.That(result.FlameTiles, Has.Member(new GridPos(4, 3)));
             Assert.That(result.FlameTiles, Has.No.Member(new GridPos(5, 3)));
@@ -125,7 +125,7 @@ namespace Blastlands.Core.Tests
             arena[new GridPos(5, 3)] = TileKind.SoftBlock;
             var bombs = new[] { new Bomb(new GridPos(3, 3), 0, 3) };
 
-            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 });
+            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 }, BlastShape.Disc);
 
             Assert.That(result.DestroyedSoftBlocks, Is.EquivalentTo(new[] { new GridPos(4, 3) }));
             Assert.That(result.FlameTiles, Has.Member(new GridPos(4, 3)));
@@ -142,7 +142,7 @@ namespace Blastlands.Core.Tests
                 new Bomb(new GridPos(4, 3), 1, 2)
             };
 
-            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 });
+            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 }, BlastShape.Disc);
 
             Assert.That(result.DetonatedBombs, Is.EquivalentTo(new[] { 0, 1 }));
             Assert.That(result.FlameTiles, Has.Member(new GridPos(6, 3)));
@@ -159,7 +159,7 @@ namespace Blastlands.Core.Tests
                 new Bomb(new GridPos(3, 3), 1, 1)
             };
 
-            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 });
+            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 }, BlastShape.Disc);
 
             Assert.That(result.DetonatedBombs, Is.EquivalentTo(new[] { 0 }));
         }
@@ -175,7 +175,7 @@ namespace Blastlands.Core.Tests
                 new Bomb(new GridPos(3, 3), 1, 1)
             };
 
-            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 });
+            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 }, BlastShape.Disc);
 
             Assert.That(result.DetonatedBombs, Is.EquivalentTo(new[] { 0 }));
             Assert.That(result.DestroyedSoftBlocks, Is.EquivalentTo(new[] { new GridPos(2, 3) }));
@@ -192,7 +192,7 @@ namespace Blastlands.Core.Tests
                 new Bomb(new GridPos(5, 3), 2, 2)
             };
 
-            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 });
+            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 }, BlastShape.Disc);
 
             Assert.That(result.DetonatedBombs, Is.EquivalentTo(new[] { 0, 1, 2 }));
             Assert.That(new HashSet<int>(result.DetonatedBombs).Count, Is.EqualTo(result.DetonatedBombs.Count));
@@ -208,9 +208,88 @@ namespace Blastlands.Core.Tests
                 new Bomb(new GridPos(3, 4), 1, 2)
             };
 
-            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0, 1 });
+            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0, 1 }, BlastShape.Disc);
 
             Assert.That(new HashSet<GridPos>(result.FlameTiles).Count, Is.EqualTo(result.FlameTiles.Count));
+        }
+
+        [Test]
+        public void Cross_BurnsOnlyAlongTheTwoAxes()
+        {
+            var arena = new Arena(9, 9);
+            var bombs = new[] { new Bomb(new GridPos(4, 4), 0, 2) };
+
+            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 }, BlastShape.Cross);
+
+            Assert.That(
+                result.FlameTiles,
+                Is.EquivalentTo(new[]
+                {
+                    new GridPos(4, 4),
+                    new GridPos(5, 4), new GridPos(6, 4),
+                    new GridPos(3, 4), new GridPos(2, 4),
+                    new GridPos(4, 5), new GridPos(4, 6),
+                    new GridPos(4, 3), new GridPos(4, 2)
+                }));
+        }
+
+        [Test]
+        public void Cross_StopsAnArmAtAHardBlockAndLeavesTheOthers()
+        {
+            var arena = new Arena(9, 9);
+            arena[new GridPos(3, 4)] = TileKind.HardBlock;
+            var bombs = new[] { new Bomb(new GridPos(4, 4), 0, 3) };
+
+            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 }, BlastShape.Cross);
+
+            Assert.That(result.FlameTiles, Has.No.Member(new GridPos(3, 4)), "the pillar itself");
+            Assert.That(result.FlameTiles, Has.No.Member(new GridPos(2, 4)), "past the pillar");
+            Assert.That(result.FlameTiles, Has.Member(new GridPos(7, 4)), "the opposite arm");
+            Assert.That(result.FlameTiles, Has.Member(new GridPos(4, 1)), "the arm at right angles");
+        }
+
+        [Test]
+        public void Cross_TakesTheFirstWallOnAnArmAndGoesNoFurther()
+        {
+            var arena = new Arena(9, 9);
+            arena[new GridPos(4, 2)] = TileKind.SoftBlock;
+            arena[new GridPos(4, 1)] = TileKind.SoftBlock;
+            var bombs = new[] { new Bomb(new GridPos(4, 4), 0, 3) };
+
+            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 }, BlastShape.Cross);
+
+            Assert.That(result.DestroyedSoftBlocks, Is.EquivalentTo(new[] { new GridPos(4, 2) }));
+            Assert.That(result.FlameTiles, Has.No.Member(new GridPos(4, 1)));
+        }
+
+        [Test]
+        public void Cross_PierceRunsThroughTheWallsOnItsArm()
+        {
+            var arena = new Arena(9, 9);
+            arena[new GridPos(4, 3)] = TileKind.SoftBlock;
+            arena[new GridPos(4, 2)] = TileKind.SoftBlock;
+            var bombs = new[] { new Bomb(new GridPos(4, 4), 0, 3, BombKind.Pierce) };
+
+            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 }, BlastShape.Cross);
+
+            Assert.That(result.DestroyedSoftBlocks, Is.EquivalentTo(new[] { new GridPos(4, 3), new GridPos(4, 2) }));
+            Assert.That(result.FlameTiles, Has.Member(new GridPos(4, 1)));
+        }
+
+        [Test]
+        public void Cross_ChainsABombOnAnArmButNotOneOnTheDiagonal()
+        {
+            var arena = new Arena(9, 9);
+            var bombs = new[]
+            {
+                new Bomb(new GridPos(4, 4), 0, 2),
+                new Bomb(new GridPos(5, 5), 1, 2),
+                new Bomb(new GridPos(6, 4), 2, 1)
+            };
+
+            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 }, BlastShape.Cross);
+
+            Assert.That(result.DetonatedBombs, Is.EquivalentTo(new[] { 0, 2 }));
         }
 
         [Test]
@@ -219,7 +298,7 @@ namespace Blastlands.Core.Tests
             var arena = new Arena(7, 7);
             var bombs = new[] { new Bomb(new GridPos(3, 3), 0, 1) };
 
-            TestDelegate outOfRange = () => ExplosionResolver.Resolve(arena, bombs, new[] { 1 });
+            TestDelegate outOfRange = () => ExplosionResolver.Resolve(arena, bombs, new[] { 1 }, BlastShape.Disc);
             Assert.Throws<ArgumentOutOfRangeException>(outOfRange);
         }
     }

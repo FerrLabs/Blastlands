@@ -57,12 +57,12 @@ namespace Blastlands.Core
         // standing diagonally beside the bot did not count, according to a bot whose bomb
         // would have covered them. Radius and line of sight, the way ExplosionResolver
         // reads it, so the two cannot drift apart again.
-        internal static bool Reaches(Arena arena, GridPos from, GridPos target, int range)
+        internal static bool Reaches(Arena arena, GridPos from, GridPos target, int range, BlastShape shape)
         {
             int dx = target.X - from.X;
             int dy = target.Y - from.Y;
 
-            if ((dx * dx) + (dy * dy) > range * range)
+            if ((dx * dx) + (dy * dy) > range * range || (shape == BlastShape.Cross && dx != 0 && dy != 0))
             {
                 return false;
             }

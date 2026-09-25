@@ -70,7 +70,7 @@ namespace Blastlands.Core.Tests
             }
 
             var bombs = new[] { new Bomb(new GridPos(4, 7), 0, 4) };
-            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 });
+            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 }, BlastShape.Disc);
 
             Assert.That(result.FlameTiles, Has.Member(new GridPos(6, 7)), "the bush is hit");
             Assert.That(result.DestroyedSoftBlocks, Has.Member(new GridPos(6, 7)), "and destroyed");

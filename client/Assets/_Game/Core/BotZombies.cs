@@ -22,7 +22,7 @@ namespace Blastlands.Core
         {
             for (int i = 0; i < state.Zombies.Count; i++)
             {
-                if (BotGrid.Reaches(state.Arena, tile, state.Zombies[i].Tile, range))
+                if (BotGrid.Reaches(state.Arena, tile, state.Zombies[i].Tile, range, state.Settings.Rules.Blast))
                 {
                     return true;
                 }

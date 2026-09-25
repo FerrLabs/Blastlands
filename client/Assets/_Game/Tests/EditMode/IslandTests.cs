@@ -97,7 +97,7 @@ namespace Blastlands.Core.Tests
             }
 
             var bombs = new[] { new Bomb(new GridPos(5, 7), 0, 4) };
-            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 });
+            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 }, BlastShape.Disc);
 
             Assert.That(result.FlameTiles, Has.No.Member(new GridPos(6, 7)), "fire hanging over the drop");
             Assert.That(result.FlameTiles, Has.Member(new GridPos(7, 7)), "the far side is sheltered");

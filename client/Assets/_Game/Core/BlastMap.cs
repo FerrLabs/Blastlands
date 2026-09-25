@@ -46,7 +46,7 @@ namespace Blastlands.Core
                 for (int i = 0; i < bombs.Count; i++)
                 {
                     trigger[0] = i;
-                    ExplosionResult result = ExplosionResolver.Resolve(state.Arena, definitions, trigger);
+                    ExplosionResult result = ExplosionResolver.Resolve(state.Arena, definitions, trigger, state.Settings.Rules.Blast);
                     int fuse = bombs[i].FuseRemaining;
 
                     for (int f = 0; f < result.FlameTiles.Count; f++)
@@ -115,7 +115,7 @@ namespace Blastlands.Core
                     trigger[0] = at;
 
                     int fuse = reached + state.Settings.LooseBombFuseTicks;
-                    ExplosionResult result = ExplosionResolver.Resolve(state.Arena, definitions, trigger);
+                    ExplosionResult result = ExplosionResolver.Resolve(state.Arena, definitions, trigger, state.Settings.Rules.Blast);
                     for (int f = 0; f < result.FlameTiles.Count; f++)
                     {
                         GridPos flame = result.FlameTiles[f];

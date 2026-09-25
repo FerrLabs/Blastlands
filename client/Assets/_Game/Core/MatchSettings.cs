@@ -312,7 +312,13 @@ namespace Blastlands.Core
 
         public static MatchSettings SurvivalMode
         {
-            get { return Classic.WithSuddenDeath(SuddenDeathSettings.Off).WithSurvival(SurvivalSettings.Default); }
+            get
+            {
+                return Classic
+                    .WithRules(RuleSet.Survival)
+                    .WithSuddenDeath(SuddenDeathSettings.Off)
+                    .WithSurvival(SurvivalSettings.Default);
+            }
         }
 
         // The settings a mode runs under, in one place, so a caller picks a mode rather
