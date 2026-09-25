@@ -22,6 +22,8 @@ namespace Blastlands.Runtime
         private static readonly Color ButtonFace = new Color(0.20f, 0.22f, 0.26f, 1f);
         private static readonly Color ButtonText = new Color(0.95f, 0.93f, 0.88f);
 
+        private const float NoPortraitShrink = 380f;
+
         private CharacterStage stage;
 
         public static VictoryScreen Open(
@@ -62,12 +64,16 @@ namespace Blastlands.Runtime
             scaler.referenceResolution = Reference;
             scaler.matchWidthOrHeight = 0.5f;
 
+            bool showsWinner = card.HasWinner && art != null;
+            float lift = showsWinner ? 0f : NoPortraitShrink / 2f;
+
             Fill(canvasHost.transform, "Scrim", Scrim, Vector2.zero, Vector2.zero, true);
-            RectTransform panel = Fill(canvasHost.transform, "Card", Card, Vector2.zero, new Vector2(1100f, 760f), false);
+            RectTransform panel = Fill(
+                canvasHost.transform, "Card", Card, Vector2.zero, new Vector2(1100f, 760f - (lift * 2f)), false);
 
-            Write(panel, card.Heading, 96f, FontStyles.Bold, ToneColour(card.Tone), new Vector2(0f, 290f), new Vector2(1000f, 120f));
+            Write(panel, card.Heading, 96f, FontStyles.Bold, ToneColour(card.Tone), new Vector2(0f, 290f - lift), new Vector2(1000f, 120f));
 
-            if (card.HasWinner && art != null)
+            if (showsWinner)
             {
                 stage = new GameObject("Victory stage").AddComponent<CharacterStage>();
                 stage.transform.SetParent(transform, false);
@@ -88,12 +94,12 @@ namespace Blastlands.Runtime
                 detail += " Played as the " + card.Character + ".";
             }
 
-            Write(panel, detail, 34f, FontStyles.Normal, Drawn, new Vector2(0f, -210f), new Vector2(1000f, 90f));
+            Write(panel, detail, 34f, FontStyles.Normal, Drawn, new Vector2(0f, -210f + lift), new Vector2(1000f, 90f));
 
-            Button first = Press(panel, primary, new Vector2(secondary == null ? 0f : -200f, -310f), onPrimary);
+            Button first = Press(panel, primary, new Vector2(secondary == null ? 0f : -200f, -310f + lift), onPrimary);
             if (secondary != null)
             {
-                Press(panel, secondary, new Vector2(200f, -310f), onSecondary);
+                Press(panel, secondary, new Vector2(200f, -310f + lift), onSecondary);
             }
 
             EventSystem.current.SetSelectedGameObject(first.gameObject);
