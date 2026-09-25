@@ -688,7 +688,19 @@ rather than by hand-tuning numbers per prefab:
   exception: they are 15x15 unit slabs meant to be laid as-is, so the floor is one stretched
   slab rather than one shrunk copy per tile, which would squeeze a whole texture into each
   tile and turn the floor into noise.
-- The FX prefabs are authored for set dressing: `FX_Fire` simulates in world space, ignores
-  transform scale for particle size, and lives four seconds. Pooled flame objects move between
-  tiles, so those defaults smear fire across the arena. The instances are retuned on spawn;
-  the source assets are never modified.
+- The FX prefabs are authored for set dressing: they simulate in world space, ignore transform
+  scale for particle size, and live for seconds. Pooled flame objects move between tiles, so
+  those defaults smear fire across the arena. The instances are retuned on spawn; the source
+  prefabs are never modified.
+
+Every burning tile gets its own fireball (`FX_Fire_Explosion_01` from POLYGON Particle FX),
+scaled so neighbours overlap into one sheet of fire: the blast's shape is the thing a player
+reads, so it is drawn tile by tile rather than suggested by one big cloud. The bomb that went
+off adds a scorch and a shockwave (`FX_GroundCrack_Blast_01`). The pack's particle materials
+used Unity's legacy particle shaders, which render pink under URP, so they were converted to
+URP's Particles/Unlit with the same blend mode when they were imported.
+
+The bomb is POLYGON Pirate's round bomb with a spark on its fuse (`_Game/Art/Bomb.prefab`). The
+spark is what says "lit" from across the board, where a dark bomb among dark rocks does not. A
+loose bomb lying in Arena is the same prefab with the spark put out, so it reads as a bomb that
+is not ticking.

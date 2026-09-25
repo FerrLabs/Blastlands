@@ -26,9 +26,9 @@ MonoBehaviour:
   - {fileID: 112324, guid: 8c326d620e23a2b4caf79c89edb5f408, type: 3}
   - {fileID: 123014, guid: 7f6c22d65d59655449574a79097086f5, type: 3}
   - {fileID: 166404, guid: 9688c4c1937ea2f4ab16284ff3cd0824, type: 3}
-  bomb: {fileID: 100000, guid: 1d51fd171c7a61b40b85e2306881707a, type: 3}
-  flame: {fileID: 100000, guid: 756d99540142b5e4a8d174e18a6310d9, type: 3}
-  explosionBurst: {fileID: 191186, guid: 079954accd64b32419ec069129c81273, type: 3}
+  bomb: {fileID: 9121659319792953144, guid: 3f88cb47bbbb5c145956b131a24265c2, type: 3}
+  flame: {fileID: 1809022330002312, guid: ed511b7776af6174e9b1255c7a81e59c, type: 3}
+  explosionBurst: {fileID: 1159970587636746, guid: e7473d9620ab29341b98bf21b400e598, type: 3}
   players:
   - {fileID: 1467590972069000, guid: d91ede30c57f9e64cb6e7ac51e28ff35, type: 3}
   - {fileID: 1791362862288902, guid: 040c180181105224d8d03746446e080a, type: 3}

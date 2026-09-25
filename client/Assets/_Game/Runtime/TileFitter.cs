@@ -117,20 +117,28 @@ namespace Blastlands.Runtime
 
         public static bool TryMeasure(GameObject instance, out Bounds bounds)
         {
-            Renderer[] renderers = instance.GetComponentsInChildren<Renderer>();
-            if (renderers.Length == 0)
+            bounds = default;
+            bool measured = false;
+
+            foreach (Renderer renderer in instance.GetComponentsInChildren<Renderer>())
             {
-                bounds = default;
-                return false;
+                if (renderer is ParticleSystemRenderer)
+                {
+                    continue;
+                }
+
+                if (measured)
+                {
+                    bounds.Encapsulate(renderer.bounds);
+                }
+                else
+                {
+                    bounds = renderer.bounds;
+                    measured = true;
+                }
             }
 
-            bounds = renderers[0].bounds;
-            for (int i = 1; i < renderers.Length; i++)
-            {
-                bounds.Encapsulate(renderers[i].bounds);
-            }
-
-            return true;
+            return measured;
         }
     }
 }
