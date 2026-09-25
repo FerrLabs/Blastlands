@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.130] - 2026-09-25
+
+### Features
+
+- feat(core): burn in a cross on the Classic boards (#155)
+
 ## [26.9.129] - 2026-09-25
 
 ### Refactoring
