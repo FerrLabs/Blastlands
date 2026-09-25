@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.119] - 2026-09-25
+
+### Bug Fixes
+
+- fix(client): tint the classic item icons and name keys in English (#136)
+
 ## [26.9.118] - 2026-09-25
 
 ### Bug Fixes
