@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.123] - 2026-09-25
+
+### Features
+
+- feat(client): replace the synthesised sound effects with Kenney clips (#144)
+
 ## [26.9.122] - 2026-09-25
 
 ### Bug Fixes
