@@ -441,7 +441,7 @@ h2 {
 
 .modes {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
 }
 
@@ -541,7 +541,7 @@ footer a:hover { color: var(--text); }
     <img class="logo" src="/logo.png" alt="" width="96" height="96">
     <p class="eyebrow">Free on Windows</p>
     <h1>Blastlands</h1>
-    <p class="lead">A multiplayer bomber for up to eight players, with bots to fill the empty seats. Last one alive wins the round.</p>
+    <p class="lead">A multiplayer bomber for up to eight players, with bots to fill the empty seats. Be the last one alive, or team up against waves of zombies.</p>
     {{action}}
   </div>
   <a class="more" href="#characters"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>What's in it<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></a>
@@ -608,12 +608,12 @@ footer a:hover { color: var(--text); }
   <section class="band sunk">
     <div class="wrap">
       <h2>Modes</h2>
-      <p class="intro">The host picks one when creating the match. Destroyed blocks grow back after a while, and at ninety seconds the board starts shrinking, so rounds stay short.</p>
+      <p class="intro">The host picks one when creating the match, along with how many seats to open, from two to eight, and how hard the bots play. Destroyed blocks grow back after a while, and in the versus modes the board starts shrinking at ninety seconds, so rounds stay short.</p>
       <div class="modes">
         <article class="mode">
           <span class="tag">Original</span>
           <h3>Classic</h3>
-          <p>The board everyone remembers from bomberman: 13 by 11, a pillar on every other tile, a corner each. Your bombs come back after they explode. No dash, no shove, just bombs.</p>
+          <p>The board everyone remembers from bomberman: 13 by 11, a pillar on every other tile, a corner each. Your bombs come back after they explode. No dash, no shove, just bombs. Some blocks hide a kick to send bombs sliding, a remote detonator, or a skull that curses you for a while.</p>
         </article>
         <article class="mode">
           <span class="tag">Hidden players</span>
@@ -625,6 +625,11 @@ footer a:hover { color: var(--text); }
           <h3>Arena</h3>
           <p>A bigger island with bushes to hide in. Bombs are picked up off the ground and gone once used. You can dash, shove people around and use your character's ability, and like in Classic Blinded you only see the players you have a line to.</p>
         </article>
+        <article class="mode">
+          <span class="tag">Co-op</span>
+          <h3>Survival</h3>
+          <p>Everyone on the same side, on the Classic board, against five waves of zombies. They follow the corridors to the nearest player, chew through blocks when walled out, and one touch is enough. Your fire only hurts them. Hold off the fifth wave to win.</p>
+        </article>
       </div>
     </div>
   </section>
@@ -635,7 +640,8 @@ footer a:hover { color: var(--text); }
       <p class="intro">Launch the game, type a name and you land on the match list. Host a match and it
       shows up there for everyone else. Add bots if your friends are late, then press Start when you
       are ready. Matches run on our servers, not on someone's PC, and if a player drops out a bot
-      finishes the round for them.</p>
+      finishes the round for them. Practice vs bots plays any mode on your own machine, no server
+      needed.</p>
     </div>
   </section>
 
@@ -643,6 +649,7 @@ footer a:hover { color: var(--text); }
     <div class="notes">
       <p>{{note}}</p>
       <p>When a new version comes out, the lobby shows an Update button.</p>
+      <p>Settings on the match list changes the volume, screen shake, HUD size and your keys.</p>
     </div>
   </section>
 </main>

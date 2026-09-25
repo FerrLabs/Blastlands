@@ -4,6 +4,18 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.121] - 2026-09-25
+
+### Bug Fixes
+
+- fix(client): read a blank key name as a named key (#143)
+
+## [26.9.120] - 2026-09-25
+
+### Features
+
+- feat(lobby): describe Survival, the Classic items and the host's choices on the landing page (#141)
+
 ## [26.9.119] - 2026-09-25
 
 ### Bug Fixes

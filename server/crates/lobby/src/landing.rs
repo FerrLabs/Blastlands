@@ -77,6 +77,7 @@ fn escape(raw: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::modes::GameMode;
     use crate::version::ClientVersion;
 
     fn release(download_url: &str) -> ReleaseInfo {
@@ -152,6 +153,31 @@ mod tests {
         ] {
             assert!(page.contains(&format!("class=\"github\" href=\"{REPOSITORY}\"")));
             assert!(page.contains("aria-label=\"Blastlands on GitHub\""));
+        }
+    }
+
+    #[test]
+    fn every_mode_the_host_can_pick_is_described() {
+        fn card(mode: GameMode) -> &'static str {
+            match mode {
+                GameMode::Arena => "<h3>Arena</h3>",
+                GameMode::Classic => "<h3>Classic</h3>",
+                GameMode::ClassicBlinded => "<h3>Classic Blinded</h3>",
+                GameMode::Survival => "<h3>Survival</h3>",
+            }
+        }
+
+        let page = page(None, None);
+        for mode in [
+            GameMode::Arena,
+            GameMode::Classic,
+            GameMode::ClassicBlinded,
+            GameMode::Survival,
+        ] {
+            assert!(
+                page.contains(card(mode)),
+                "{mode:?} has no card on the page"
+            );
         }
     }
 
