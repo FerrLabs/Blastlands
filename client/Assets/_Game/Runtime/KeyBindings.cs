@@ -108,7 +108,20 @@ namespace Blastlands.Runtime
         {
             InputAction input = ActionFor(asset, action);
             int index = KeyboardBinding(input);
-            return index < 0 ? string.Empty : input.GetBindingDisplayString(index).ToUpperInvariant();
+            return index < 0 ? string.Empty : Label(input, index);
+        }
+
+        public static string Label(InputAction input, int index)
+        {
+            string local = input.GetBindingDisplayString(index);
+            string path = input.bindings[index].effectivePath;
+            if (local.Length <= 1 || !path.StartsWith("<Keyboard>", StringComparison.Ordinal))
+            {
+                return local.ToUpperInvariant();
+            }
+
+            return InputControlPath.ToHumanReadableString(path, InputControlPath.HumanReadableStringOptions.OmitDevice)
+                .ToUpperInvariant();
         }
 
         public static string Rebound(InputActionAsset asset, HudAction action)
@@ -120,7 +133,7 @@ namespace Blastlands.Runtime
                 return null;
             }
 
-            return input.GetBindingDisplayString(index).ToUpperInvariant();
+            return Label(input, index);
         }
 
         public static string Rebound(HudAction action)

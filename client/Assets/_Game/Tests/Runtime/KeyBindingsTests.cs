@@ -49,6 +49,24 @@ namespace Blastlands.Runtime.Tests
         }
 
         [Test]
+        public void NamedKeysReadInEnglishAndMouseButtonsStayShort()
+        {
+            InputActionAsset asset = Fresh();
+            InputAction dash = KeyBindings.ActionFor(asset, HudAction.Dash);
+            int index = KeyBindings.KeyboardBinding(dash);
+
+            dash.ApplyBindingOverride(index, "<Keyboard>/leftShift");
+            Assert.That(KeyBindings.Label(dash, index), Is.EqualTo("LEFT SHIFT"));
+
+            dash.ApplyBindingOverride(index, "<Keyboard>/space");
+            Assert.That(KeyBindings.Label(dash, index), Is.EqualTo("SPACE"));
+
+            dash.ApplyBindingOverride(index, "<Mouse>/leftButton");
+            Assert.That(KeyBindings.Label(dash, index), Is.EqualTo("LMB"));
+            Object.DestroyImmediate(asset);
+        }
+
+        [Test]
         public void OnlyARebindReplacesTheDrawnPrompt()
         {
             InputActionAsset asset = Fresh();

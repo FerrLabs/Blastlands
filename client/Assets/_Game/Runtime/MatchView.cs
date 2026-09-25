@@ -100,6 +100,7 @@ namespace Blastlands.Runtime
         private Vector3 telegraphFullScale = Vector3.one;
         private static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
         private static readonly int Speed = Animator.StringToHash("Speed_f");
+        private static readonly int LegacyColor = Shader.PropertyToID("_Color");
         private static readonly int Static = Animator.StringToHash("Static_b");
         private readonly List<Vector3> bombBaseScales = new List<Vector3>();
         private readonly List<GameObject> flamePool = new List<GameObject>();
@@ -795,6 +796,23 @@ namespace Blastlands.Runtime
             }
         }
 
+        private static void Tint(GameObject view, PowerUpKind kind)
+        {
+            if (!MatchPalette.TryTintFor(kind, out Color tint))
+            {
+                return;
+            }
+
+            var block = new MaterialPropertyBlock();
+            foreach (Renderer part in view.GetComponentsInChildren<Renderer>(true))
+            {
+                part.GetPropertyBlock(block);
+                block.SetColor(BaseColor, tint);
+                block.SetColor(LegacyColor, tint);
+                part.SetPropertyBlock(block);
+            }
+        }
+
         private GameObject TakePowerUpView(PowerUpKind kind)
         {
             for (int i = 0; i < powerUpViews.Count; i++)
@@ -815,6 +833,7 @@ namespace Blastlands.Runtime
             else
             {
                 TileFitter.FitInBox(created, powerUpSize);
+                Tint(created, kind);
             }
 
             powerUpViews.Add(created);

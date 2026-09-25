@@ -347,7 +347,7 @@ namespace Blastlands.Runtime
                 int index = KeyBindings.KeyboardBinding(input);
                 if (KeyBindings.Taken(keys, input, index))
                 {
-                    keyNote = input.GetBindingDisplayString(index).ToUpperInvariant() + " is already used, pick another key.";
+                    keyNote = KeyBindings.Label(input, index) + " is already used, pick another key.";
                     input.RemoveBindingOverride(index);
                     KeyBindings.Apply(keys, SettingsChoice.Keys);
                 }

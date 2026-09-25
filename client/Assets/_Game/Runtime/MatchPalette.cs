@@ -1,3 +1,4 @@
+using Blastlands.Core;
 using UnityEngine;
 
 namespace Blastlands.Runtime
@@ -10,6 +11,28 @@ namespace Blastlands.Runtime
         public static readonly Color Bush = new Color(0.22f, 0.42f, 0.20f);
         public static readonly Color Bomb = new Color(0.09f, 0.09f, 0.11f);
         public static readonly Color Flame = new Color(0.95f, 0.45f, 0.12f);
+        public static readonly Color KickItem = new Color(0.96f, 0.62f, 0.10f);
+        public static readonly Color RemoteItem = new Color(0.90f, 0.30f, 0.22f);
+        public static readonly Color SkullItem = new Color(0.66f, 0.38f, 0.90f);
+
+        public static bool TryTintFor(PowerUpKind kind, out Color tint)
+        {
+            switch (kind)
+            {
+                case PowerUpKind.Kick:
+                    tint = KickItem;
+                    return true;
+                case PowerUpKind.Remote:
+                    tint = RemoteItem;
+                    return true;
+                case PowerUpKind.Skull:
+                    tint = SkullItem;
+                    return true;
+                default:
+                    tint = Color.white;
+                    return false;
+            }
+        }
 
         // The match clock, which says how long is left before the coast starts closing.
         // Three states told apart by colour alone: no emoji, no blinking, nothing that
