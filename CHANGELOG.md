@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.131] - 2026-09-25
+
+### Features
+
+- feat(client): a real bomb with a lit fuse, and fire on every burning tile (#157)
+
 ## [26.9.130] - 2026-09-25
 
 ### Features
