@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.122] - 2026-09-25
+
+### Bug Fixes
+
+- fix(client): refuse a self-update the install folder is too deep to unpack (#139)
+
 ## [26.9.121] - 2026-09-25
 
 ### Bug Fixes
