@@ -38,8 +38,9 @@ The 40% was re-measured at this size. A player can walk to about 29 tiles before
 bomb anything, three times the spawn pocket, and 83% of spawn pairs start walled off from each
 other, so the mode opens by digging toward somebody. At 45% the reach halves toward the pocket
 itself. Bombs are owned rather than found: you hold them, and each one
-comes back once it has gone off. No dash, no shove, and the whole board is visible to
-everyone, so the only verb is placing a bomb.
+comes back once it has gone off. Bombs burn in a cross, the shape the board was built to be
+read in (see [Bombs](#bombs)). No dash, no shove, and the whole board is visible to everyone,
+so the only verb is placing a bomb.
 
 **Classic Blinded** is that same board and the same bombs, played without sight of anyone
 you have no line to. Cover in Arena is a tile you stand in; here it is the lattice itself, so
@@ -55,7 +56,9 @@ a board, where a bot has only the sightings it remembers. This number is worth r
 against people rather than tuned against bots.
 
 **Survival** is the Classic board and Classic bombs, played co-op against waves of zombies
-(`Survival.cs`, tuned in `SurvivalSettings`). It settles the open questions on #3 like this:
+(`Survival.cs`, tuned in `SurvivalSettings`). The one Classic rule it drops is the cross: a
+zombie is not on a lane, and a blast that has to line up with one is a blast that misses. It
+settles the open questions on #3 like this:
 
 - Five waves, a fixed ending. The first comes after 3 s and each one after a 5 s breather that
   only starts once the last zombie of the wave is gone. A wave has `3 + 2 * (wave - 1)`
@@ -163,9 +166,15 @@ exactly that boundary: 35 seeds of 40 at 90 ticks, 11 at 60. A test pins the inv
 
 A bomb lying in fire goes off, so a stocked corner is worth a shot from a distance.
 
-**The blast is a disc, and it is blocked by walls.** The cross was never a design choice: it
-was legible on a checkerboard, which is the only reason it existed. Once a player can stand
-between two tiles it stops answering "am I in it".
+**The blast is a disc in Arena and Survival, a cross in Classic and Classic Blinded, and both
+are blocked by walls.** On open ground the cross stops answering "am I in it" once a player
+can stand between two tiles. On the pillar lattice it is the shape people read at a glance, and
+a disc there reached tiles off the bomb's row and column wherever the pillars left a gap,
+which nobody expects from a bomberman board. The cross is the disc cut down to its two axes (`RuleSet.Blast`), so both stop at the
+same walls and the resolver has one path for either.
+
+Over twelve seeded bot matches each, the cross took Classic from 2 draws to 1 and Classic
+Blinded from 2 to none, and left Arena and Survival bit for bit the same.
 
 The occlusion is the load-bearing half. A plain distance check is far cheaper to write and
 far worse to play — without walls stopping the blast, taking cover is impossible and the
@@ -186,7 +195,7 @@ Eight was fine as a cross. As a disc it is one bomb covering the whole map.
 - A player drops a bomb on their current tile if they are carrying one.
 - Fuse is a fixed tick count (~2.5 s).
 - On detonation, every tile within fire range burns, unless a wall stands between it and
-  the bomb.
+  the bomb. On a Classic board, only the tiles on the bomb's row and column count.
 - Flame never burns a hard block. It destroys a soft block it reaches, and that block
   shelters whatever is behind it.
 - Flame reaching another bomb detonates it immediately — chains resolve in the same tick,
@@ -203,7 +212,7 @@ tiles are safe and therefore how players move.
 |---|---|---|
 | **Standard** | Cross blast. Destroys the first soft block in each arm and stops there. | The baseline, readable at a glance. |
 | **Pierce** | Punches through soft blocks, destroying every one in the arm until a hard block stops it. | Turns a wall of blocks from cover into a liability, and opens the map fast. |
-| **Cluster** | Normal cross, then each arm flares one tile in every direction around where it stopped. | Reaches past its own range and around corners, so the safe-tile maths a player does at a glance stops working. |
+| **Cluster** | Normal blast, then each arm flares one tile in every direction around where it stopped. On a Classic board the flare only carries the arm one tile further, so the cross stays a cross. | Reaches past its own range and around corners, so the safe-tile maths a player does at a glance stops working. |
 
 A cluster flare is deliberately not itself a cluster. That is what bounds the recursion, and it
 keeps the shape readable instead of turning every cluster into an unpredictable chain.

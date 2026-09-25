@@ -13,7 +13,8 @@ namespace Blastlands.Core
             new GridPos(0, -1)
         };
 
-        public static ExplosionResult Resolve(Arena arena, IReadOnlyList<Bomb> bombs, IReadOnlyList<int> triggeredBombs)
+        public static ExplosionResult Resolve(
+            Arena arena, IReadOnlyList<Bomb> bombs, IReadOnlyList<int> triggeredBombs, BlastShape shape)
         {
             if (arena == null)
             {
@@ -30,13 +31,14 @@ namespace Blastlands.Core
                 throw new ArgumentNullException(nameof(triggeredBombs));
             }
 
-            return new Pass(arena, bombs).Run(triggeredBombs);
+            return new Pass(arena, bombs, shape).Run(triggeredBombs);
         }
 
         private sealed class Pass
         {
             private readonly Arena arena;
             private readonly IReadOnlyList<Bomb> bombs;
+            private readonly BlastShape shape;
             private readonly Dictionary<GridPos, int> bombsByTile = new Dictionary<GridPos, int>();
             private readonly Queue<int> pending = new Queue<int>();
             private readonly HashSet<int> queued = new HashSet<int>();
@@ -46,10 +48,11 @@ namespace Blastlands.Core
             private readonly List<GridPos> destroyed = new List<GridPos>();
             private readonly HashSet<GridPos> destroyedTiles = new HashSet<GridPos>();
 
-            public Pass(Arena arena, IReadOnlyList<Bomb> bombs)
+            public Pass(Arena arena, IReadOnlyList<Bomb> bombs, BlastShape shape)
             {
                 this.arena = arena;
                 this.bombs = bombs;
+                this.shape = shape;
 
                 for (int index = 0; index < bombs.Count; index++)
                 {
@@ -85,9 +88,11 @@ namespace Blastlands.Core
                 return new ExplosionResult(flames, destroyed, detonated);
             }
 
-            // A radius rather than a cross. The cross was legible on a checkerboard,
-            // which is the only reason it existed; once a player can stand between two
-            // tiles it stops answering the question "am I in it".
+            // A radius, cut down to its two axes where the rules ask for a cross. The
+            // cross is legible on a checkerboard, which is why Classic keeps it; on open
+            // ground, where a player can stand between two tiles, it stops answering the
+            // question "am I in it". Cutting the radius rather than walking the arms
+            // keeps both shapes stopping at the same walls.
             private void Detonate(Bomb bomb)
             {
                 int range = bomb.FireRange;
@@ -97,7 +102,7 @@ namespace Blastlands.Core
                 {
                     for (int dx = -range; dx <= range; dx++)
                     {
-                        if ((dx * dx) + (dy * dy) > range * range)
+                        if ((dx * dx) + (dy * dy) > range * range || (shape == BlastShape.Cross && dx != 0 && dy != 0))
                         {
                             continue;
                         }
@@ -113,7 +118,7 @@ namespace Blastlands.Core
                         GridPos tip = FurthestBurning(bomb.Position, direction, range);
                         if (tip != bomb.Position)
                         {
-                            Scatter(tip);
+                            Scatter(tip, direction);
                         }
                     }
                 }
@@ -181,10 +186,17 @@ namespace Blastlands.Core
 
             // Cluster arms flare one tile around where they stopped. The flare is
             // deliberately not itself a cluster, which is what bounds the recursion.
-            private void Scatter(GridPos origin)
+            // Under a cross it only carries the arm one tile on: fanning out would burn
+            // off the row and column, the one thing a cross promises never burns.
+            private void Scatter(GridPos origin, GridPos arm)
             {
                 foreach (GridPos direction in Cardinals)
                 {
+                    if (shape == BlastShape.Cross && direction != arm)
+                    {
+                        continue;
+                    }
+
                     GridPos tile = origin.Offset(direction.X, direction.Y);
                     if (!arena.Contains(tile))
                     {

@@ -370,7 +370,7 @@ namespace Blastlands.Core
                 return;
             }
 
-            ExplosionResult result = ExplosionResolver.Resolve(state.Arena, definitions, triggered);
+            ExplosionResult result = ExplosionResolver.Resolve(state.Arena, definitions, triggered, state.Settings.Rules.Blast);
 
             // Classic hands the bomb back to whoever placed it. In Arena a bomb is spent
             // for good, which is what sends a player out to find another one, so the two

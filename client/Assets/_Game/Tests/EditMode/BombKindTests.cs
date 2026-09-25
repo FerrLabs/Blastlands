@@ -14,7 +14,7 @@ namespace Blastlands.Core.Tests
             arena[new GridPos(4, 4)] = TileKind.SoftBlock;
             var bombs = new[] { new Bomb(new GridPos(1, 4), 0, 4, BombKind.Pierce) };
 
-            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 });
+            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 }, BlastShape.Disc);
 
             Assert.That(result.DestroyedSoftBlocks, Is.EquivalentTo(new[]
             {
@@ -31,7 +31,7 @@ namespace Blastlands.Core.Tests
             arena[new GridPos(3, 4)] = TileKind.SoftBlock;
             var bombs = new[] { new Bomb(new GridPos(1, 4), 0, 4) };
 
-            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 });
+            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 }, BlastShape.Disc);
 
             Assert.That(result.DestroyedSoftBlocks, Is.EquivalentTo(new[] { new GridPos(2, 4) }));
             Assert.That(result.FlameTiles, Has.No.Member(new GridPos(3, 4)));
@@ -45,7 +45,7 @@ namespace Blastlands.Core.Tests
             arena[new GridPos(3, 4)] = TileKind.HardBlock;
             var bombs = new[] { new Bomb(new GridPos(1, 4), 0, 5, BombKind.Pierce) };
 
-            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 });
+            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 }, BlastShape.Disc);
 
             Assert.That(result.DestroyedSoftBlocks, Is.EquivalentTo(new[] { new GridPos(2, 4) }));
             Assert.That(result.FlameTiles, Has.No.Member(new GridPos(3, 4)));
@@ -58,7 +58,7 @@ namespace Blastlands.Core.Tests
             var arena = new Arena(9, 9);
             var bombs = new[] { new Bomb(new GridPos(4, 4), 0, 2, BombKind.Cluster) };
 
-            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 });
+            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 }, BlastShape.Disc);
 
             Assert.That(result.FlameTiles, Has.Member(new GridPos(7, 4)), "reaches past its own range");
             Assert.That(result.FlameTiles, Has.Member(new GridPos(6, 5)), "flares perpendicular to the arm");
@@ -73,7 +73,7 @@ namespace Blastlands.Core.Tests
             var arena = new Arena(9, 9);
             var bombs = new[] { new Bomb(new GridPos(4, 4), 0, 2) };
 
-            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 });
+            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 }, BlastShape.Disc);
 
             Assert.That(result.FlameTiles, Has.No.Member(new GridPos(7, 4)));
             Assert.That(result.FlameTiles, Has.No.Member(new GridPos(6, 5)));
@@ -87,7 +87,7 @@ namespace Blastlands.Core.Tests
             arena[new GridPos(2, 4)] = TileKind.HardBlock;
             var bombs = new[] { new Bomb(new GridPos(1, 4), 0, 3, BombKind.Cluster) };
 
-            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 });
+            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 }, BlastShape.Disc);
 
             Assert.That(result.FlameTiles, Has.No.Member(new GridPos(2, 4)));
             Assert.That(result.FlameTiles, Has.No.Member(new GridPos(3, 4)));
@@ -103,7 +103,7 @@ namespace Blastlands.Core.Tests
                 new Bomb(new GridPos(7, 4), 1, 1)
             };
 
-            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 });
+            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 }, BlastShape.Disc);
 
             Assert.That(result.DetonatedBombs, Is.EquivalentTo(new[] { 0, 1 }));
         }
@@ -119,7 +119,7 @@ namespace Blastlands.Core.Tests
                 new Bomb(new GridPos(6, 4), 2, 2, BombKind.Cluster)
             };
 
-            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 });
+            ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 }, BlastShape.Disc);
 
             Assert.That(result.DetonatedBombs, Is.EquivalentTo(new[] { 0, 1, 2 }));
             Assert.That(new HashSet<int>(result.DetonatedBombs).Count, Is.EqualTo(result.DetonatedBombs.Count));
@@ -134,7 +134,7 @@ namespace Blastlands.Core.Tests
             foreach (BombKind kind in new[] { BombKind.Standard, BombKind.Pierce, BombKind.Cluster })
             {
                 var bombs = new[] { new Bomb(new GridPos(4, 4), 0, 2, kind) };
-                ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 });
+                ExplosionResult result = ExplosionResolver.Resolve(arena, bombs, new[] { 0 }, BlastShape.Disc);
 
                 Assert.That(result.FlameTiles, Has.Member(new GridPos(4, 4)), $"{kind} spares its own tile");
             }

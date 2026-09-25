@@ -75,21 +75,21 @@ namespace Blastlands.Core
             }
 
             List<Bomb> bombs = BombsOnBoard(state);
-            if (!Burns(state.Arena, bombs, bot.Tile))
+            if (!Burns(state.Arena, bombs, bot.Tile, state.Settings.Rules.Blast))
             {
                 return false;
             }
 
-            return !Burns(WithWall(state.Arena, wall), bombs, bot.Tile);
+            return !Burns(WithWall(state.Arena, wall), bombs, bot.Tile, state.Settings.Rules.Blast);
         }
 
-        private static bool Burns(Arena arena, List<Bomb> bombs, GridPos tile)
+        private static bool Burns(Arena arena, List<Bomb> bombs, GridPos tile, BlastShape shape)
         {
             var trigger = new int[1];
             for (int i = 0; i < bombs.Count; i++)
             {
                 trigger[0] = i;
-                IReadOnlyList<GridPos> flames = ExplosionResolver.Resolve(arena, bombs, trigger).FlameTiles;
+                IReadOnlyList<GridPos> flames = ExplosionResolver.Resolve(arena, bombs, trigger, shape).FlameTiles;
                 for (int f = 0; f < flames.Count; f++)
                 {
                     if (flames[f] == tile)
@@ -132,7 +132,7 @@ namespace Blastlands.Core
         private static bool CatchesARival(MatchState state, PlayerState bot, List<Bomb> bombs, int triggered)
         {
             var burning = new HashSet<GridPos>(
-                ExplosionResolver.Resolve(state.Arena, bombs, new[] { triggered }).FlameTiles);
+                ExplosionResolver.Resolve(state.Arena, bombs, new[] { triggered }, state.Settings.Rules.Blast).FlameTiles);
             if (burning.Contains(bot.Tile))
             {
                 return false;

@@ -13,7 +13,13 @@ namespace Blastlands.Core
     public readonly struct RuleSet
     {
         public RuleSet(
-            bool bombsReturn, bool allowsDash, bool allowsShove, bool hidesTheUnseen, bool allowsCharacters, bool classicItems)
+            bool bombsReturn,
+            bool allowsDash,
+            bool allowsShove,
+            bool hidesTheUnseen,
+            bool allowsCharacters,
+            bool classicItems,
+            BlastShape blast)
         {
             BombsReturn = bombsReturn;
             AllowsDash = allowsDash;
@@ -21,6 +27,7 @@ namespace Blastlands.Core
             HidesTheUnseen = hidesTheUnseen;
             AllowsCharacters = allowsCharacters;
             ClassicItems = classicItems;
+            Blast = blast;
         }
 
         // Whether a bomb comes back to whoever placed it once it has gone off. False is
@@ -44,16 +51,18 @@ namespace Blastlands.Core
 
         public bool ClassicItems { get; }
 
+        public BlastShape Blast { get; }
+
         public static RuleSet Arena
         {
-            get { return new RuleSet(false, true, true, true, true, false); }
+            get { return new RuleSet(false, true, true, true, true, false, BlastShape.Disc); }
         }
 
         // Everything the arena added, off. What is left is the board, the fuse and one
         // verb, which is the whole of what makes a match read as classic.
         public static RuleSet Classic
         {
-            get { return new RuleSet(true, false, false, false, false, true); }
+            get { return new RuleSet(true, false, false, false, false, true, BlastShape.Cross); }
         }
 
         // The classic board and the classic bombs, with the lights off.
@@ -63,7 +72,12 @@ namespace Blastlands.Core
         // switching sight off changes how it plays far more than it would on open ground.
         public static RuleSet ClassicBlinded
         {
-            get { return new RuleSet(true, false, false, true, false, true); }
+            get { return new RuleSet(true, false, false, true, false, true, BlastShape.Cross); }
+        }
+
+        public static RuleSet Survival
+        {
+            get { return new RuleSet(true, false, false, false, false, true, BlastShape.Disc); }
         }
 
         public static RuleSet For(GameMode mode)
@@ -71,8 +85,9 @@ namespace Blastlands.Core
             switch (mode)
             {
                 case GameMode.Classic:
-                case GameMode.Survival:
                     return Classic;
+                case GameMode.Survival:
+                    return Survival;
                 case GameMode.ClassicBlinded:
                     return ClassicBlinded;
                 default:

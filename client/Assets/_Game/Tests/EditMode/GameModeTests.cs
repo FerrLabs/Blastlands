@@ -293,6 +293,47 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
+        public void OnlyTheClassicBoardsBurnInACross()
+        {
+            Assert.That(MatchSettings.For(GameMode.Classic).Rules.Blast, Is.EqualTo(BlastShape.Cross));
+            Assert.That(MatchSettings.For(GameMode.ClassicBlinded).Rules.Blast, Is.EqualTo(BlastShape.Cross));
+            Assert.That(MatchSettings.For(GameMode.Arena).Rules.Blast, Is.EqualTo(BlastShape.Disc));
+            Assert.That(MatchSettings.For(GameMode.Survival).Rules.Blast, Is.EqualTo(BlastShape.Disc));
+            Assert.That(RuleSet.For(GameMode.Survival).Blast, Is.EqualTo(BlastShape.Disc));
+        }
+
+        [Test]
+        public void SurvivalKeepsEveryClassicRuleButTheCross()
+        {
+            RuleSet classic = RuleSet.Classic;
+            RuleSet survival = MatchSettings.SurvivalMode.Rules;
+
+            Assert.That(survival.BombsReturn, Is.EqualTo(classic.BombsReturn));
+            Assert.That(survival.AllowsDash, Is.EqualTo(classic.AllowsDash));
+            Assert.That(survival.AllowsShove, Is.EqualTo(classic.AllowsShove));
+            Assert.That(survival.HidesTheUnseen, Is.EqualTo(classic.HidesTheUnseen));
+            Assert.That(survival.AllowsCharacters, Is.EqualTo(classic.AllowsCharacters));
+            Assert.That(survival.ClassicItems, Is.EqualTo(classic.ClassicItems));
+        }
+
+        [Test]
+        public void TheDangerMapReadsTheCrossInClassic()
+        {
+            // The bots flee what the blast map says will burn. Read as a disc on a cross
+            // board, it would send them running from a diagonal tile that is safe.
+            MatchState classic = Board(MatchSettings.Classic, new GridPos(1, 1), new GridPos(13, 13));
+            MatchState arena = Board(MatchSettings.Default, new GridPos(1, 1), new GridPos(13, 13));
+            foreach (MatchState state in new[] { classic, arena })
+            {
+                state.AddBomb(new ActiveBomb(new Bomb(new GridPos(7, 7), state.Players[0].Id, 2), 30));
+            }
+
+            Assert.That(BlastMap.From(classic).TicksUntilFire(new GridPos(8, 8)), Is.EqualTo(BlastMap.Never));
+            Assert.That(BlastMap.From(classic).TicksUntilFire(new GridPos(9, 7)), Is.Not.EqualTo(BlastMap.Never));
+            Assert.That(BlastMap.From(arena).TicksUntilFire(new GridPos(8, 8)), Is.Not.EqualTo(BlastMap.Never));
+        }
+
+        [Test]
         public void ClassicLeavesNoLooseBombsLyingAround()
         {
             MatchState state = MatchFactory.Create(ArenaSettings.Classic, MatchSettings.Classic, 4, 3u);

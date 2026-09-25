@@ -218,7 +218,7 @@ namespace Blastlands.Core
                 Direction toFiringPosition = BotGrid.FirstStepToward(
                     state,
                     from,
-                    (tile, depth) => leavable(tile, depth) && BotGrid.Reaches(state.Arena, tile, target, player.FireRange),
+                    (tile, depth) => leavable(tile, depth) && BotGrid.Reaches(state.Arena, tile, target, player.FireRange, state.Settings.Rules.Blast),
                     leavable);
 
                 if (toFiringPosition != Direction.None)
