@@ -262,6 +262,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 7cb0814d5b4fe614ea4fa07ce907a7f4, type: 2}
   - {fileID: 11400000, guid: f659f56c130e2b249b8f61b5e8351b59, type: 2}
   - {fileID: 11400000, guid: 054fede3dacda374f9514e6a03ca3f59, type: 2}
+  - {fileID: 11400000, guid: 22061230c07fdfa44acda5a131d081a0, type: 2}
   arenaWidth: 25
   arenaHeight: 21
   softBlockPercent: 70
@@ -495,6 +496,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 7cb0814d5b4fe614ea4fa07ce907a7f4, type: 2}
   - {fileID: 11400000, guid: f659f56c130e2b249b8f61b5e8351b59, type: 2}
   - {fileID: 11400000, guid: 054fede3dacda374f9514e6a03ca3f59, type: 2}
+  - {fileID: 11400000, guid: 22061230c07fdfa44acda5a131d081a0, type: 2}
   host: 127.0.0.1
   port: 7777
   ticket:
