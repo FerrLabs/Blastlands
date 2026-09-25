@@ -50,7 +50,7 @@ namespace Blastlands.Core.Update
 
             return longest > LongestPath
                 ? "the game's folder is too deep for Windows to unpack the update beside it ("
-                    + longest + " characters, the limit is " + (LongestPath + 1) + "), so move it to a shorter folder"
+                    + longest + " characters, the limit is " + LongestPath + "), so move it to a shorter folder"
                 : null;
         }
     }

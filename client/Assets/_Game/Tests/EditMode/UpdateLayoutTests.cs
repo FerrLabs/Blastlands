@@ -40,7 +40,7 @@ namespace Blastlands.Core.Tests
             string over = new string('a', room + 1);
 
             Assert.That(layout.TooDeepFor(new[] { "Blastlands.exe", fits }), Is.Null, "259 characters is still a path Windows takes");
-            Assert.That(layout.TooDeepFor(new[] { "Blastlands.exe", over }), Does.Contain("260 characters"));
+            Assert.That(layout.TooDeepFor(new[] { "Blastlands.exe", over }), Does.Contain("260 characters, the limit is 259"));
             Assert.That(layout.TooDeepFor(new[] { "Blastlands.exe", over }), Does.Contain("shorter folder"));
         }
 

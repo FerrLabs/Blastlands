@@ -66,9 +66,15 @@ namespace Blastlands.Runtime
             var layout = new UpdateLayout(install, version);
             string archive = Path.Combine(Application.temporaryCachePath, "Blastlands-" + version + ".zip");
 
-            string tooDeep = layout.TooDeepFor(
+            Task<string> scan = Task.Run(() => layout.TooDeepFor(
                 Directory.EnumerateFiles(install, "*", SearchOption.AllDirectories)
-                    .Select(file => file.Substring(install.Length + 1)));
+                    .Select(file => file.Substring(install.Length + 1))));
+            while (!scan.IsCompleted)
+            {
+                yield return null;
+            }
+
+            string tooDeep = scan.IsFaulted ? scan.Exception.GetBaseException().Message : scan.Result;
             if (tooDeep != null)
             {
                 Fail(tooDeep);
