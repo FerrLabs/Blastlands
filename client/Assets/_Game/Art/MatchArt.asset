@@ -18,14 +18,14 @@ MonoBehaviour:
   - {fileID: 124566, guid: b81d7e0e52523784cb01267ad33e5fb6, type: 3}
   wallTelegraph: {fileID: 173408, guid: 679f8552de7b49e49b067c82f87df7c1, type: 3}
   powerUps:
-  - {fileID: 190316, guid: 0ecf40dcf02a1c64e8876b2e85f73314, type: 3}
-  - {fileID: 100000, guid: 1d51fd171c7a61b40b85e2306881707a, type: 3}
-  - {fileID: 100000, guid: f9125fa89572f1e40bb082978a85b951, type: 3}
-  - {fileID: 100000, guid: 864e9c2aaa070ad4c9c04b6b4de7ebf2, type: 3}
-  - {fileID: 104092, guid: 5f58efde17f00ff4cb7bf1e0941f4d93, type: 3}
-  - {fileID: 112324, guid: 8c326d620e23a2b4caf79c89edb5f408, type: 3}
-  - {fileID: 123014, guid: 7f6c22d65d59655449574a79097086f5, type: 3}
-  - {fileID: 166404, guid: 9688c4c1937ea2f4ab16284ff3cd0824, type: 3}
+  - {fileID: 1288994648781304, guid: 2b9ebdcde1b96a549afd9f3615607a8b, type: 3}
+  - {fileID: 1471858809509982, guid: 0a15df87399ccff47bb1eb8a19c94303, type: 3}
+  - {fileID: 1664358012696132, guid: 64c85ee59ebf6cb4ba02e44adafcca50, type: 3}
+  - {fileID: 1729690356461418, guid: 57909707b4647b44e94ea60c7bd9453c, type: 3}
+  - {fileID: 1947772785457376, guid: f1c115789aa7e634ca69b05c95bda080, type: 3}
+  - {fileID: 1191684779102934, guid: 1f40530ea5f71514b920bf0c088a394d, type: 3}
+  - {fileID: 1647268673184996, guid: 29565f2aee83bff4a8e5f4e92bf1f6b7, type: 3}
+  - {fileID: 1191001183339056, guid: c47b63422601ecd438856d7abbc9171a, type: 3}
   bomb: {fileID: 9121659319792953144, guid: 3f88cb47bbbb5c145956b131a24265c2, type: 3}
   flame: {fileID: 1809022330002312, guid: ed511b7776af6174e9b1255c7a81e59c, type: 3}
   explosionBurst: {fileID: 1159970587636746, guid: e7473d9620ab29341b98bf21b400e598, type: 3}

@@ -6,9 +6,6 @@ namespace Blastlands.Runtime
 {
     public sealed class PickupViews
     {
-        private static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
-        private static readonly int LegacyColor = Shader.PropertyToID("_Color");
-
         private readonly ViewStage stage;
         private readonly float powerUpSize;
         private readonly float looseBombSize;
@@ -80,23 +77,6 @@ namespace Blastlands.Runtime
             }
         }
 
-        private static void Tint(GameObject view, PowerUpKind kind)
-        {
-            if (!MatchPalette.TryTintFor(kind, out Color tint))
-            {
-                return;
-            }
-
-            var block = new MaterialPropertyBlock();
-            foreach (Renderer part in view.GetComponentsInChildren<Renderer>(true))
-            {
-                part.GetPropertyBlock(block);
-                block.SetColor(BaseColor, tint);
-                block.SetColor(LegacyColor, tint);
-                part.SetPropertyBlock(block);
-            }
-        }
-
         private GameObject TakePowerUpView(PowerUpKind kind)
         {
             for (int i = 0; i < powerUpViews.Count; i++)
@@ -117,7 +97,6 @@ namespace Blastlands.Runtime
             else
             {
                 TileFitter.FitInBox(created, powerUpSize);
-                Tint(created, kind);
             }
 
             powerUpViews.Add(created);
