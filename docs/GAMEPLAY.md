@@ -724,7 +724,18 @@ cover (`PlayerPace`). Zombies shamble on Goblin Locomotion's walk, which no play
 so a zombie never moves like somebody you could be playing against. The zombies themselves are
 POLYGON City Zombies.
 
-A player who dies leaves a POLYGON Apocalypse blood pool for the rest of the round. A wall
+A player who dies falls where they stood, stays down for a couple of seconds, then sinks into
+the ground, leaving a POLYGON Apocalypse blood pool for the rest of the round. Zombies fall the
+same way. The fall follows the push: away from the bomb for somebody caught on a blast's arm,
+read off the burning tiles in line with them since the simulation does not record which bomb lit
+a tile, and away from the zombie for somebody bitten (`DeathFall`). The four falls are Sword
+Combat's POLYGON deaths.
+
+The winner on the victory screen celebrates rather than idles, each character with its own
+move from Emotes & Taunts: BeatChest for the Demolisher, finger guns for the Runner, air guitar
+for the Grenadier, a shoulder dust-off for the Sapper.
+
+A wall
 about to grow back is marked three seconds ahead by a pulsing box junction, the square road
 marking with a cross (`SM_Gen_Env_Road_Warning_01`): flat, square to the tile, and
 already read as "do not stop here".

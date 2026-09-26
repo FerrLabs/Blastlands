@@ -77,7 +77,6 @@ namespace Blastlands.Runtime
                 }
 
                 animator.applyRootMotion = false;
-                animator.SetBool("Static", true);
             }
         }
 

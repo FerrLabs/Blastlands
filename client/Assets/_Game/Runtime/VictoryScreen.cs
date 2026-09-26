@@ -77,7 +77,7 @@ namespace Blastlands.Runtime
             {
                 stage = new GameObject("Victory stage").AddComponent<CharacterStage>();
                 stage.transform.SetParent(transform, false);
-                stage.ShowModel(art.PlayerFor(card.Winner, card.Character), art.PlayerAnimator);
+                stage.ShowModel(art.PlayerFor(card.Winner, card.Character), art.VictoryFor(card.Winner, card.Character));
 
                 var portrait = new GameObject("Winner", typeof(RectTransform), typeof(RawImage));
                 portrait.transform.SetParent(panel, false);

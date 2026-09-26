@@ -29,6 +29,7 @@ namespace Blastlands.Runtime
         private readonly List<float> headings = new List<float>();
         private readonly List<Gait> gaits = new List<Gait>();
         private readonly List<int> stillTicks = new List<int>();
+        private readonly FallingBodies falls;
         private int lastSampledTick = -1;
         private PlayerTrail trail;
         private InterpolationClock clock;
@@ -43,6 +44,7 @@ namespace Blastlands.Runtime
             this.ringWidth = ringWidth;
             this.groundDetailLift = groundDetailLift;
             this.runClipSpeed = runClipSpeed;
+            falls = new FallingBodies(playerHeight);
         }
 
         public int Count
@@ -82,6 +84,7 @@ namespace Blastlands.Runtime
             {
                 CharacterKind character = state.Players[i].Character;
                 GameObject view = CastPlayer(i, character);
+                view.SetActive(state.Players[i].Alive);
                 playerViews.Add(view);
                 playerAnimators.Add(Rig(view));
                 castAs.Add(character);
@@ -116,9 +119,13 @@ namespace Blastlands.Runtime
                     {
                         wasAlive[i] = false;
                         MarkDeath(player);
+                        Fall(i, player);
+                    }
+                    else if (!falls.Holds(view))
+                    {
+                        view.SetActive(false);
                     }
 
-                    view.SetActive(false);
                     continue;
                 }
 
@@ -147,6 +154,20 @@ namespace Blastlands.Runtime
                 view.transform.rotation = Quaternion.Euler(0f, Turn(i, player, blend, appearing), 0f);
                 Animate(i);
             }
+
+            falls.Sync();
+        }
+
+        private void Fall(int seat, PlayerState player)
+        {
+            GameObject view = playerViews[seat];
+            if (!view.activeSelf)
+            {
+                return;
+            }
+
+            Vector3 push = DeathFall.PushAt(stage.State, player.Tile);
+            falls.Drop(view, playerAnimators[seat], DeathFall.StateFor(push, headings[seat]), false);
         }
 
         private SubPos Placement(int index, PlayerState player)

@@ -55,3 +55,9 @@ MonoBehaviour:
   - {fileID: 1467590972069000, guid: d91ede30c57f9e64cb6e7ac51e28ff35, type: 3}
   playerAnimator: {fileID: 9100000, guid: 33e8ede544df75e409666c626e6cd0bd, type: 2}
   zombieAnimator: {fileID: 9100000, guid: 645c06933c93e934981c8916592414a5, type: 2}
+  victoryAnimator: {fileID: 9100000, guid: 9093815cbf16299489407089798570ed, type: 2}
+  celebrationsInRosterOrder:
+  - {fileID: -27341610449638511, guid: 615d863c50e71e947b2179ac00715dcc, type: 3}
+  - {fileID: -1054378578147245579, guid: f8f2635f0d951394c9b01629ca29ee9d, type: 3}
+  - {fileID: 5911521601223195489, guid: 229476af6252df94a998d8a25ca3f85c, type: 3}
+  - {fileID: 3962079614760728129, guid: cc1132770b7a0114bb31e509a217f067, type: 3}
