@@ -44,7 +44,7 @@ namespace Blastlands.Runtime
         // the legs stop being able to explain the movement, and blurring them faster
         // only makes it worse.
         private const float SlowestCadence = 0.5f;
-        private const float FastestCadence = 2f;
+        private const float FastestCadence = 3f;
 
         public const int StillTicksBeforeStopping = 2;
 

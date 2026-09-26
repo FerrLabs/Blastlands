@@ -118,6 +118,19 @@ namespace Blastlands.Runtime.Tests
         }
 
         [Test]
+        public void TheFastestLegalRunIsNeverClamped()
+        {
+            // The clamp is for dashes and shoves. A player who has taken every speed
+            // pickup is simply running, and pinning their stride short of the ground
+            // they cover brings back the skating the cadence exists to prevent.
+            PlayerState player = MovingAt(Settings.MaxSpeedSteps);
+            float cadence = PlayerPace.For(player, Origin, Settings, RunClip).Cadence;
+            float expected = Settings.SpeedFor(Settings.MaxSpeedSteps) * Settings.TicksPerSecond / (float)SubPos.UnitsPerTile / RunClip;
+
+            Assert.That(cadence, Is.EqualTo(expected).Within(0.001f));
+        }
+
+        [Test]
         public void ADeadPlayerIsIdleRatherThanRunningWhereTheyFell()
         {
             PlayerState player = MovingAt(0);
@@ -138,7 +151,7 @@ namespace Blastlands.Runtime.Tests
 
             float cadence = PlayerPace.For(player, Origin, Settings, RunClip).Cadence;
 
-            Assert.That(cadence, Is.LessThanOrEqualTo(2f));
+            Assert.That(cadence, Is.LessThanOrEqualTo(3f));
             Assert.That(cadence, Is.GreaterThan(1f), "a dash played no faster than a walk");
         }
 
