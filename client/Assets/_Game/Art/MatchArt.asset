@@ -13,10 +13,11 @@ MonoBehaviour:
   m_Name: MatchArt
   m_EditorClassIdentifier: Blastlands.Runtime::Blastlands.Runtime.MatchArt
   deathMarkers:
-  - {fileID: 124012, guid: eea241c4741862242b490597dd263352, type: 3}
-  - {fileID: 131856, guid: 2920f563725d6584b98fa67022d5309e, type: 3}
-  - {fileID: 124566, guid: b81d7e0e52523784cb01267ad33e5fb6, type: 3}
-  wallTelegraph: {fileID: 173408, guid: 679f8552de7b49e49b067c82f87df7c1, type: 3}
+  - {fileID: 1560305908663812, guid: 4146c50c48727a84d938cba98c327b77, type: 3}
+  - {fileID: 1191447915617566, guid: c48c8533e2e091142bc0b9d2b51a5237, type: 3}
+  - {fileID: 1232382378395160, guid: 44fe13eccc543014a93e7bd2f9bf2859, type: 3}
+  - {fileID: 1435870659997696, guid: 3ebfe7eacf279e74ea1e2b9938215c90, type: 3}
+  wallTelegraph: {fileID: 258230569360544367, guid: 71de107534a844248bab00f35e729112, type: 3}
   powerUps:
   - {fileID: 1288994648781304, guid: 2b9ebdcde1b96a549afd9f3615607a8b, type: 3}
   - {fileID: 1471858809509982, guid: 0a15df87399ccff47bb1eb8a19c94303, type: 3}
@@ -39,17 +40,18 @@ MonoBehaviour:
   - {fileID: 1612642967817046, guid: 145e4b15636b57d47bb0d069eb16834f, type: 3}
   - {fileID: 1274019000965958, guid: af169be12f376ce46a3e6b4bee8b8ffe, type: 3}
   zombies:
-  - {fileID: 150210, guid: ffd8d0a68e87f5640819a89549abfb79, type: 3}
-  - {fileID: 121698, guid: 4b567cfc65370f04fbceead813c886d6, type: 3}
-  - {fileID: 119274, guid: 6c48ed3b2c64908448212ef062aace3e, type: 3}
-  - {fileID: 155090, guid: 6b616d5eee8e5bf4abc92b3d1fff00bf, type: 3}
-  - {fileID: 165266, guid: 1e2e55f2b72bd944baa992df728abe80, type: 3}
-  - {fileID: 102404, guid: f47fae03f2aefa243a408ff3ac3fcdc3, type: 3}
-  - {fileID: 136720, guid: 1e56599280e0eff43b580ef5c7e3dec2, type: 3}
-  - {fileID: 147980, guid: 33fe945564a51f64f8d6ea8f0c2e8be9, type: 3}
+  - {fileID: 1767653040776728, guid: 0e2c74548f9e2284aa68e9dc8544219c, type: 3}
+  - {fileID: 1134484993998496, guid: da241a1c1c2f4b344926c84ef25128ac, type: 3}
+  - {fileID: 1616105819863738, guid: 7cb0205c5f7aeba45b91883f9425fcab, type: 3}
+  - {fileID: 1820573889300922, guid: af43738424059df46a83c566c110013d, type: 3}
+  - {fileID: 1160577204630336, guid: 7c521770c9e780444b9b27cb7183739f, type: 3}
+  - {fileID: 1562126803887444, guid: e05321c6e6ad7b845942de92aafc2395, type: 3}
+  - {fileID: 1922703142909278, guid: 3ba6740ea34059446b2030cb1cee74bc, type: 3}
+  - {fileID: 1055470696967520, guid: bb116383f6f80bf4d90cb48aeca8e8bf, type: 3}
   characters:
   - {fileID: 1791362862288902, guid: 040c180181105224d8d03746446e080a, type: 3}
   - {fileID: 1612642967817046, guid: 145e4b15636b57d47bb0d069eb16834f, type: 3}
   - {fileID: 1399122269168980, guid: 0a08fd84400ab0c41b7a22b7fd0b90a3, type: 3}
   - {fileID: 1467590972069000, guid: d91ede30c57f9e64cb6e7ac51e28ff35, type: 3}
-  playerAnimator: {fileID: 9100000, guid: afec2cc25e3439e4bb1b43e7c09f6503, type: 2}
+  playerAnimator: {fileID: 9100000, guid: 33e8ede544df75e409666c626e6cd0bd, type: 2}
+  zombieAnimator: {fileID: 9100000, guid: 645c06933c93e934981c8916592414a5, type: 2}

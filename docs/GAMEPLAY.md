@@ -663,10 +663,9 @@ separates the difficulties. See **Vision**.
 
 ## Art direction
 
-Low-poly 3D, Synty **POLYGON** for the arenas, the characters, the bombs and the pickups. The
-game started on the SIMPLE packs, and three things still come from SIMPLE Apocalypse: the
-zombies, the death stains and the characters' animator controller. The setting earns the
-mechanics: a game about blowing things up reads better in a wasteland or a crypt than in a
+Low-poly 3D, all Synty **POLYGON**: the arenas, the characters, the zombies, the bombs and the
+pickups. The game started on the SIMPLE packs and nothing of them is left. The setting earns
+the mechanics: a game about blowing things up reads better in a wasteland or a crypt than in a
 tidy park.
 
 **Seven arena themes** (`ArenaTheme` assets in `_Game/Art`), one per match: Wasteland,
@@ -717,3 +716,15 @@ dagger for Pierce, a frag grenade for Cluster, boots for Kick, a radio for Remot
 the curse. They replace a mix of SIMPLE props (a fuel can for fire range, a drill for Pierce)
 that a player had to learn rather than read. The icons carry their own colours, so nothing is
 tinted at runtime.
+
+The characters are POLYGON's humanoids, and those ship an avatar but no animator controller, so
+the game has its own two in `_Game/Art/Animation`, built from Synty's Animation packs. Players
+idle and run on Base Locomotion's in-place clips, the run's cadence scaled to the ground they
+cover (`PlayerPace`). Zombies shamble on Goblin Locomotion's walk, which no player ever plays,
+so a zombie never moves like somebody you could be playing against. The zombies themselves are
+POLYGON City Zombies.
+
+A player who dies leaves a POLYGON Apocalypse blood pool for the rest of the round. A wall
+about to grow back is marked three seconds ahead by a pulsing box junction, the square road
+marking with a cross (`SM_Gen_Env_Road_Warning_01`): flat, square to the tile, and
+already read as "do not stop here".

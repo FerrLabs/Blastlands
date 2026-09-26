@@ -21,10 +21,11 @@ namespace Blastlands.Runtime
         [SerializeField] private float ringWidth = 0.1f;
 
         // How much ground the Run clip covers per second when it is played back at its
-        // authored rate, measured off SimpleCharacter_5.0's own root motion. It is what
-        // the cadence is a ratio against, so a different animation pack means a different
+        // authored rate: the averageSpeed of Base Locomotion's A_Run_F_RootMotion_Masc,
+        // the travelling twin of the in-place clip the controller plays. It is what the
+        // cadence is a ratio against, so a different animation pack means a different
         // number here rather than characters that skate.
-        [SerializeField] private float runClipSpeed = 4.08f;
+        [SerializeField] private float runClipSpeed = 2.6f;
         [SerializeField] private float bombFootprint = 0.72f;
         [SerializeField] private float powerUpSize = 0.78f;
         [SerializeField] private Color telegraphColor = new Color(0.95f, 0.35f, 0.12f, 1f);

@@ -28,14 +28,14 @@ namespace Blastlands.Runtime.Tests
             Assert.That(PlayerPace.Held(Run, Stop, 0).Speed, Is.EqualTo(PlayerPace.Running));
         }
 
-        // The band SimpleCharacter_5.0 runs in, read off its own transitions: Idle below
-        // 0.25, Walk to 0.50, Run above. Every test here is about which clip the number
+        // The band Player.controller runs in, read off its own transitions: Run above
+        // 0.5, back to Idle below 0.25. Every test here is about which clip the number
         // selects, so asserting the number on its own would say nothing.
-        private const float WalkStarts = 0.25f;
-        private const float RunStarts = 0.5f;
+        private const float IdleBelow = 0.25f;
+        private const float RunAbove = 0.5f;
 
         // The Run clip's authored ground speed, from its root motion.
-        private const float RunClip = 4.08f;
+        private const float RunClip = 2.6f;
 
         private static readonly MatchSettings Settings = MatchSettings.Default;
 
@@ -61,7 +61,7 @@ namespace Blastlands.Runtime.Tests
         {
             PlayerState player = At(1000, 1000);
 
-            Assert.That(PlayerPace.For(player, player.Position, Settings, RunClip).Speed, Is.LessThan(WalkStarts));
+            Assert.That(PlayerPace.For(player, player.Position, Settings, RunClip).Speed, Is.LessThan(IdleBelow));
         }
 
         [Test]
@@ -74,29 +74,29 @@ namespace Blastlands.Runtime.Tests
             PlayerState player = At(1000, 1000);
             var previous = new SubPos(999, 1000);
 
-            Assert.That(PlayerPace.For(player, previous, Settings, RunClip).Speed, Is.LessThan(WalkStarts));
+            Assert.That(PlayerPace.For(player, previous, Settings, RunClip).Speed, Is.LessThan(IdleBelow));
         }
 
         [Test]
         public void MovingAtAllRunsRatherThanWalking()
         {
-            // Base speed is over three tiles a second against a Walk clip authored for
-            // 1.21. Selecting Walk there is what makes a character look like it is being
-            // dragged along the floor.
-            Assert.That(PlayerPace.For(MovingAt(0), Origin, Settings, RunClip).Speed, Is.GreaterThan(RunStarts));
+            // Base speed is over three tiles a second, well past what any walk clip is
+            // drawn for. Anything short of Run there is what makes a character look like
+            // it is being dragged along the floor.
+            Assert.That(PlayerPace.For(MovingAt(0), Origin, Settings, RunClip).Speed, Is.GreaterThan(RunAbove));
         }
 
         [Test]
         public void TheStrideCoversTheGroundTheSimulationMoved()
         {
             // The whole point of the cadence. At base speed the player covers 3.05 units
-            // a second and the clip was drawn for 4.08, so it has to play slower than
-            // authored or the feet run out from under the character.
+            // a second and the clip was drawn for 2.6, so it has to play faster than
+            // authored or the character glides over the ground its feet never reach.
             float cadence = PlayerPace.For(MovingAt(0), Origin, Settings, RunClip).Cadence;
             float expected = Settings.SpeedFor(0) * Settings.TicksPerSecond / (float)SubPos.UnitsPerTile / RunClip;
 
             Assert.That(cadence, Is.EqualTo(expected).Within(0.001f));
-            Assert.That(cadence, Is.LessThan(1f), "base speed plays the run clip at or above its authored rate");
+            Assert.That(cadence, Is.GreaterThan(1f), "base speed plays the run clip at or below its authored rate");
         }
 
         [Test]

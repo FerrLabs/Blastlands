@@ -99,6 +99,11 @@ namespace Blastlands.Runtime
             }
 
             var animator = body.GetComponentInChildren<Animator>(true);
+            if (animator != null && animator.runtimeAnimatorController == null && stage.Art != null)
+            {
+                animator.runtimeAnimatorController = stage.Art.ZombieAnimator;
+            }
+
             if (animator != null)
             {
                 animator.applyRootMotion = false;

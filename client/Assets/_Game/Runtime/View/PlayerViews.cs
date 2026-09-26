@@ -13,7 +13,6 @@ namespace Blastlands.Runtime
         private const float GaitDampSeconds = 0.06f;
 
         private static readonly int Speed = Animator.StringToHash("Speed_f");
-        private static readonly int Static = Animator.StringToHash("Static_b");
 
         private readonly ViewStage stage;
         private readonly float playerHeight;
@@ -222,13 +221,11 @@ namespace Blastlands.Runtime
             // netcode will reconcile against. Root motion would let the clip push the
             // transform around on top of that, so the character would drift off its own
             // position by however much the animator felt like.
+            //
+            // Which is why the controller plays the in-place clips, the same strides
+            // authored on the spot. Discarding root motion from a travelling clip leaves
+            // the feet skating; playing the one drawn for this case does not.
             animator.applyRootMotion = false;
-
-            // Which is why the static variants: Walk and Run travel, Walk_Static and
-            // Run_Static are the same strides authored on the spot. Discarding root
-            // motion from a travelling clip leaves the feet skating, playing the clip
-            // that was drawn for this case does not.
-            animator.SetBool(Static, true);
 
             return animator;
         }

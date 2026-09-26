@@ -29,7 +29,7 @@ namespace Blastlands.Runtime
         }
 
         // Shown for the last stretch of a wall's countdown and not before. Binary rather
-        // than a creeping fill: the player only needs to learn one thing, that tape
+        // than a creeping fill: the player only needs to learn one thing, that the box
         // means this tile is about to stop being one.
         public void Sync()
         {
