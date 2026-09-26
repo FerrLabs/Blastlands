@@ -50,6 +50,8 @@ namespace Blastlands.Runtime
         [SerializeField] private RuntimeAnimatorController victoryAnimator;
         [SerializeField] private AnimationClip[] celebrationsInRosterOrder;
 
+        private readonly Dictionary<int, AnimatorOverrideController> victories = new Dictionary<int, AnimatorOverrideController>();
+
         public GameObject Bomb
         {
             get { return bomb; }
@@ -120,8 +122,14 @@ namespace Blastlands.Runtime
             }
 
             int rosterIndex = CharacterKits.IndexOf(character);
-            AnimationClip celebration = Pick(celebrationsInRosterOrder, rosterIndex < 0 ? seat : rosterIndex);
+            int pick = rosterIndex < 0 ? seat : rosterIndex;
+            int variant = Wrap(pick, celebrationsInRosterOrder.Length);
+            if (victories.TryGetValue(variant, out AnimatorOverrideController cached) && cached != null)
+            {
+                return cached;
+            }
 
+            AnimationClip celebration = celebrationsInRosterOrder[variant];
             var victory = new AnimatorOverrideController(victoryAnimator) { name = "Victory " + celebration.name };
             var overrides = new List<KeyValuePair<AnimationClip, AnimationClip>>();
             victory.GetOverrides(overrides);
@@ -134,6 +142,7 @@ namespace Blastlands.Runtime
             }
 
             victory.ApplyOverrides(overrides);
+            victories[variant] = victory;
             return victory;
         }
 
@@ -144,7 +153,12 @@ namespace Blastlands.Runtime
                 return null;
             }
 
-            return set[((variant % set.Length) + set.Length) % set.Length];
+            return set[Wrap(variant, set.Length)];
+        }
+
+        private static int Wrap(int variant, int count)
+        {
+            return ((variant % count) + count) % count;
         }
     }
 }

@@ -5,8 +5,9 @@ namespace Blastlands.Runtime
 {
     public sealed class FallingBodies
     {
-        private const float LyingSeconds = 2.4f;
-        private const float SinkingSeconds = 0.8f;
+        private const float LyingSeconds = 1.6f;
+        private const float SinkingSeconds = 0.35f;
+        public const float FallSeconds = LyingSeconds + SinkingSeconds;
         private const float BlendSeconds = 0.08f;
 
         private readonly float sinkDepth;
