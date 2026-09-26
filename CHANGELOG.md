@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.137] - 2026-09-26
+
+### Features
+
+- feat(client): animate deaths and victories (#168)
+
 ## [26.9.136] - 2026-09-26
 
 ### Features
