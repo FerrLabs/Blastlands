@@ -130,6 +130,11 @@ namespace Blastlands.Runtime
             }
         }
 
+        private float LingerOn(PlayerState target)
+        {
+            return target.Alive ? linger : FallingBodies.FallSeconds;
+        }
+
         private bool VisibleToAny(int target)
         {
             int players = state.Players.Count;
@@ -143,7 +148,7 @@ namespace Blastlands.Runtime
                 }
 
                 if (Vision.CanSee(state, state.Players[viewer], state.Players[target])
-                    || Time.time - lastSeen[(viewer * players) + target] < linger)
+                    || Time.time - lastSeen[(viewer * players) + target] < LingerOn(state.Players[target]))
                 {
                     return true;
                 }

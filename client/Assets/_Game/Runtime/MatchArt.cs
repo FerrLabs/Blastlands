@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Blastlands.Core;
 using UnityEngine;
 
@@ -45,6 +46,11 @@ namespace Blastlands.Runtime
         // controller. A shambling walk of their own rather than the players' run, so a
         // zombie never moves like somebody you could be playing against.
         [SerializeField] private RuntimeAnimatorController zombieAnimator;
+
+        [SerializeField] private RuntimeAnimatorController victoryAnimator;
+        [SerializeField] private AnimationClip[] celebrationsInRosterOrder;
+
+        private readonly Dictionary<int, AnimatorOverrideController> victories = new Dictionary<int, AnimatorOverrideController>();
 
         public GameObject Bomb
         {
@@ -108,14 +114,51 @@ namespace Blastlands.Runtime
             get { return zombieAnimator; }
         }
 
-        private static GameObject Pick(GameObject[] set, int variant)
+        public RuntimeAnimatorController VictoryFor(int seat, CharacterKind character)
+        {
+            if (victoryAnimator == null || celebrationsInRosterOrder == null || celebrationsInRosterOrder.Length == 0)
+            {
+                return playerAnimator;
+            }
+
+            int rosterIndex = CharacterKits.IndexOf(character);
+            int pick = rosterIndex < 0 ? seat : rosterIndex;
+            int variant = Wrap(pick, celebrationsInRosterOrder.Length);
+            if (victories.TryGetValue(variant, out AnimatorOverrideController cached) && cached != null)
+            {
+                return cached;
+            }
+
+            AnimationClip celebration = celebrationsInRosterOrder[variant];
+            var victory = new AnimatorOverrideController(victoryAnimator) { name = "Victory " + celebration.name };
+            var overrides = new List<KeyValuePair<AnimationClip, AnimationClip>>();
+            victory.GetOverrides(overrides);
+            for (int i = 0; i < overrides.Count; i++)
+            {
+                if (System.Array.IndexOf(celebrationsInRosterOrder, overrides[i].Key) >= 0)
+                {
+                    overrides[i] = new KeyValuePair<AnimationClip, AnimationClip>(overrides[i].Key, celebration);
+                }
+            }
+
+            victory.ApplyOverrides(overrides);
+            victories[variant] = victory;
+            return victory;
+        }
+
+        private static T Pick<T>(T[] set, int variant) where T : Object
         {
             if (set == null || set.Length == 0)
             {
                 return null;
             }
 
-            return set[((variant % set.Length) + set.Length) % set.Length];
+            return set[Wrap(variant, set.Length)];
+        }
+
+        private static int Wrap(int variant, int count)
+        {
+            return ((variant % count) + count) % count;
         }
     }
 }

@@ -12,12 +12,14 @@ namespace Blastlands.Runtime
         private readonly Dictionary<int, ZombieView> zombieViews = new Dictionary<int, ZombieView>();
         private readonly HashSet<int> zombiesSeen = new HashSet<int>();
         private readonly List<int> zombiesGone = new List<int>();
+        private readonly FallingBodies falls;
 
         public ZombieViews(ViewStage stage, float height, Color fallbackColor)
         {
             this.stage = stage;
             this.height = height;
             this.fallbackColor = fallbackColor;
+            falls = new FallingBodies(height);
         }
 
         private sealed class ZombieView
@@ -25,6 +27,7 @@ namespace Blastlands.Runtime
             public GameObject Body;
             public Animator Animator;
             public float Heading;
+            public GridPos Tile;
         }
 
         public void Sync()
@@ -48,6 +51,7 @@ namespace Blastlands.Runtime
                     zombieViews[zombie.Id] = shown;
                 }
 
+                shown.Tile = zombie.Tile;
                 Vector3 from = shown.Body.transform.position;
                 Vector3 at = Vector3.MoveTowards(from, target, step * 1.5f);
                 shown.Body.transform.position = at;
@@ -80,9 +84,12 @@ namespace Blastlands.Runtime
                     stage.Sfx.Died(gone.Body.transform.position);
                 }
 
-                Object.Destroy(gone.Body);
+                Vector3 push = DeathFall.PushAt(state, gone.Tile);
+                falls.Drop(gone.Body, gone.Animator, DeathFall.StateFor(push, gone.Heading), true);
                 zombieViews.Remove(zombiesGone[i]);
             }
+
+            falls.Sync();
         }
 
         private ZombieView Raise(Zombie zombie)
