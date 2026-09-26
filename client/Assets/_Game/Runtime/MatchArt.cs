@@ -41,6 +41,11 @@ namespace Blastlands.Runtime
         // not quietly revert it.
         [SerializeField] private RuntimeAnimatorController playerAnimator;
 
+        // The same for the zombies, which are POLYGON characters too and come without a
+        // controller. A shambling walk of their own rather than the players' run, so a
+        // zombie never moves like somebody you could be playing against.
+        [SerializeField] private RuntimeAnimatorController zombieAnimator;
+
         public GameObject Bomb
         {
             get { return bomb; }
@@ -96,6 +101,11 @@ namespace Blastlands.Runtime
         public RuntimeAnimatorController PlayerAnimator
         {
             get { return playerAnimator; }
+        }
+
+        public RuntimeAnimatorController ZombieAnimator
+        {
+            get { return zombieAnimator; }
         }
 
         private static GameObject Pick(GameObject[] set, int variant)

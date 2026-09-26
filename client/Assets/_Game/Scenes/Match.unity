@@ -286,7 +286,7 @@ MonoBehaviour:
   theme: {fileID: 11400000, guid: 4787bde93129f154e9ce0c149fd3014e, type: 2}
   blockFootprint: 0.92
   playerHeight: 1.15
-  runClipSpeed: 4.08
+  runClipSpeed: 2.6
   bombFootprint: 0.72
   powerUpSize: 0.78
   telegraphColor: {r: 0.95, g: 0.35, b: 0.12, a: 1}

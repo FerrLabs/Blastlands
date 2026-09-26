@@ -7,11 +7,10 @@ namespace Blastlands.Runtime
     // is driven by: which clip to be in, and how fast to play it.
     //
     // There is no walk. Base speed in this game is a little over three tiles a second,
-    // and SimpleCharacter_5.0's Walk is authored for 1.21 world units a second against
-    // Run's 4.08, so walking would mean legs cycling at two fifths of the ground the
-    // character is actually covering. That reads as gliding. Everyone runs here; the
-    // difference between a fresh player and one who has taken every speed pickup is in
-    // the cadence, not in the clip.
+    // and a walk clip covers well under half of that, so walking would mean legs cycling
+    // far slower than the ground the character is actually covering. That reads as
+    // gliding. Everyone runs here; the difference between a fresh player and one who
+    // has taken every speed pickup is in the cadence, not in the clip.
     public readonly struct Gait
     {
         public Gait(float speed, float cadence)
@@ -20,8 +19,8 @@ namespace Blastlands.Runtime
             Cadence = cadence;
         }
 
-        // Feeds Speed_f, which the controller bands into Idle below 0.25, Walk to 0.50
-        // and Run above it.
+        // Feeds Speed_f. The controller goes to Run above 0.5 and back to Idle below 0.25,
+        // the gap keeping a player who barely moves from flickering between the two.
         public float Speed { get; }
 
         // Feeds Animator.speed, so a stride covers the ground the simulation moved the
@@ -45,7 +44,7 @@ namespace Blastlands.Runtime
         // the legs stop being able to explain the movement, and blurring them faster
         // only makes it worse.
         private const float SlowestCadence = 0.5f;
-        private const float FastestCadence = 2f;
+        private const float FastestCadence = 3f;
 
         public const int StillTicksBeforeStopping = 2;
 

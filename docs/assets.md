@@ -3,7 +3,7 @@
 The art under `client/Assets/Synty` is Synty Studios content. Its licence allows it in a shipped
 game but not in a repository anyone can read, so it lives in a separate private repository,
 [FerrLabs/Blastlands-Assets](https://github.com/FerrLabs/Blastlands-Assets), mounted here as a
-submodule. The `Simple*` packs are in there too, one level down (`Synty/SimpleApocalypse`, ...).
+submodule.
 
 Only the files the game references are kept, each with its `.meta`, so every GUID resolves exactly
 as it did when the packs were imported whole. A clone without the submodule has the code and the
@@ -46,9 +46,14 @@ repository.
 3. In the submodule, commit only what the game now references: the asset, its `.meta`, the `.meta`
    of every new folder above it, and whatever it depends on. Unity's
    `AssetDatabase.GetDependencies` on the scenes and the `_Game` assets gives the exact list.
-   Never commit a pack's `Samples/` folder.
+   Never commit a pack's `Samples/` folder beyond what that list names: the Animation packs'
+   dummy mesh, the avatar their clips are imported against, takes its material from there.
 4. Push the submodule, then commit the new submodule pointer in Blastlands in the same PR as the
    code that uses the asset.
+
+Replacing an asset works the same way in reverse: once nothing references the old one, the same
+`GetDependencies` list no longer names it, and it is deleted from the submodule with its `.meta`
+(and the `.meta` of any folder left empty) in the same PR.
 
 Anything left untracked in the submodule stays on your machine only, which is how a pack can be
 imported whole to browse it without growing the repository.
