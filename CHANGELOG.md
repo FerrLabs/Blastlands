@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.9.136] - 2026-09-26
+
+### Features
+
+- feat(client): move zombies, death stains and animators to POLYGON (#166)
+
 ## [26.9.135] - 2026-09-25
 
 ### Features
