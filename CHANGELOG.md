@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.10.3] - 2026-10-03
+
+### Bug Fixes
+
+- fix(client): stop the HUD logging a missing script every match (#176)
+
 ## [26.9.137] - 2026-09-26
 
 ### Features
