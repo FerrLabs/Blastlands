@@ -8,6 +8,12 @@
       "matchDepNames": ["FerrLabs/.github"],
       "matchFileNames": [".github/workflows/ci.yml"],
       "enabled": false
+    },
+    {
+      "description": "NUnit stays on 4.x. The EditMode tests are compiled twice, by Unity's NUnit 3.5 and by tests/Blastlands.Core.Tests on NUnit 4, and they pass explicit TestDelegate arguments that both accept. NUnit 5 removed TestDelegate.",
+      "matchPackageNames": ["NUnit"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
     }
   ]
 }
