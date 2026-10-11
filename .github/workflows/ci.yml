@@ -51,7 +51,7 @@ jobs:
     uses: FerrLabs/.github/.github/workflows/reusable-ci-rust.yml@b6a08e6055076c18cfa7b8f80c9925275ed407fe # main
     with:
       working-directory: server
-      rust-toolchain: '1.88'
+      rust-toolchain: '1.95'
       cargo-flags: --all-targets --all-features
       clippy-args: -D warnings
       enable-coverage: false
