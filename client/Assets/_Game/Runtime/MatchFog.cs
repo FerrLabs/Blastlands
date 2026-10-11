@@ -135,8 +135,21 @@ namespace Blastlands.Runtime
             return target.Alive ? linger : FallingBodies.FallSeconds;
         }
 
+        private bool OwnBodyStillFalling(int target)
+        {
+            int players = state.Players.Count;
+            return !state.Players[target].Alive
+                && cameras.OwnsSeat(target)
+                && Time.time - lastSeen[(target * players) + target] < FallingBodies.FallSeconds;
+        }
+
         private bool VisibleToAny(int target)
         {
+            if (OwnBodyStillFalling(target))
+            {
+                return true;
+            }
+
             int players = state.Players.Count;
 
             for (int i = 0; i < viewers.Count; i++)
