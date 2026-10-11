@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.10.9] - 2026-10-11
+
+### Bug Fixes
+
+- fix(client): keep your own body drawn while it falls (#183)
+
 ## [26.10.8] - 2026-10-11
 
 ### Bug Fixes
