@@ -40,6 +40,32 @@ namespace Blastlands.Runtime.Tests
         }
 
         [Test]
+        public void AClientSeatedAwayFromZeroOwnsOnlyThatSeat()
+        {
+            state = new MatchState(new Arena(9, 9), MatchSettings.Default, 1u);
+            for (int i = 0; i < 4; i++)
+            {
+                state.AddPlayer(new GridPos(1 + i, 1));
+            }
+
+            cameras.Bind(state, 1, 2);
+
+            Assert.That(cameras.OwnsSeat(2), Is.True);
+            Assert.That(cameras.OwnsSeat(0), Is.False, "seat zero is somebody else's on this client");
+            Assert.That(cameras.OwnsSeat(3), Is.False);
+        }
+
+        [Test]
+        public void SplitOwnsEverySeatItDraws()
+        {
+            Bind(2);
+
+            Assert.That(cameras.OwnsSeat(0), Is.True);
+            Assert.That(cameras.OwnsSeat(1), Is.True);
+            Assert.That(cameras.OwnsSeat(2), Is.False);
+        }
+
+        [Test]
         public void SplitGivesEachViewportItsOwnSeat()
         {
             Bind(4);

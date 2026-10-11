@@ -111,6 +111,11 @@ namespace Blastlands.Runtime
         // Global has no single viewpoint at all: it is the whole couch watching one
         // screen, so it renders the union of everyone sitting there. Nobody can hide
         // from the person next to them anyway.
+        public bool OwnsSeat(int seat)
+        {
+            return seat >= firstSeat && seat < firstSeat + localSeats;
+        }
+
         public void ViewersOf(int index, List<int> into)
         {
             into.Clear();

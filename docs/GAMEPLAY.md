@@ -731,6 +731,10 @@ read off the burning tiles in line with them since the simulation does not recor
 a tile, and away from the zombie for somebody bitten (`DeathFall`). The four falls are Sword
 Combat's POLYGON deaths.
 
+Where fog applies, a body is drawn for the length of the fall only to those who could see it,
+with one exception: your own. The camera moves to somebody else the moment you die, and their
+eyes would hide you, so a seat this machine owns stays drawn until it has sunk.
+
 The winner on the victory screen celebrates rather than idles, each character with its own
 move from Emotes & Taunts: BeatChest for the Demolisher, finger guns for the Runner, air guitar
 for the Grenadier, a shoulder dust-off for the Sapper.
