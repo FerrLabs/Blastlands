@@ -24,6 +24,15 @@ pub enum LobbyError {
     #[error("no game server capacity available")]
     NoCapacity,
 
+    #[error("game server not found")]
+    ServerNotFound,
+
+    #[error("one address may register at most {max} game servers at a time")]
+    TooManyServers { max: usize },
+
+    #[error("a game server carries between 1 and {max} slots on valid ports")]
+    InvalidSlots { max: u8 },
+
     #[error("unauthorized")]
     Unauthorized,
 
@@ -79,17 +88,22 @@ pub enum LobbyError {
 impl LobbyError {
     fn status(&self) -> StatusCode {
         match self {
-            Self::MatchNotFound | Self::ReleaseNotFound => StatusCode::NOT_FOUND,
+            Self::MatchNotFound | Self::ServerNotFound | Self::ReleaseNotFound => {
+                StatusCode::NOT_FOUND
+            }
             Self::MatchFull | Self::MatchAlreadyStarted | Self::NotEnoughPlayers { .. } => {
                 StatusCode::CONFLICT
             }
             Self::NoCapacity | Self::ReleaseUnknown => StatusCode::SERVICE_UNAVAILABLE,
             Self::DownloadUnavailable => StatusCode::BAD_GATEWAY,
             Self::Unauthorized => StatusCode::UNAUTHORIZED,
-            Self::RateLimited | Self::TooManyMatches { .. } => StatusCode::TOO_MANY_REQUESTS,
-            Self::InvalidName(_) | Self::InvalidPlayerCount { .. } | Self::InvalidVersion(_) => {
-                StatusCode::BAD_REQUEST
+            Self::RateLimited | Self::TooManyMatches { .. } | Self::TooManyServers { .. } => {
+                StatusCode::TOO_MANY_REQUESTS
             }
+            Self::InvalidName(_)
+            | Self::InvalidPlayerCount { .. }
+            | Self::InvalidSlots { .. }
+            | Self::InvalidVersion(_) => StatusCode::BAD_REQUEST,
             // 426 tells the client the request would succeed on a newer build, which
             // is exactly the signal the updater needs.
             Self::ClientTooOld { .. } => StatusCode::UPGRADE_REQUIRED,
@@ -104,6 +118,9 @@ impl LobbyError {
             Self::MatchAlreadyStarted => "match_already_started",
             Self::NotEnoughPlayers { .. } => "not_enough_players",
             Self::NoCapacity => "no_capacity",
+            Self::ServerNotFound => "server_not_found",
+            Self::TooManyServers { .. } => "too_many_servers",
+            Self::InvalidSlots { .. } => "invalid_slots",
             Self::Unauthorized => "unauthorized",
             Self::RateLimited => "rate_limited",
             Self::TooManyMatches { .. } => "too_many_matches",

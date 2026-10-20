@@ -42,51 +42,50 @@ impl GameTicket {
 
 #[derive(Debug, Clone)]
 pub struct TicketSigner {
-    key: TicketKey,
     lifetime: Duration,
 }
 
 impl TicketSigner {
-    pub fn new(key: TicketKey, lifetime: Duration) -> Self {
-        Self { key, lifetime }
+    pub fn new(lifetime: Duration) -> Self {
+        Self { lifetime }
     }
 
     pub fn issue(
         &self,
+        key: &TicketKey,
         id: MatchId,
         player: &DisplayName,
         character: Option<Character>,
         since_epoch: Duration,
     ) -> GameTicket {
         let expires = (since_epoch + self.lifetime).as_secs();
-        self.sign(id, player, character, expires, Uuid::new_v4())
+        sign(key, id, player, character, expires, Uuid::new_v4())
     }
+}
 
-    fn sign(
-        &self,
-        id: MatchId,
-        player: &DisplayName,
-        character: Option<Character>,
-        expires: u64,
-        nonce: Uuid,
-    ) -> GameTicket {
-        let name = hex(player.as_str().as_bytes());
-        let nonce = nonce.simple();
-        let payload = match character {
-            None => format!("{FORMAT}.{id}.{name}.{expires}.{nonce}"),
-            Some(character) => format!(
-                "{FORMAT_WITH_CHARACTER}.{id}.{name}.{}.{expires}.{nonce}",
-                character.token()
-            ),
-        };
+fn sign(
+    key: &TicketKey,
+    id: MatchId,
+    player: &DisplayName,
+    character: Option<Character>,
+    expires: u64,
+    nonce: Uuid,
+) -> GameTicket {
+    let name = hex(player.as_str().as_bytes());
+    let nonce = nonce.simple();
+    let payload = match character {
+        None => format!("{FORMAT}.{id}.{name}.{expires}.{nonce}"),
+        Some(character) => format!(
+            "{FORMAT_WITH_CHARACTER}.{id}.{name}.{}.{expires}.{nonce}",
+            character.token()
+        ),
+    };
 
-        let mut mac =
-            Hmac::<Sha256>::new_from_slice(&self.key.0).expect("HMAC accepts a key of any length");
-        mac.update(payload.as_bytes());
-        let signature = hex(&mac.finalize().into_bytes());
+    let mut mac = Hmac::<Sha256>::new_from_slice(&key.0).expect("HMAC accepts a key of any length");
+    mac.update(payload.as_bytes());
+    let signature = hex(&mac.finalize().into_bytes());
 
-        GameTicket(format!("{payload}.{signature}"))
-    }
+    GameTicket(format!("{payload}.{signature}"))
 }
 
 fn hex(bytes: &[u8]) -> String {
@@ -101,7 +100,11 @@ mod tests {
     const MATCH: &str = "0b7f3f5a-1c2d-4e5f-8a9b-0c1d2e3f4a5b";
 
     fn signer(lifetime: Duration) -> TicketSigner {
-        TicketSigner::new(TicketKey::new(KEY.to_vec()).expect("long enough"), lifetime)
+        TicketSigner::new(lifetime)
+    }
+
+    fn key() -> TicketKey {
+        TicketKey::new(KEY.to_vec()).expect("long enough")
     }
 
     fn match_id() -> MatchId {
@@ -116,8 +119,14 @@ mod tests {
     fn signs_the_vector_the_game_server_tests_verify() {
         let nonce: Uuid = "00112233-4455-6677-8899-aabbccddeeff".parse().unwrap();
 
-        let ticket =
-            signer(Duration::ZERO).sign(match_id(), &player("Bryan"), None, 1_790_000_000, nonce);
+        let ticket = sign(
+            &key(),
+            match_id(),
+            &player("Bryan"),
+            None,
+            1_790_000_000,
+            nonce,
+        );
 
         assert_eq!(
             ticket.as_str(),
@@ -131,7 +140,8 @@ mod tests {
     fn signs_the_character_vector_the_game_server_tests_verify() {
         let nonce: Uuid = "00112233-4455-6677-8899-aabbccddeeff".parse().unwrap();
 
-        let ticket = signer(Duration::ZERO).sign(
+        let ticket = sign(
+            &key(),
             match_id(),
             &player("Bryan"),
             Some(Character::Sapper),
@@ -152,16 +162,17 @@ mod tests {
     #[test]
     fn a_character_is_inside_what_the_signature_covers() {
         let nonce: Uuid = "00112233-4455-6677-8899-aabbccddeeff".parse().unwrap();
-        let signer = signer(Duration::ZERO);
 
-        let sapper = signer.sign(
+        let sapper = sign(
+            &key(),
             match_id(),
             &player("Bryan"),
             Some(Character::Sapper),
             1,
             nonce,
         );
-        let runner = signer.sign(
+        let runner = sign(
+            &key(),
             match_id(),
             &player("Bryan"),
             Some(Character::Runner),
@@ -181,6 +192,7 @@ mod tests {
     #[test]
     fn expires_one_lifetime_after_it_is_issued() {
         let ticket = signer(Duration::from_secs(300)).issue(
+            &key(),
             match_id(),
             &player("Bryan"),
             None,
@@ -196,8 +208,8 @@ mod tests {
         let signer = signer(Duration::from_secs(300));
         let now = Duration::from_secs(1_000);
 
-        let first = signer.issue(match_id(), &player("Bryan"), None, now);
-        let second = signer.issue(match_id(), &player("Bryan"), None, now);
+        let first = signer.issue(&key(), match_id(), &player("Bryan"), None, now);
+        let second = signer.issue(&key(), match_id(), &player("Bryan"), None, now);
 
         assert_ne!(
             first, second,

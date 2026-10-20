@@ -10,17 +10,19 @@ use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
 use tower_http::trace::TraceLayer;
 
-use crate::auth::require_instance_token;
+use crate::auth::server_key;
 use crate::characters::Character;
 use crate::download::DownloadLinks;
 use crate::error::LobbyError;
 use crate::landing;
 use crate::matches::{
-    CreateMatch, GameServerEndpoint, HostTicket, Match, MatchDirectory, MatchId, MatchState,
+    CreateMatch, Created, GameServerEndpoint, HostTicket, Match, MatchDirectory, MatchId,
+    MatchState, ServerChoice,
 };
 use crate::modes::GameMode;
 use crate::names::DisplayName;
 use crate::release::{ReleaseInfo, Releases};
+use crate::servers::{RegisterServer, Registered, ServerId, ServerKey, TicketSecret};
 use crate::skills::BotSkill;
 use crate::throttle::RateLimiter;
 use crate::tickets::{GameTicket, TicketSigner};
@@ -53,13 +55,13 @@ pub enum ClientAddress {
 #[derive(Clone)]
 pub struct AppState {
     pub directory: Arc<MatchDirectory>,
-    pub instance_token: Arc<str>,
     pub tickets: Arc<TicketSigner>,
     pub release: Arc<Releases>,
     pub downloads: Arc<DownloadLinks>,
     pub creates: Arc<RateLimiter>,
     pub joins: Arc<RateLimiter>,
     pub matches_per_address: usize,
+    pub servers_per_address: usize,
     pub address_source: ClientAddress,
 }
 
@@ -137,6 +139,27 @@ pub struct CreateMatchRequest {
     pub bot_skill: BotSkill,
     #[serde(default)]
     pub character: Option<Character>,
+    #[serde(default)]
+    pub server: Option<ServerId>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RegisterServerRequest {
+    pub port: u16,
+    pub slots: u8,
+    #[serde(default = "listed_by_default")]
+    pub listed: bool,
+}
+
+fn listed_by_default() -> bool {
+    true
+}
+
+#[derive(Debug, Serialize)]
+pub struct ServerRegistered {
+    pub id: ServerId,
+    pub key: ServerKey,
+    pub ticket_secret: TicketSecret,
 }
 
 #[derive(Debug, Deserialize)]
@@ -212,6 +235,8 @@ pub fn app(state: AppState) -> Router {
         .route("/v1/version", get(version))
         .route("/v1/client/{version}/download", get(download_client))
         .route("/v1/client/{version}/installer", get(download_installer))
+        .route("/v1/server/{version}/download", get(download_server))
+        .route("/v1/servers", post(register_server))
         .route("/v1/matches", get(list_matches).post(create_match))
         .route("/v1/matches/{id}", get(match_status))
         .route("/v1/matches/{id}/join", post(join_match))
@@ -296,6 +321,16 @@ async fn download_installer(
     redirect_to_asset(&state, &version, &asset_url).await
 }
 
+async fn download_server(
+    State(state): State<AppState>,
+    Path(version): Path<String>,
+) -> Result<Redirect, LobbyError> {
+    let asset_url = state
+        .release
+        .server_for(version.parse::<ClientVersion>()?)?;
+    redirect_to_asset(&state, &version, &asset_url).await
+}
+
 async fn redirect_to_asset(
     state: &AppState,
     version: &str,
@@ -346,7 +381,11 @@ async fn create_match(
         return Err(LobbyError::RateLimited);
     }
 
-    let (entry, ticket) = state.directory.create(
+    let Created {
+        entry,
+        host_ticket,
+        ticket_key,
+    } = state.directory.create(
         CreateMatch {
             name: request.name,
             host: request.host,
@@ -354,6 +393,10 @@ async fn create_match(
             mode: request.mode,
             bot_skill: request.bot_skill,
             host_address: address,
+            server: request.server.map(|id| ServerChoice {
+                id,
+                key: server_key(&headers).ok(),
+            }),
         },
         now,
         state.matches_per_address,
@@ -361,11 +404,15 @@ async fn create_match(
 
     let created = MatchCreated {
         summary: MatchSummary::from(&entry),
-        game_ticket: state
-            .tickets
-            .issue(entry.id, &entry.host, request.character, since_epoch()),
+        game_ticket: state.tickets.issue(
+            &ticket_key,
+            entry.id,
+            &entry.host,
+            request.character,
+            since_epoch(),
+        ),
         endpoint: entry.endpoint,
-        ticket,
+        ticket: host_ticket,
     };
 
     Ok((StatusCode::CREATED, Json(created)))
@@ -385,14 +432,63 @@ async fn join_match(
     }
 
     let admitted = state.directory.join(id, request.player.clone())?;
-    let ticket = state
-        .tickets
-        .issue(id, &request.player, request.character, since_epoch());
+    let ticket = state.tickets.issue(
+        &admitted.ticket_key,
+        id,
+        &request.player,
+        request.character,
+        since_epoch(),
+    );
 
     Ok(Json(JoinAccepted {
         endpoint: admitted.endpoint,
         ticket,
     }))
+}
+
+async fn register_server(
+    State(state): State<AppState>,
+    Caller(address): Caller,
+    headers: HeaderMap,
+    ValidatedJson(request): ValidatedJson<RegisterServerRequest>,
+) -> Result<(StatusCode, Json<ServerRegistered>), LobbyError> {
+    state.release.require_supported(&headers)?;
+
+    let now = Instant::now();
+
+    if !state.creates.allow(address, now) {
+        return Err(LobbyError::RateLimited);
+    }
+
+    let Registered {
+        id,
+        key,
+        ticket_secret,
+    } = state.directory.register_server(
+        RegisterServer {
+            first_port: request.port,
+            slots: request.slots,
+            listed: request.listed,
+            address,
+        },
+        now,
+        state.servers_per_address,
+    )?;
+
+    tracing::info!(server = %id, %address, port = request.port, slots = request.slots, listed = request.listed, "game server registered");
+
+    Ok((
+        StatusCode::CREATED,
+        Json(ServerRegistered {
+            id,
+            key,
+            ticket_secret,
+        }),
+    ))
+}
+
+fn authenticated(state: &AppState, headers: &HeaderMap) -> Result<ServerId, LobbyError> {
+    state.directory.authenticate_server(&server_key(headers)?)
 }
 
 fn since_epoch() -> Duration {
@@ -423,9 +519,8 @@ async fn add_bot_to_match(
     }))
 }
 
-// What an instance asks for on boot. It knows its own port and nothing else: the match
-// it should run is whatever the lobby put on that port, so this is the only thing
-// between a pod on a fixed port and the match it serves.
+// What a slot asks for while idle. The key names its server and the path its port: the
+// match it should run is whatever the lobby put on that slot.
 //
 // 204 rather than 404 while nothing is assigned, because an idle instance polling an
 // empty slot is the normal state, not a mistake to log.
@@ -434,10 +529,10 @@ async fn instance_assignment(
     Path(port): Path<u16>,
     headers: HeaderMap,
 ) -> Result<Response, LobbyError> {
-    require_instance_token(&headers, &state.instance_token)?;
-    state.directory.observe_instance(port, Instant::now());
+    let server = authenticated(&state, &headers)?;
+    state.directory.observe_slot(server, port, Instant::now());
 
-    Ok(match state.directory.assignment(port) {
+    Ok(match state.directory.assignment(server, port) {
         Some(assignment) => Json(assignment).into_response(),
         None => StatusCode::NO_CONTENT.into_response(),
     })
@@ -448,8 +543,8 @@ async fn heartbeat_match(
     Path(id): Path<MatchId>,
     headers: HeaderMap,
 ) -> Result<StatusCode, LobbyError> {
-    require_instance_token(&headers, &state.instance_token)?;
-    state.directory.heartbeat(id, Instant::now())?;
+    let server = authenticated(&state, &headers)?;
+    state.directory.heartbeat(server, id, Instant::now())?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -458,8 +553,8 @@ async fn finish_match(
     Path(id): Path<MatchId>,
     headers: HeaderMap,
 ) -> Result<StatusCode, LobbyError> {
-    require_instance_token(&headers, &state.instance_token)?;
-    state.directory.finish(id)?;
+    let server = authenticated(&state, &headers)?;
+    state.directory.finish(server, id)?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -474,16 +569,14 @@ mod tests {
     use super::*;
     use crate::download::LINK_LIFETIME;
     use crate::github::{Github, PublishedClient};
-    use crate::ports::PortPool;
+    use crate::servers::RegisterServer;
 
     use crate::release::VERSION_HEADER;
 
-    const TOKEN: &str = "instance-token";
+    const SERVER_ADDRESS: &str = "203.0.113.200";
 
     fn signer() -> TicketSigner {
-        let key = crate::tickets::TicketKey::new(b"route-tests-ticket-key-0123456789".to_vec())
-            .expect("long enough");
-        TicketSigner::new(key, Duration::from_secs(300))
+        TicketSigner::new(Duration::from_secs(300))
     }
     const CURRENT: &str = "26.9.0";
 
@@ -501,6 +594,7 @@ mod tests {
             asset_url: "https://api.github.com/assets/1".to_owned(),
             sha256: "ab".repeat(32),
             installer: None,
+            server: None,
         });
         releases
     }
@@ -510,22 +604,49 @@ mod tests {
         Arc::new(DownloadLinks::new(Arc::new(github), LINK_LIFETIME))
     }
 
-    fn directory_with(range: std::ops::RangeInclusive<u16>) -> Arc<MatchDirectory> {
-        let mut ports = PortPool::new(range.clone());
-        let now = Instant::now();
+    fn directory_with(range: std::ops::RangeInclusive<u16>) -> (Arc<MatchDirectory>, String) {
+        let directory = Arc::new(MatchDirectory::new());
+        let registered = directory
+            .register_server(
+                RegisterServer {
+                    first_port: *range.start(),
+                    slots: u8::try_from(range.len()).expect("a handful of slots"),
+                    listed: true,
+                    address: SERVER_ADDRESS.parse().unwrap(),
+                },
+                Instant::now(),
+                0,
+            )
+            .expect("registration should succeed");
         for port in range {
-            ports.observe_instance(port, now);
+            directory.observe_slot(registered.id, port, Instant::now());
         }
-        Arc::new(MatchDirectory::new(
-            "game.blastlands.test".to_owned(),
-            ports,
-        ))
+        let key = serde_json::to_value(&registered.key).unwrap();
+        (directory, key.as_str().unwrap().to_owned())
+    }
+
+    fn state_over(directory: Arc<MatchDirectory>, release: Arc<Releases>) -> AppState {
+        AppState {
+            directory,
+            tickets: Arc::new(signer()),
+            release,
+            downloads: downloads(),
+            creates: Arc::new(RateLimiter::new(0, Duration::from_secs(60))),
+            joins: Arc::new(RateLimiter::new(0, Duration::from_secs(60))),
+            matches_per_address: 0,
+            servers_per_address: 0,
+            address_source: ClientAddress::Peer,
+        }
+    }
+
+    fn lobby() -> (Router, String) {
+        let (directory, key) = directory_with(7000..=7001);
+        (app(state_over(directory, release())), key)
     }
 
     fn router_with(release: Arc<Releases>) -> Router {
         app(AppState {
-            directory: directory_with(7000..=7001),
-            instance_token: Arc::from(TOKEN),
+            directory: directory_with(7000..=7001).0,
             tickets: Arc::new(signer()),
             release,
             downloads: downloads(),
@@ -535,6 +656,7 @@ mod tests {
             creates: Arc::new(RateLimiter::new(0, Duration::from_secs(60))),
             joins: Arc::new(RateLimiter::new(0, Duration::from_secs(60))),
             matches_per_address: 0,
+            servers_per_address: 0,
             address_source: ClientAddress::Peer,
         })
     }
@@ -544,14 +666,14 @@ mod tests {
     /// A router that believes `X-Forwarded-For`, as it would behind a reverse proxy.
     fn forwarded_router(creates: u32) -> Router {
         app(AppState {
-            directory: directory_with(7000..=7010),
-            instance_token: Arc::from(TOKEN),
+            directory: directory_with(7000..=7010).0,
             tickets: Arc::new(signer()),
             release: release(),
             downloads: downloads(),
             creates: Arc::new(RateLimiter::new(creates, Duration::from_secs(60))),
             joins: Arc::new(RateLimiter::new(0, Duration::from_secs(60))),
             matches_per_address: 0,
+            servers_per_address: 0,
             address_source: ClientAddress::Forwarded,
         })
     }
@@ -572,14 +694,14 @@ mod tests {
     /// A router whose limits are switched on, for the tests that are about the limits.
     fn throttled_router(creates: u32, per_address: usize) -> Router {
         app(AppState {
-            directory: directory_with(7000..=7010),
-            instance_token: Arc::from(TOKEN),
+            directory: directory_with(7000..=7010).0,
             tickets: Arc::new(signer()),
             release: release(),
             downloads: downloads(),
             creates: Arc::new(RateLimiter::new(creates, Duration::from_secs(60))),
             joins: Arc::new(RateLimiter::new(0, Duration::from_secs(60))),
             matches_per_address: per_address,
+            servers_per_address: 0,
             address_source: ClientAddress::Peer,
         })
     }
@@ -614,10 +736,10 @@ mod tests {
         serde_json::from_slice(&bytes).expect("body should be json")
     }
 
-    fn instance_get(uri: &str) -> Request<Body> {
+    fn instance_get(uri: &str, key: &str) -> Request<Body> {
         Request::builder()
             .uri(uri)
-            .header(header::AUTHORIZATION, format!("Bearer {TOKEN}"))
+            .header(header::AUTHORIZATION, format!("Bearer {key}"))
             .body(Body::empty())
             .expect("request should build")
     }
@@ -801,12 +923,24 @@ mod tests {
             version: CURRENT.parse().unwrap(),
             asset_url: "https://api.github.com/assets/1".to_owned(),
             sha256: "ab".repeat(32),
-            installer: Some(crate::github::Installer {
+            installer: Some(crate::github::ReleaseAsset {
                 asset_url: "https://api.github.com/assets/2".to_owned(),
                 sha256: "cd".repeat(32),
             }),
+            server: None,
         });
         releases
+    }
+
+    #[tokio::test]
+    async fn a_release_without_a_server_build_answers_not_found_for_it() {
+        let response = router()
+            .oneshot(get_request("/v1/server/26.9.0/download"))
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        assert_eq!(body_json(response).await["code"], "release_not_found");
     }
 
     #[tokio::test]
@@ -1097,7 +1231,7 @@ mod tests {
         let router = router();
         let created = create_match_on(&router, "Friday night").await;
 
-        assert_eq!(created["endpoint"]["host"], "game.blastlands.test");
+        assert_eq!(created["endpoint"]["host"], SERVER_ADDRESS);
         assert_eq!(created["endpoint"]["port"], 7000);
         assert_eq!(created["players"], 1);
         assert!(created["ticket"].is_string());
@@ -1386,7 +1520,7 @@ mod tests {
 
     #[tokio::test]
     async fn finishing_a_match_requires_the_instance_token() {
-        let router = router();
+        let (router, key) = lobby();
         let created = create_match_on(&router, "Friday night").await;
         let id = created["id"].as_str().expect("an id").to_owned();
 
@@ -1409,7 +1543,7 @@ mod tests {
                 Request::builder()
                     .method("DELETE")
                     .uri(format!("/internal/matches/{id}"))
-                    .header(header::AUTHORIZATION, format!("Bearer {TOKEN}"))
+                    .header(header::AUTHORIZATION, format!("Bearer {key}"))
                     .body(Body::empty())
                     .unwrap(),
             )
@@ -1531,21 +1665,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn a_port_is_only_handed_out_once_its_instance_has_polled() {
-        let router = app(AppState {
-            directory: Arc::new(MatchDirectory::new(
-                "game.blastlands.test".to_owned(),
-                PortPool::new(7000..=7000),
-            )),
-            instance_token: Arc::from(TOKEN),
-            tickets: Arc::new(signer()),
-            release: release(),
-            downloads: downloads(),
-            creates: Arc::new(RateLimiter::new(0, Duration::from_secs(60))),
-            joins: Arc::new(RateLimiter::new(0, Duration::from_secs(60))),
-            matches_per_address: 0,
-            address_source: ClientAddress::Peer,
-        });
+    async fn a_match_lands_on_a_server_once_one_registers() {
+        let router = app(state_over(Arc::new(MatchDirectory::new()), release()));
         let create = || {
             post_json(
                 "/v1/matches",
@@ -1557,22 +1678,46 @@ mod tests {
         assert_eq!(refused.status(), StatusCode::SERVICE_UNAVAILABLE);
         assert_eq!(body_json(refused).await["code"], "no_capacity");
 
+        let registered = router
+            .clone()
+            .oneshot(post_json(
+                "/v1/servers",
+                json!({ "port": 7777, "slots": 1 }),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(registered.status(), StatusCode::CREATED);
+        let registered = body_json(registered).await;
+        let key = registered["key"].as_str().unwrap();
+        assert!(!key.is_empty());
+        assert!(registered["ticket_secret"]
+            .as_str()
+            .is_some_and(|secret| secret.len() >= crate::tickets::MIN_KEY_BYTES));
+
+        let unpolled = router.clone().oneshot(create()).await.unwrap();
+        assert_eq!(
+            unpolled.status(),
+            StatusCode::SERVICE_UNAVAILABLE,
+            "a slot nobody has heard from may be busy with a match the lobby forgot"
+        );
+
         let polled = router
             .clone()
-            .oneshot(instance_get("/internal/instances/7000"))
+            .oneshot(instance_get("/internal/instances/7777", key))
             .await
             .unwrap();
         assert_eq!(polled.status(), StatusCode::NO_CONTENT);
 
         let created = router.clone().oneshot(create()).await.unwrap();
         assert_eq!(created.status(), StatusCode::CREATED);
-        assert_eq!(body_json(created).await["endpoint"]["port"], 7000);
+        assert_eq!(body_json(created).await["endpoint"]["port"], 7777);
     }
 
     #[tokio::test]
     async fn an_idle_port_answers_no_content() {
-        let response = router()
-            .oneshot(instance_get("/internal/instances/7000"))
+        let (router, key) = lobby();
+        let response = router
+            .oneshot(instance_get("/internal/instances/7000", &key))
             .await
             .expect("request should be handled");
 
@@ -1581,7 +1726,7 @@ mod tests {
 
     #[tokio::test]
     async fn a_started_match_is_handed_to_the_instance_on_its_port() {
-        let router = router();
+        let (router, key) = lobby();
         let created = create_match_on(&router, "Night raid").await;
         let id = created["id"].as_str().expect("an id").to_owned();
         let ticket = created["ticket"].as_str().expect("a ticket").to_owned();
@@ -1591,7 +1736,7 @@ mod tests {
         // Nothing to serve until the host says go.
         let idle = router
             .clone()
-            .oneshot(instance_get(&format!("/internal/instances/{port}")))
+            .oneshot(instance_get(&format!("/internal/instances/{port}"), &key))
             .await
             .expect("request should be handled");
         assert_eq!(idle.status(), StatusCode::NO_CONTENT);
@@ -1607,7 +1752,7 @@ mod tests {
         assert_eq!(started.status(), StatusCode::NO_CONTENT);
 
         let assigned = router
-            .oneshot(instance_get(&format!("/internal/instances/{port}")))
+            .oneshot(instance_get(&format!("/internal/instances/{port}"), &key))
             .await
             .expect("request should be handled");
 
@@ -1627,7 +1772,7 @@ mod tests {
 
     #[tokio::test]
     async fn the_chosen_mode_reaches_the_listing_and_the_instance() {
-        let router = router();
+        let (router, key) = lobby();
         let response = router
             .clone()
             .oneshot(post_json(
@@ -1666,7 +1811,7 @@ mod tests {
 
         let assigned = body_json(
             router
-                .oneshot(instance_get(&format!("/internal/instances/{port}")))
+                .oneshot(instance_get(&format!("/internal/instances/{port}"), &key))
                 .await
                 .unwrap(),
         )
@@ -1676,7 +1821,7 @@ mod tests {
 
     #[tokio::test]
     async fn eight_seats_and_the_bot_skill_reach_the_instance() {
-        let router = router();
+        let (router, key) = lobby();
         let response = router
             .clone()
             .oneshot(post_json(
@@ -1706,7 +1851,7 @@ mod tests {
 
         let assigned = body_json(
             router
-                .oneshot(instance_get(&format!("/internal/instances/{port}")))
+                .oneshot(instance_get(&format!("/internal/instances/{port}"), &key))
                 .await
                 .unwrap(),
         )
@@ -1773,7 +1918,7 @@ mod tests {
 
     #[tokio::test]
     async fn a_heartbeat_with_the_token_is_accepted() {
-        let router = router();
+        let (router, key) = lobby();
         let created = create_match_on(&router, "Night raid").await;
         let id = created["id"].as_str().expect("an id").to_owned();
 
@@ -1782,7 +1927,7 @@ mod tests {
                 Request::builder()
                     .method("POST")
                     .uri(format!("/internal/matches/{id}/heartbeat"))
-                    .header(header::AUTHORIZATION, format!("Bearer {TOKEN}"))
+                    .header(header::AUTHORIZATION, format!("Bearer {key}"))
                     .body(Body::empty())
                     .expect("request should build"),
             )
@@ -1844,5 +1989,118 @@ mod tests {
             StatusCode::CREATED,
             "a different caller behind the same proxy was punished"
         );
+    }
+
+    async fn register_on(router: &Router, body: Value) -> Value {
+        let response = router
+            .clone()
+            .oneshot(post_json("/v1/servers", body.clone()))
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::CREATED);
+        let registered = body_json(response).await;
+
+        let polled = router
+            .clone()
+            .oneshot(instance_get(
+                &format!("/internal/instances/{}", body["port"]),
+                registered["key"].as_str().unwrap(),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(polled.status(), StatusCode::NO_CONTENT);
+        registered
+    }
+
+    #[tokio::test]
+    async fn a_ticket_verifies_against_the_secret_its_server_was_given() {
+        use hmac::{Hmac, KeyInit, Mac};
+        use sha2::Sha256;
+
+        let router = app(state_over(Arc::new(MatchDirectory::new()), release()));
+        let server = register_on(&router, json!({ "port": 7777, "slots": 1 })).await;
+        let created = create_match_on(&router, "Garage night").await;
+
+        let ticket = created["game_ticket"].as_str().unwrap();
+        let (payload, signature) = ticket.rsplit_once('.').unwrap();
+        let secret = server["ticket_secret"].as_str().unwrap();
+        let mut mac = Hmac::<Sha256>::new_from_slice(secret.as_bytes()).unwrap();
+        mac.update(payload.as_bytes());
+        let expected: String = mac
+            .finalize()
+            .into_bytes()
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect();
+
+        assert_eq!(signature, expected);
+    }
+
+    #[tokio::test]
+    async fn an_unlisted_server_takes_a_match_only_with_its_own_key() {
+        let router = app(state_over(Arc::new(MatchDirectory::new()), release()));
+        let server = register_on(
+            &router,
+            json!({ "port": 7777, "slots": 1, "listed": false }),
+        )
+        .await;
+        let id = server["id"].as_str().unwrap();
+        let key = server["key"].as_str().unwrap();
+        let body =
+            json!({ "name": "Living room", "host": "Bryan", "max_players": 2, "server": id });
+
+        let anonymous = router
+            .clone()
+            .oneshot(post_json("/v1/matches", body.clone()))
+            .await
+            .unwrap();
+        assert_eq!(anonymous.status(), StatusCode::UNAUTHORIZED);
+
+        let mut request = post_json("/v1/matches", body);
+        request.headers_mut().insert(
+            header::AUTHORIZATION,
+            format!("Bearer {key}").parse().unwrap(),
+        );
+        let owned = router.clone().oneshot(request).await.unwrap();
+        assert_eq!(owned.status(), StatusCode::CREATED);
+        assert_eq!(body_json(owned).await["endpoint"]["port"], 7777);
+    }
+
+    #[tokio::test]
+    async fn an_outdated_build_cannot_register_a_server() {
+        let response = router()
+            .oneshot(post_json_as(
+                "/v1/servers",
+                json!({ "port": 7777, "slots": 1 }),
+                Some("26.7.0"),
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::UPGRADE_REQUIRED);
+    }
+
+    #[tokio::test]
+    async fn a_server_with_no_slots_is_refused() {
+        let response = router()
+            .oneshot(post_json(
+                "/v1/servers",
+                json!({ "port": 7777, "slots": 0 }),
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(body_json(response).await["code"], "invalid_slots");
+    }
+
+    #[tokio::test]
+    async fn a_key_no_server_holds_cannot_poll_a_slot() {
+        let response = router()
+            .oneshot(instance_get("/internal/instances/7000", "made-up"))
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
     }
 }

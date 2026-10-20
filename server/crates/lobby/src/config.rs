@@ -1,25 +1,18 @@
 use std::env;
 use std::net::SocketAddr;
-use std::ops::RangeInclusive;
 use std::time::Duration;
 
 use thiserror::Error;
 
-use crate::tickets::{TicketKey, MIN_KEY_BYTES};
 use crate::version::ClientVersion;
 
 const BIND: &str = "BLASTLANDS_BIND";
-const GAME_SERVER_HOST: &str = "BLASTLANDS_GAME_SERVER_HOST";
-const PORT_RANGE: &str = "BLASTLANDS_PORT_RANGE";
-const INSTANCE_TOKEN: &str = "BLASTLANDS_INSTANCE_TOKEN";
 const CLIENT_MINIMUM: &str = "BLASTLANDS_CLIENT_MINIMUM";
 const PUBLIC_URL: &str = "BLASTLANDS_PUBLIC_URL";
 const GITHUB_TOKEN: &str = "BLASTLANDS_GITHUB_TOKEN";
 const RELEASE_POLL_SECONDS: &str = "BLASTLANDS_RELEASE_POLL_SECONDS";
-const TICKET_SECRET: &str = "BLASTLANDS_TICKET_SECRET";
 
 const DEFAULT_BIND: &str = "0.0.0.0:8080";
-const DEFAULT_PORT_RANGE: &str = "7000-7099";
 const DEFAULT_RELEASE_POLL: Duration = Duration::from_secs(300);
 
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -35,6 +28,7 @@ const CREATES_PER_WINDOW: &str = "BLASTLANDS_LOBBY_CREATES_PER_WINDOW";
 const JOINS_PER_WINDOW: &str = "BLASTLANDS_LOBBY_JOINS_PER_WINDOW";
 const WINDOW_SECONDS: &str = "BLASTLANDS_LOBBY_RATE_WINDOW_SECONDS";
 const MATCHES_PER_ADDRESS: &str = "BLASTLANDS_LOBBY_MATCHES_PER_ADDRESS";
+const SERVERS_PER_ADDRESS: &str = "BLASTLANDS_LOBBY_SERVERS_PER_ADDRESS";
 const UNJOINED_TTL_SECONDS: &str = "BLASTLANDS_LOBBY_UNJOINED_TTL_SECONDS";
 const SILENT_TTL_SECONDS: &str = "BLASTLANDS_LOBBY_SILENT_TTL_SECONDS";
 const WAITING_TTL_SECONDS: &str = "BLASTLANDS_LOBBY_WAITING_TTL_SECONDS";
@@ -44,17 +38,8 @@ const TRUST_FORWARDED_FOR: &str = "BLASTLANDS_LOBBY_TRUST_FORWARDED_FOR";
 #[derive(Debug, Clone)]
 pub struct Config {
     pub bind: SocketAddr,
-    pub game_server_host: String,
-    pub port_range: RangeInclusive<u16>,
-    pub instance_token: String,
-    pub tickets: TicketSettings,
     pub release: ReleaseSource,
     pub limits: Limits,
-}
-
-#[derive(Debug, Clone)]
-pub struct TicketSettings {
-    pub key: TicketKey,
 }
 
 #[derive(Debug, Clone)]
@@ -76,6 +61,7 @@ pub struct Limits {
     pub joins_per_window: u32,
     pub window: Duration,
     pub matches_per_address: usize,
+    pub servers_per_address: usize,
     pub unjoined_ttl: Duration,
     pub silent_ttl: Duration,
     pub waiting_ttl: Duration,
@@ -90,6 +76,7 @@ impl Default for Limits {
             joins_per_window: 30,
             window: Duration::from_secs(60),
             matches_per_address: 3,
+            servers_per_address: 3,
             // A lobby full of matches nobody joined is the cheapest denial of service
             // there is, so an empty one does not get to sit on a port for long.
             unjoined_ttl: Duration::from_secs(300),
@@ -112,14 +99,6 @@ impl Config {
                 reason: error.to_string(),
             })?;
 
-        let game_server_host = non_empty(GAME_SERVER_HOST)?;
-        let instance_token = non_empty(INSTANCE_TOKEN)?;
-        let port_range = parse_port_range(&required_or(PORT_RANGE, DEFAULT_PORT_RANGE))?;
-
-        let tickets = TicketSettings {
-            key: parse_ticket_key(&non_empty(TICKET_SECRET)?)?,
-        };
-
         let release = ReleaseSource {
             minimum: parse_version(CLIENT_MINIMUM, &non_empty(CLIENT_MINIMUM)?)?,
             public_url: parse_public_url(&non_empty(PUBLIC_URL)?)?,
@@ -136,6 +115,10 @@ impl Config {
                 MATCHES_PER_ADDRESS,
                 defaults.matches_per_address as u32,
             )? as usize,
+            servers_per_address: number::<u32>(
+                SERVERS_PER_ADDRESS,
+                defaults.servers_per_address as u32,
+            )? as usize,
             unjoined_ttl: seconds(UNJOINED_TTL_SECONDS, defaults.unjoined_ttl)?,
             silent_ttl: seconds(SILENT_TTL_SECONDS, defaults.silent_ttl)?,
             waiting_ttl: seconds(WAITING_TTL_SECONDS, defaults.waiting_ttl)?,
@@ -145,10 +128,6 @@ impl Config {
 
         Ok(Self {
             bind,
-            game_server_host,
-            port_range,
-            instance_token,
-            tickets,
             limits,
             release,
         })
@@ -222,95 +201,9 @@ fn non_empty(name: &'static str) -> Result<String, ConfigError> {
         .ok_or(ConfigError::Missing(name))
 }
 
-fn parse_ticket_key(raw: &str) -> Result<TicketKey, ConfigError> {
-    TicketKey::new(raw.as_bytes().to_vec()).ok_or_else(|| ConfigError::Invalid {
-        name: TICKET_SECRET,
-        reason: format!("must be at least {MIN_KEY_BYTES} bytes"),
-    })
-}
-
-fn parse_port_range(raw: &str) -> Result<RangeInclusive<u16>, ConfigError> {
-    let invalid = |reason: &str| ConfigError::Invalid {
-        name: PORT_RANGE,
-        reason: reason.to_owned(),
-    };
-
-    let (start, end) = raw
-        .split_once('-')
-        .ok_or_else(|| invalid("expected the form START-END, for example 7000-7099"))?;
-
-    let start: u16 = start
-        .trim()
-        .parse()
-        .map_err(|_| invalid("start is not a valid port"))?;
-    let end: u16 = end
-        .trim()
-        .parse()
-        .map_err(|_| invalid("end is not a valid port"))?;
-
-    if start == 0 {
-        return Err(invalid("start must be above 0"));
-    }
-
-    if end < start {
-        return Err(invalid("end must be greater than or equal to start"));
-    }
-
-    Ok(start..=end)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn a_ticket_secret_shorter_than_the_minimum_is_refused() {
-        let short = "k".repeat(MIN_KEY_BYTES - 1);
-
-        assert!(matches!(
-            parse_ticket_key(&short),
-            Err(ConfigError::Invalid {
-                name: TICKET_SECRET,
-                ..
-            })
-        ));
-        assert!(parse_ticket_key(&"k".repeat(MIN_KEY_BYTES)).is_ok());
-    }
-
-    #[test]
-    fn parses_a_well_formed_range() {
-        assert_eq!(parse_port_range("7000-7099"), Ok(7000..=7099));
-    }
-
-    #[test]
-    fn tolerates_surrounding_whitespace() {
-        assert_eq!(parse_port_range(" 7000 - 7001 "), Ok(7000..=7001));
-    }
-
-    #[test]
-    fn accepts_a_single_port_range() {
-        assert_eq!(parse_port_range("7000-7000"), Ok(7000..=7000));
-    }
-
-    #[test]
-    fn rejects_a_reversed_range() {
-        assert!(parse_port_range("7100-7000").is_err());
-    }
-
-    #[test]
-    fn rejects_port_zero() {
-        assert!(parse_port_range("0-7000").is_err());
-    }
-
-    #[test]
-    fn rejects_a_range_without_a_separator() {
-        assert!(parse_port_range("7000").is_err());
-    }
-
-    #[test]
-    fn rejects_a_port_above_the_u16_range() {
-        assert!(parse_port_range("7000-70000").is_err());
-    }
 
     #[test]
     fn a_public_url_loses_its_trailing_slash() {

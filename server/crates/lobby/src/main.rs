@@ -6,7 +6,6 @@ use blastlands_lobby::config::{Config, Limits};
 use blastlands_lobby::download::{DownloadLinks, LINK_LIFETIME};
 use blastlands_lobby::github::Github;
 use blastlands_lobby::matches::{Lifetimes, MatchDirectory, ReapReason};
-use blastlands_lobby::ports::PortPool;
 use blastlands_lobby::release::Releases;
 use blastlands_lobby::routes::{app, AppState, ClientAddress};
 use blastlands_lobby::throttle::RateLimiter;
@@ -26,10 +25,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = Config::from_env()?;
     let limits = config.limits;
 
-    let directory = Arc::new(MatchDirectory::new(
-        config.game_server_host.clone(),
-        PortPool::new(config.port_range.clone()),
-    ));
+    let directory = Arc::new(MatchDirectory::new());
 
     let creates = Arc::new(RateLimiter::new(limits.creates_per_window, limits.window));
     let joins = Arc::new(RateLimiter::new(limits.joins_per_window, limits.window));
@@ -42,16 +38,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let state = AppState {
         directory: Arc::clone(&directory),
-        instance_token: Arc::from(config.instance_token.as_str()),
-        tickets: Arc::new(TicketSigner::new(
-            config.tickets.key.clone(),
-            limits.waiting_ttl + CONNECT_GRACE,
-        )),
+        tickets: Arc::new(TicketSigner::new(limits.waiting_ttl + CONNECT_GRACE)),
         release: Arc::clone(&releases),
         downloads: Arc::new(DownloadLinks::new(Arc::clone(&github), LINK_LIFETIME)),
         creates: Arc::clone(&creates),
         joins: Arc::clone(&joins),
         matches_per_address: limits.matches_per_address,
+        servers_per_address: limits.servers_per_address,
         address_source: if limits.trust_forwarded_for {
             ClientAddress::Forwarded
         } else {
@@ -121,6 +114,11 @@ async fn sweep(
                 ReapReason::NeverStarted => tracing::info!(
                     port = reaped.port,
                     "match was never started before its deadline, port released"
+                ),
+                ReapReason::ServerWentAway => tracing::info!(
+                    server = %reaped.server,
+                    port = reaped.port,
+                    "game server went away, its match was reaped"
                 ),
                 ReapReason::NobodyJoined => tracing::info!(
                     port = reaped.port,
