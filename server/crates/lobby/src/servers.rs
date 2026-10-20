@@ -36,6 +36,16 @@ impl ServerKey {
     fn generate() -> Self {
         Self(random_hex())
     }
+
+    fn matches(&self, other: &Self) -> bool {
+        let (left, right) = (self.0.as_bytes(), other.0.as_bytes());
+        left.len() == right.len()
+            && left
+                .iter()
+                .zip(right)
+                .fold(0u8, |difference, (a, b)| difference | (a ^ b))
+                == 0
+    }
 }
 
 impl fmt::Debug for ServerKey {
@@ -182,7 +192,7 @@ impl ServerRegistry {
             .get_mut(&id)
             .ok_or(LobbyError::ServerNotFound)?;
 
-        if !server.listed && key != Some(&server.key) {
+        if !server.listed && !key.is_some_and(|key| key.matches(&server.key)) {
             return Err(LobbyError::Unauthorized);
         }
 
