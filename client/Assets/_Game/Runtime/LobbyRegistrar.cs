@@ -121,8 +121,10 @@ namespace Blastlands.Runtime
                 return null;
             }
 
+            ServerRegistration registration = null;
+            string problem = null;
             if (dto == null
-                || !ServerRegistration.TryCreate(dto.id, dto.key, dto.ticket_secret, out ServerRegistration registration, out string problem))
+                || !ServerRegistration.TryCreate(dto.id, dto.key, dto.ticket_secret, out registration, out problem))
             {
                 Debug.LogWarning($"Blastlands server: the lobby's registration was unusable, {problem ?? "empty answer"}");
                 return null;
