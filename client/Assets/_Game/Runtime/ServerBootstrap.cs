@@ -1,7 +1,6 @@
 #if UNITY_SERVER
 using System;
 using Blastlands.Core;
-using Blastlands.Core.Net;
 using UnityEngine;
 
 namespace Blastlands.Runtime
@@ -16,11 +15,6 @@ namespace Blastlands.Runtime
     // to keep in step with the workflow.
     public static class ServerBootstrap
     {
-        // The exit code a supervisor reads. Anything non-zero has to mean the process
-        // failed, or a crash loop looks like a clean shutdown.
-        public const int Ok = 0;
-        public const int BadConfiguration = 1;
-
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Begin()
         {
@@ -34,21 +28,15 @@ namespace Blastlands.Runtime
                 return;
             }
 
-            if (!GameTicketVerifier.TryReadKey(Environment.GetEnvironmentVariable, out byte[] ticketKey, out problem))
-            {
-                Fail(problem);
-                return;
-            }
-
             var host = new GameObject("Blastlands Server");
             UnityEngine.Object.DontDestroyOnLoad(host);
-            host.AddComponent<ServerHost>().Run(options, ticketKey);
+            host.AddComponent<ServerHost>().Run(options);
         }
 
         private static void Fail(string reason)
         {
             Debug.LogError("Blastlands server: " + reason);
-            Application.Quit(BadConfiguration);
+            Application.Quit(ServerExit.BadConfiguration);
         }
     }
 }

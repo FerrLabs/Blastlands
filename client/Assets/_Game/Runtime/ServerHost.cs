@@ -1,6 +1,6 @@
-#if UNITY_SERVER
 using System.IO;
 using Blastlands.Core;
+using Blastlands.Core.Lobby;
 using UnityEngine;
 
 namespace Blastlands.Runtime
@@ -18,12 +18,13 @@ namespace Blastlands.Runtime
         private const float DrainCheckSeconds = 1f;
 
         private HostOptions options;
+        private LobbyRegistrar registrar;
         private MatchSlot[] slots;
         private float sinceDrainCheck;
         private bool draining;
         private bool quitting;
 
-        public void Run(HostOptions hostOptions, byte[] ticketKey)
+        public void Run(HostOptions hostOptions)
         {
             options = hostOptions;
 
@@ -31,12 +32,18 @@ namespace Blastlands.Runtime
             // will run. A server with nothing to draw would otherwise run the loop as fast
             // as the machine allows, and an idle slot would bill a whole core for the
             // privilege of waiting.
-            Application.targetFrameRate = MatchSettings.Default.TicksPerSecond;
-            QualitySettings.vSyncCount = 0;
+            if (options.OwnsProcess)
+            {
+                Application.targetFrameRate = MatchSettings.Default.TicksPerSecond;
+                QualitySettings.vSyncCount = 0;
+            }
 
             Debug.Log(
                 $"Blastlands server: {options.Slots} slots on ports {options.FirstPort} to {options.PortOf(options.Slots - 1)}, "
                 + $"lobby {options.LobbyUrl}");
+
+            registrar = gameObject.AddComponent<LobbyRegistrar>();
+            registrar.Begin(options);
 
             slots = new MatchSlot[options.Slots];
             for (int i = 0; i < slots.Length; i++)
@@ -44,13 +51,33 @@ namespace Blastlands.Runtime
                 var slot = new GameObject("Slot " + options.PortOf(i));
                 slot.transform.SetParent(transform, false);
                 slots[i] = slot.AddComponent<MatchSlot>();
-                slots[i].Watch(options.PortOf(i), options, ticketKey);
+                slots[i].Watch(options.PortOf(i), options, registrar);
             }
+        }
+
+        public ServerCredentials Credentials
+        {
+            get { return registrar.Credentials; }
+        }
+
+        public string Problem
+        {
+            get { return registrar.Problem; }
+        }
+
+        public bool SlotBusy
+        {
+            get { return slots[0].Busy; }
+        }
+
+        public float SecondsSinceSlotPolled
+        {
+            get { return slots[0].SecondsSincePoll; }
         }
 
         private void Update()
         {
-            if (slots == null || quitting)
+            if (slots == null || quitting || !options.OwnsProcess)
             {
                 return;
             }
@@ -69,7 +96,7 @@ namespace Blastlands.Runtime
             {
                 quitting = true;
                 Debug.Log("Blastlands server: drained, shutting down");
-                Application.Quit(ServerBootstrap.Ok);
+                Application.Quit(ServerExit.Ok);
             }
         }
 
@@ -101,4 +128,3 @@ namespace Blastlands.Runtime
         }
     }
 }
-#endif

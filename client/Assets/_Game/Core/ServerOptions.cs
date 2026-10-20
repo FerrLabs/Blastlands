@@ -27,7 +27,6 @@ namespace Blastlands.Core
             int expectedPlayers,
             int expectedHumans,
             string lobbyUrl,
-            string instanceToken,
             GameMode mode,
             BotSkill botSkill)
         {
@@ -38,7 +37,6 @@ namespace Blastlands.Core
             ExpectedPlayers = expectedPlayers;
             ExpectedHumans = expectedHumans;
             LobbyUrl = lobbyUrl;
-            InstanceToken = instanceToken;
         }
 
         public int ListenPort { get; }
@@ -51,23 +49,17 @@ namespace Blastlands.Core
 
         public string LobbyUrl { get; }
 
-        // What the lobby's internal endpoints check. An instance without it can heartbeat
-        // and release into a 401 forever, which means its port is gone until somebody
-        // restarts the lobby.
-        public string InstanceToken { get; }
-
         // One of the two fields with a default. A lobby from before modes existed never
         // names one, and every match it could have handed out was an Arena one.
         public GameMode Mode { get; }
 
         public BotSkill BotSkill { get; }
 
-        // The port, the lobby and the token belong to the host and were checked when it
+        // The port and the lobby belong to the host and were checked when it
         // started, so they are taken as they are. The rest is the assignment's text.
         public static bool TryCreate(
             int port,
             string lobbyUrl,
-            string instanceToken,
             string rawMatch,
             string rawPlayers,
             string rawHumans,
@@ -103,7 +95,7 @@ namespace Blastlands.Core
                 return false;
             }
 
-            options = new ServerOptions(port, matchId, players, humans, lobbyUrl, instanceToken, mode, bots);
+            options = new ServerOptions(port, matchId, players, humans, lobbyUrl, mode, bots);
             error = null;
             return true;
         }

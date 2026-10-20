@@ -4,17 +4,12 @@ using NUnit.Framework;
 
 namespace Blastlands.Core.Tests
 {
-    // The ports a process serves have to be exactly the ones the lobby's range and the
-    // pod's Services say it serves. A process one port off listens where nobody is sent
-    // and leaves a port the lobby offers with nothing behind it, and nothing crashes to
-    // say so. Most of these pin the layout down.
     public class HostOptionsTests
     {
         private static readonly string[] Complete =
         {
             "--port", "7000",
-            "--lobby", "https://lobby.example.com",
-            "--token", "shared-secret"
+            "--lobby", "https://lobby.example.com"
         };
 
         private static Func<string, string> NoEnvironment
@@ -33,14 +28,33 @@ namespace Blastlands.Core.Tests
             return key => map.TryGetValue(key, out string value) ? value : null;
         }
 
-        private static Func<string, string> Pod(string name, string slots = null)
+        [Test]
+        public void ARunServerIsDedicatedAndListed()
         {
-            return Environment(
-                HostOptions.PortBaseVariable, "31000",
-                HostOptions.PodNameVariable, name,
-                HostOptions.SlotsVariable, slots,
-                HostOptions.LobbyVariable, "https://api.blastlands.ferrlabs.com",
-                HostOptions.TokenVariable, "shared-secret");
+            Assert.That(HostOptions.TryRead(Complete, NoEnvironment, out HostOptions options, out string error), Is.True, error);
+
+            Assert.That(options.Role, Is.EqualTo(ServerRole.Dedicated));
+            Assert.That(options.Listed, Is.True);
+            Assert.That(options.OwnsProcess, Is.True);
+        }
+
+        [Test]
+        public void InGameKeepsThePortAndLobbyButServesOneUnlistedSlotAndNeverDrains()
+        {
+            Func<string, string> environment = Environment(
+                HostOptions.SlotsVariable, "4",
+                HostOptions.DrainFileVariable, "/run/drain");
+            Assert.That(HostOptions.TryRead(Complete, environment, out HostOptions dedicated, out string error), Is.True, error);
+
+            HostOptions inGame = dedicated.InGame();
+
+            Assert.That(inGame.Role, Is.EqualTo(ServerRole.InGame));
+            Assert.That(inGame.FirstPort, Is.EqualTo(7000));
+            Assert.That(inGame.LobbyUrl, Is.EqualTo("https://lobby.example.com"));
+            Assert.That(inGame.Slots, Is.EqualTo(1));
+            Assert.That(inGame.DrainFile, Is.Null);
+            Assert.That(inGame.Listed, Is.False);
+            Assert.That(inGame.OwnsProcess, Is.False);
         }
 
         [Test]
@@ -50,7 +64,6 @@ namespace Blastlands.Core.Tests
 
             Assert.That(options.FirstPort, Is.EqualTo(7000));
             Assert.That(options.LobbyUrl, Is.EqualTo("https://lobby.example.com"));
-            Assert.That(options.InstanceToken, Is.EqualTo("shared-secret"));
         }
 
         [Test]
@@ -64,63 +77,82 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
-        public void OneSlotPerPodLaysThePortsOutAsBeforeAProcessCouldCarryMore()
+        public void NothingGivenMeansPort7777OnTheDefaultLobby()
         {
-            // An image rolled out before the deployment asks for more slots has to land
-            // on the ports the Services and the lobby already expect.
-            Assert.That(HostOptions.TryRead(null, Pod("blastlands-server-2"), out HostOptions options, out string error), Is.True, error);
+            Assert.That(HostOptions.TryRead(new string[0], NoEnvironment, out HostOptions options, out string error), Is.True, error);
 
-            Assert.That(options.FirstPort, Is.EqualTo(31002));
+            Assert.That(options.FirstPort, Is.EqualTo(7777));
             Assert.That(options.Slots, Is.EqualTo(1));
+            Assert.That(options.LobbyUrl, Is.EqualTo(ClientOptions.DefaultLobby));
         }
 
         [Test]
-        public void EachPodTakesARunOfPortsAsWideAsItsSlots()
+        public void ABlankLobbyFallsBackToTheDefault()
         {
-            Assert.That(HostOptions.TryRead(null, Pod("blastlands-server-0", "4"), out HostOptions first, out string error), Is.True, error);
-            Assert.That(HostOptions.TryRead(null, Pod("blastlands-server-2", "4"), out HostOptions third, out error), Is.True, error);
+            Assert.That(
+                HostOptions.TryRead(null, Environment(HostOptions.LobbyVariable, "  "), out HostOptions options, out string error),
+                Is.True,
+                error);
 
-            Assert.That(first.PortOf(0), Is.EqualTo(31000));
-            Assert.That(first.PortOf(3), Is.EqualTo(31003));
-            Assert.That(third.PortOf(0), Is.EqualTo(31008), "pod 1 took 31004 to 31007");
-            Assert.That(third.PortOf(3), Is.EqualTo(31011));
+            Assert.That(options.LobbyUrl, Is.EqualTo(ClientOptions.DefaultLobby));
         }
 
         [Test]
-        public void AnExplicitPortStartsTheRunWhateverThePodIsCalled()
+        public void ThePortAndSlotsComeFromTheEnvironmentToo()
         {
             Func<string, string> environment = Environment(
-                HostOptions.PortBaseVariable, "31000",
-                HostOptions.PodNameVariable, "blastlands-server-3",
+                HostOptions.PortVariable, "9000",
                 HostOptions.SlotsVariable, "4");
 
-            Assert.That(HostOptions.TryRead(Complete, environment, out HostOptions options, out string error), Is.True, error);
+            Assert.That(HostOptions.TryRead(null, environment, out HostOptions options, out string error), Is.True, error);
 
-            Assert.That(options.PortOf(0), Is.EqualTo(7000));
-            Assert.That(options.PortOf(3), Is.EqualTo(7003));
+            Assert.That(options.PortOf(0), Is.EqualTo(9000));
+            Assert.That(options.PortOf(3), Is.EqualTo(9003));
+        }
+
+        [Test]
+        public void TheSlotsFlagBeatsTheEnvironment()
+        {
+            string[] arguments = { "--slots", "3" };
+
+            Assert.That(
+                HostOptions.TryRead(arguments, Environment(HostOptions.SlotsVariable, "8"), out HostOptions options, out string error),
+                Is.True,
+                error);
+
+            Assert.That(options.Slots, Is.EqualTo(3));
+        }
+
+        [Test]
+        public void SixteenSlotsIsTheMostTheLobbyAccepts()
+        {
+            Assert.That(
+                HostOptions.TryRead(new[] { "--slots", "16" }, NoEnvironment, out HostOptions options, out string error),
+                Is.True,
+                error);
+            Assert.That(options.Slots, Is.EqualTo(16));
+
+            Assert.That(HostOptions.TryRead(new[] { "--slots", "17" }, NoEnvironment, out _, out error), Is.False);
+            Assert.That(error, Does.Contain(HostOptions.SlotsFlag));
         }
 
         [Test]
         public void ASlotCountOutsideTheRangeIsRefused()
         {
-            foreach (string slots in new[] { "0", "-1", "33", "four" })
+            foreach (string slots in new[] { "0", "-1", "17", "four" })
             {
-                Assert.That(HostOptions.TryRead(null, Pod("blastlands-server-0", slots), out _, out string error), Is.False, slots);
+                Assert.That(
+                    HostOptions.TryRead(null, Environment(HostOptions.SlotsVariable, slots), out _, out string error),
+                    Is.False,
+                    slots);
                 Assert.That(error, Does.Contain(HostOptions.SlotsVariable));
             }
         }
 
         [Test]
-        public void APodNameWithoutAnOrdinalIsRefused()
-        {
-            Assert.That(HostOptions.TryRead(null, Pod("blastlands-server"), out _, out string error), Is.False);
-            Assert.That(error, Does.Contain(HostOptions.PodNameVariable));
-        }
-
-        [Test]
         public void ARunOfPortsThatWouldPassTheLastOneIsRefused()
         {
-            string[] arguments = { "--port", "65534", "--lobby", "http://x", "--token", "s" };
+            string[] arguments = { "--port", "65534", "--lobby", "http://x" };
 
             Assert.That(
                 HostOptions.TryRead(arguments, Environment(HostOptions.SlotsVariable, "4"), out _, out string error),
@@ -133,7 +165,7 @@ namespace Blastlands.Core.Tests
         {
             // port + slots - 1 overflows int, and a wrapped negative "last port" would
             // slip under the upper bound and bind whatever the ushort cast made of it.
-            string[] arguments = { "--port", "2147483647", "--lobby", "http://x", "--token", "s" };
+            string[] arguments = { "--port", "2147483647", "--lobby", "http://x" };
 
             Assert.That(
                 HostOptions.TryRead(arguments, Environment(HostOptions.SlotsVariable, "2"), out _, out _),
@@ -145,34 +177,22 @@ namespace Blastlands.Core.Tests
         {
             foreach (string port in new[] { "0", "65536", "-1", "seven" })
             {
-                string[] arguments = { "--port", port, "--lobby", "http://x", "--token", "s" };
+                string[] arguments = { "--port", port, "--lobby", "http://x" };
 
                 Assert.That(HostOptions.TryRead(arguments, NoEnvironment, out _, out _), Is.False, $"accepted port {port}");
             }
         }
 
         [Test]
-        public void EachMissingSettingSaysWhichOneAndHowToSupplyIt()
+        public void AFlagWithNothingAfterItIsRefusedRatherThanDefaulted()
         {
-            foreach (string flag in new[] { HostOptions.PortFlag, HostOptions.LobbyFlag, HostOptions.TokenFlag })
+            foreach (string flag in new[] { HostOptions.PortFlag, HostOptions.LobbyFlag, HostOptions.SlotsFlag })
             {
-                var without = new List<string>(Complete);
-                without.RemoveRange(without.IndexOf(flag), 2);
+                string[] arguments = { "--lobby", "http://x", flag };
 
-                Assert.That(HostOptions.TryRead(without, NoEnvironment, out _, out string error), Is.False, $"started without {flag}");
-                Assert.That(error, Does.Contain(flag), "the message does not name the missing setting");
+                Assert.That(HostOptions.TryRead(arguments, NoEnvironment, out _, out string error), Is.False, flag);
+                Assert.That(error, Does.Contain(flag));
             }
-        }
-
-        [Test]
-        public void AFlagWithNothingAfterItIsMissingRatherThanEmpty()
-        {
-            // The last argument being a bare flag is what a shell leaves behind when a
-            // variable it was expanding was empty.
-            string[] arguments = { "--lobby", "http://x", "--token", "s", "--port" };
-
-            Assert.That(HostOptions.TryRead(arguments, NoEnvironment, out _, out string error), Is.False);
-            Assert.That(error, Does.Contain(HostOptions.PortFlag));
         }
 
         [Test]
@@ -192,7 +212,7 @@ namespace Blastlands.Core.Tests
             // there instead, on the first poll, with nothing pointing back here.
             foreach (string lobby in new[] { "lobby.example.com", "ftp://lobby", "/var/run/lobby.sock" })
             {
-                string[] arguments = { "--port", "7000", "--lobby", lobby, "--token", "s" };
+                string[] arguments = { "--port", "7000", "--lobby", lobby };
 
                 Assert.That(HostOptions.TryRead(arguments, NoEnvironment, out _, out _), Is.False, $"accepted {lobby}");
             }
@@ -232,7 +252,7 @@ namespace Blastlands.Core.Tests
         {
             Assert.That(
                 HostOptions.TryRead(
-                    new[] { "--port", " 7000 ", "--lobby", " http://x ", "--token", " s " },
+                    new[] { "--port", " 7000 ", "--lobby", " http://x " },
                     Environment(HostOptions.SlotsVariable, " 2 "),
                     out HostOptions options,
                     out string error),
@@ -242,7 +262,6 @@ namespace Blastlands.Core.Tests
             Assert.That(options.FirstPort, Is.EqualTo(7000));
             Assert.That(options.Slots, Is.EqualTo(2));
             Assert.That(options.LobbyUrl, Is.EqualTo("http://x"));
-            Assert.That(options.InstanceToken, Is.EqualTo("s"));
         }
     }
 }

@@ -10,8 +10,11 @@ use uuid::Uuid;
 use crate::error::LobbyError;
 use crate::modes::GameMode;
 use crate::names::DisplayName;
-use crate::ports::PortPool;
+use crate::servers::{
+    Probe, RegisterServer, Registered, ServerId, ServerKey, ServerRegistry, Slot,
+};
 use crate::skills::BotSkill;
+use crate::tickets::TicketKey;
 
 pub const MIN_PLAYERS: u8 = 2;
 pub const MAX_PLAYERS: u8 = 8;
@@ -57,6 +60,7 @@ pub struct Match {
     /// so this only ever narrows who may still join, never who runs the match.
     pub bots: u8,
     pub state: MatchState,
+    pub server: ServerId,
     pub endpoint: GameServerEndpoint,
     /// Who asked for it, so one address cannot hold the whole port pool.
     pub host_address: IpAddr,
@@ -83,6 +87,13 @@ pub struct CreateMatch {
     pub mode: GameMode,
     pub bot_skill: BotSkill,
     pub host_address: IpAddr,
+    pub server: Option<ServerChoice>,
+}
+
+#[derive(Debug)]
+pub struct ServerChoice {
+    pub id: ServerId,
+    pub key: Option<ServerKey>,
 }
 
 /// How long a match may sit around without being looked after.
@@ -102,11 +113,13 @@ pub enum ReapReason {
     NobodyJoined,
     NeverStarted,
     InstanceWentSilent,
+    ServerWentAway,
 }
 
 #[derive(Debug, Clone)]
 pub struct Reaped {
     pub id: MatchId,
+    pub server: ServerId,
     pub port: u16,
     pub reason: ReapReason,
 }
@@ -124,27 +137,43 @@ pub struct Assignment {
 #[derive(Debug)]
 pub struct Admitted {
     pub endpoint: GameServerEndpoint,
+    pub ticket_key: TicketKey,
 }
 
+#[derive(Debug)]
+pub struct Created {
+    pub entry: Match,
+    pub host_ticket: HostTicket,
+    pub ticket_key: TicketKey,
+}
+
+#[derive(Default)]
 struct DirectoryState {
     matches: HashMap<MatchId, Match>,
-    ports: PortPool,
+    servers: ServerRegistry,
 }
 
+#[derive(Default)]
 pub struct MatchDirectory {
-    game_server_host: String,
     state: RwLock<DirectoryState>,
 }
 
 impl MatchDirectory {
-    pub fn new(game_server_host: String, ports: PortPool) -> Self {
-        Self {
-            game_server_host,
-            state: RwLock::new(DirectoryState {
-                matches: HashMap::new(),
-                ports,
-            }),
-        }
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn register_server(
+        &self,
+        request: RegisterServer,
+        now: Instant,
+        max_per_address: usize,
+    ) -> Result<Registered, LobbyError> {
+        self.write().servers.register(request, now, max_per_address)
+    }
+
+    pub fn authenticate_server(&self, key: &ServerKey) -> Result<ServerId, LobbyError> {
+        self.read().servers.authenticate(key)
     }
 
     pub fn create(
@@ -152,7 +181,7 @@ impl MatchDirectory {
         request: CreateMatch,
         now: Instant,
         max_per_address: usize,
-    ) -> Result<(Match, HostTicket), LobbyError> {
+    ) -> Result<Created, LobbyError> {
         if !(MIN_PLAYERS..=MAX_PLAYERS).contains(&request.max_players) {
             return Err(LobbyError::InvalidPlayerCount {
                 min: MIN_PLAYERS,
@@ -179,7 +208,21 @@ impl MatchDirectory {
             }
         }
 
-        let port = state.ports.acquire(now)?;
+        let Slot {
+            server,
+            address,
+            port,
+        } = match &request.server {
+            Some(choice) => state
+                .servers
+                .acquire_on(choice.id, choice.key.as_ref(), now)?,
+            None => state.servers.acquire_any(now)?,
+        };
+        let ticket_key = state
+            .servers
+            .ticket_key(server)
+            .cloned()
+            .ok_or(LobbyError::ServerNotFound)?;
 
         // Generated once and kept, rather than minted fresh on the way out. The copy the
         // host is handed is the only thing that can start this match later, so the lobby
@@ -196,8 +239,9 @@ impl MatchDirectory {
             bot_skill: request.bot_skill,
             bots: 0,
             state: MatchState::WaitingForPlayers,
+            server,
             endpoint: GameServerEndpoint {
-                host: self.game_server_host.clone(),
+                host: address.to_string(),
                 port,
             },
             host_address: request.host_address,
@@ -208,7 +252,11 @@ impl MatchDirectory {
 
         state.matches.insert(entry.id, entry.clone());
 
-        Ok((entry, host_ticket))
+        Ok(Created {
+            entry,
+            host_ticket,
+            ticket_key,
+        })
     }
 
     pub fn get(&self, id: MatchId) -> Option<Match> {
@@ -230,10 +278,8 @@ impl MatchDirectory {
 
     pub fn join(&self, id: MatchId, player: DisplayName) -> Result<Admitted, LobbyError> {
         let mut state = self.write();
-        let entry = state
-            .matches
-            .get_mut(&id)
-            .ok_or(LobbyError::MatchNotFound)?;
+        let DirectoryState { matches, servers } = &mut *state;
+        let entry = matches.get_mut(&id).ok_or(LobbyError::MatchNotFound)?;
 
         if entry.state == MatchState::InProgress {
             return Err(LobbyError::MatchAlreadyStarted);
@@ -243,10 +289,16 @@ impl MatchDirectory {
             return Err(LobbyError::MatchFull);
         }
 
+        let ticket_key = servers
+            .ticket_key(entry.server)
+            .cloned()
+            .ok_or(LobbyError::MatchNotFound)?;
+
         entry.players.push(player);
 
         Ok(Admitted {
             endpoint: entry.endpoint.clone(),
+            ticket_key,
         })
     }
 
@@ -323,19 +375,29 @@ impl MatchDirectory {
         Ok(())
     }
 
-    pub fn observe_instance(&self, port: u16, now: Instant) {
-        self.write().ports.observe_instance(port, now);
+    pub fn observe_slot(
+        &self,
+        server: ServerId,
+        port: u16,
+        echoed: Option<&str>,
+        now: Instant,
+    ) -> Option<Probe> {
+        self.write().servers.observe_slot(server, port, echoed, now)
     }
 
     /// What the instance owning `port` should run, once there is something to run.
     ///
     /// Only a started match answers. Before that there is nobody to play against, and an
     /// instance booted early would spend its grace window waiting on an empty arena.
-    pub fn assignment(&self, port: u16) -> Option<Assignment> {
+    pub fn assignment(&self, server: ServerId, port: u16) -> Option<Assignment> {
         self.read()
             .matches
             .values()
-            .find(|entry| entry.endpoint.port == port && entry.state == MatchState::InProgress)
+            .find(|entry| {
+                entry.server == server
+                    && entry.endpoint.port == port
+                    && entry.state == MatchState::InProgress
+            })
             .map(|entry| Assignment {
                 match_id: entry.id,
                 // Every seat the host opened, and how many of them will connect: `join`
@@ -349,14 +411,16 @@ impl MatchDirectory {
     }
 
     /// Records that the instance running a match is still alive.
-    pub fn heartbeat(&self, id: MatchId, now: Instant) -> Result<(), LobbyError> {
+    pub fn heartbeat(&self, server: ServerId, id: MatchId, now: Instant) -> Result<(), LobbyError> {
         let mut state = self.write();
         let entry = state
             .matches
             .get_mut(&id)
+            .filter(|entry| entry.server == server)
             .ok_or(LobbyError::MatchNotFound)?;
 
         entry.last_seen = now;
+        state.servers.touch(server, now);
         Ok(())
     }
 
@@ -368,10 +432,12 @@ impl MatchDirectory {
     /// judged on whether anyone ever joined instead.
     pub fn reap(&self, now: Instant, lifetimes: Lifetimes) -> Vec<Reaped> {
         let mut state = self.write();
+        let gone = state.servers.expire(now);
         let mut doomed = Vec::new();
 
         for entry in state.matches.values() {
             let reason = match entry.state {
+                _ if gone.contains(&entry.server) => Some(ReapReason::ServerWentAway),
                 MatchState::InProgress => {
                     if now.duration_since(entry.last_seen) > lifetimes.silent {
                         Some(ReapReason::InstanceWentSilent)
@@ -394,6 +460,7 @@ impl MatchDirectory {
             if let Some(reason) = reason {
                 doomed.push(Reaped {
                     id: entry.id,
+                    server: entry.server,
                     port: entry.endpoint.port,
                     reason,
                 });
@@ -402,16 +469,21 @@ impl MatchDirectory {
 
         for reaped in &doomed {
             state.matches.remove(&reaped.id);
-            state.ports.release(reaped.port);
+            state.servers.release(reaped.server, reaped.port);
         }
 
         doomed
     }
 
-    pub fn finish(&self, id: MatchId) -> Result<(), LobbyError> {
+    pub fn finish(&self, server: ServerId, id: MatchId) -> Result<(), LobbyError> {
         let mut state = self.write();
-        let entry = state.matches.remove(&id).ok_or(LobbyError::MatchNotFound)?;
-        state.ports.release(entry.endpoint.port);
+        if state.matches.get(&id).map(|entry| entry.server) != Some(server) {
+            return Err(LobbyError::MatchNotFound);
+        }
+
+        if let Some(entry) = state.matches.remove(&id) {
+            state.servers.release(server, entry.endpoint.port);
+        }
         Ok(())
     }
 
@@ -440,17 +512,52 @@ mod tests {
 
     use super::*;
 
-    fn directory_over(range: std::ops::RangeInclusive<u16>) -> MatchDirectory {
-        let mut ports = PortPool::new(range.clone());
-        let now = Instant::now();
-        for port in range {
-            ports.observe_instance(port, now);
-        }
-        MatchDirectory::new("game.blastlands.test".to_owned(), ports)
+    const SERVER_ADDRESS: IpAddr = IpAddr::V4(Ipv4Addr::new(203, 0, 113, 200));
+
+    fn directory_over(range: std::ops::RangeInclusive<u16>) -> (MatchDirectory, ServerId) {
+        let directory = MatchDirectory::new();
+        let server = register(&directory, &range, true, Instant::now());
+        (directory, server)
     }
 
-    fn directory() -> MatchDirectory {
+    fn register(
+        directory: &MatchDirectory,
+        range: &std::ops::RangeInclusive<u16>,
+        listed: bool,
+        now: Instant,
+    ) -> ServerId {
+        let server = directory
+            .register_server(
+                RegisterServer {
+                    first_port: *range.start(),
+                    slots: u8::try_from(range.len()).unwrap(),
+                    listed,
+                    address: SERVER_ADDRESS,
+                },
+                now,
+                0,
+            )
+            .expect("registration should succeed")
+            .id;
+        for port in range.clone() {
+            prove(directory, server, port, now);
+        }
+        server
+    }
+
+    fn directory() -> (MatchDirectory, ServerId) {
         directory_over(7000..=7001)
+    }
+
+    fn prove(directory: &MatchDirectory, server: ServerId, port: u16, now: Instant) {
+        if let Some(probe) = directory.observe_slot(server, port, None, now) {
+            directory.observe_slot(server, port, Some(&probe.nonce), now);
+        }
+    }
+
+    fn reap_at(directory: &MatchDirectory, server: ServerId, at: Instant) -> Vec<Reaped> {
+        prove(directory, server, 7000, at);
+        directory.reap(at, lifetimes())
     }
 
     fn name(raw: &str) -> DisplayName {
@@ -467,28 +574,30 @@ mod tests {
                     host_address: caller(1),
                     mode: GameMode::Arena,
                     bot_skill: BotSkill::default(),
+                    server: None,
                 },
                 Instant::now(),
                 0,
             )
             .expect("create should succeed")
-            .0
+            .entry
     }
 
     #[test]
     fn a_created_match_seats_its_host_and_gets_an_endpoint() {
-        let directory = directory();
+        let (directory, server) = directory();
         let entry = create(&directory, 4);
 
         assert_eq!(entry.players, vec![name("Bryan")]);
         assert_eq!(entry.state, MatchState::WaitingForPlayers);
-        assert_eq!(entry.endpoint.host, "game.blastlands.test");
+        assert_eq!(entry.endpoint.host, "203.0.113.200");
+        assert_eq!(entry.server, server);
         assert_eq!(entry.endpoint.port, 7000);
     }
 
     #[test]
     fn each_match_gets_its_own_port() {
-        let directory = directory();
+        let (directory, _) = directory();
 
         let first = create(&directory, 2);
         let second = create(&directory, 2);
@@ -498,7 +607,7 @@ mod tests {
 
     #[test]
     fn creation_fails_once_the_port_pool_is_exhausted() {
-        let directory = directory();
+        let (directory, _) = directory();
         create(&directory, 2);
         create(&directory, 2);
 
@@ -510,6 +619,7 @@ mod tests {
                 host_address: caller(1),
                 mode: GameMode::Arena,
                 bot_skill: BotSkill::default(),
+                server: None,
             },
             Instant::now(),
             0,
@@ -520,7 +630,7 @@ mod tests {
 
     #[test]
     fn player_count_outside_the_supported_range_is_rejected() {
-        let directory = directory();
+        let (directory, _) = directory();
 
         for count in [0, 1, MAX_PLAYERS + 1] {
             let result = directory.create(
@@ -531,6 +641,7 @@ mod tests {
                     host_address: caller(1),
                     mode: GameMode::Arena,
                     bot_skill: BotSkill::default(),
+                    server: None,
                 },
                 Instant::now(),
                 0,
@@ -548,7 +659,7 @@ mod tests {
 
     #[test]
     fn a_rejected_creation_does_not_leak_a_port() {
-        let directory = directory();
+        let (directory, _) = directory();
 
         let _ = directory.create(
             CreateMatch {
@@ -558,6 +669,7 @@ mod tests {
                 host_address: caller(1),
                 mode: GameMode::Arena,
                 bot_skill: BotSkill::default(),
+                server: None,
             },
             Instant::now(),
             0,
@@ -568,7 +680,7 @@ mod tests {
 
     #[test]
     fn joining_seats_the_player_and_returns_the_same_endpoint() {
-        let directory = directory();
+        let (directory, _) = directory();
         let entry = create(&directory, 4);
 
         let admitted = directory
@@ -581,7 +693,7 @@ mod tests {
 
     #[test]
     fn a_full_match_rejects_further_players_and_leaves_the_lobby_list() {
-        let directory = directory();
+        let (directory, _) = directory();
         let entry = create(&directory, 2);
 
         directory
@@ -597,7 +709,7 @@ mod tests {
 
     #[test]
     fn adding_a_bot_claims_a_seat_a_human_can_no_longer_join() {
-        let directory = directory();
+        let (directory, _) = directory();
         let entry = create(&directory, 2);
 
         let updated = directory
@@ -614,7 +726,7 @@ mod tests {
 
     #[test]
     fn a_bot_lets_a_solo_host_start() {
-        let directory = directory();
+        let (directory, _) = directory();
         let entry = create(&directory, 4);
 
         assert_eq!(
@@ -638,7 +750,7 @@ mod tests {
 
     #[test]
     fn a_full_match_refuses_another_bot() {
-        let directory = directory();
+        let (directory, _) = directory();
         let entry = create(&directory, 2);
         directory
             .add_bot(entry.id, entry.host_ticket)
@@ -652,7 +764,7 @@ mod tests {
 
     #[test]
     fn only_the_host_may_add_a_bot() {
-        let directory = directory();
+        let (directory, _) = directory();
         let entry = create(&directory, 4);
 
         assert_eq!(
@@ -663,7 +775,7 @@ mod tests {
 
     #[test]
     fn a_bot_cannot_be_added_once_the_match_has_started() {
-        let directory = directory();
+        let (directory, _) = directory();
         let entry = create(&directory, 4);
         seat_a_guest(&directory, entry.id);
         directory
@@ -684,7 +796,7 @@ mod tests {
 
     #[test]
     fn a_started_match_leaves_the_lobby_list_and_refuses_joins() {
-        let directory = directory();
+        let (directory, _) = directory();
         let entry = create(&directory, 4);
         seat_a_guest(&directory, entry.id);
 
@@ -701,7 +813,7 @@ mod tests {
 
     #[test]
     fn starting_a_match_twice_is_rejected() {
-        let directory = directory();
+        let (directory, _) = directory();
         let entry = create(&directory, 4);
         seat_a_guest(&directory, entry.id);
 
@@ -719,7 +831,7 @@ mod tests {
 
     #[test]
     fn a_host_cannot_start_a_match_nobody_joined() {
-        let directory = directory();
+        let (directory, server) = directory();
         let entry = create(&directory, 4);
 
         assert_eq!(
@@ -731,12 +843,12 @@ mod tests {
                 joined: 1
             })
         );
-        assert_eq!(directory.assignment(entry.endpoint.port), None);
+        assert_eq!(directory.assignment(server, entry.endpoint.port), None);
     }
 
     #[test]
     fn a_started_match_builds_every_seat_and_counts_the_humans() {
-        let directory = directory();
+        let (directory, server) = directory();
         let entry = create(&directory, 4);
         seat_a_guest(&directory, entry.id);
         directory
@@ -748,7 +860,7 @@ mod tests {
             .expect("start should succeed");
 
         assert_eq!(
-            directory.assignment(entry.endpoint.port),
+            directory.assignment(server, entry.endpoint.port),
             Some(Assignment {
                 match_id: entry.id,
                 players: 4,
@@ -762,18 +874,20 @@ mod tests {
 
     #[test]
     fn finishing_a_match_returns_its_port_to_the_pool() {
-        let directory = directory();
+        let (directory, server) = directory();
         let first = create(&directory, 2);
         create(&directory, 2);
 
-        directory.finish(first.id).expect("finish should succeed");
+        directory
+            .finish(server, first.id)
+            .expect("finish should succeed");
 
         assert_eq!(create(&directory, 2).endpoint.port, first.endpoint.port);
     }
 
     #[test]
     fn unknown_matches_are_reported_as_not_found() {
-        let directory = directory();
+        let (directory, server) = directory();
         let unknown = MatchId(Uuid::new_v4());
 
         assert_eq!(
@@ -787,7 +901,7 @@ mod tests {
             Some(LobbyError::MatchNotFound)
         );
         assert_eq!(
-            directory.finish(unknown).err(),
+            directory.finish(server, unknown).err(),
             Some(LobbyError::MatchNotFound)
         );
     }
@@ -810,7 +924,9 @@ mod tests {
     }
 
     fn made(directory: &MatchDirectory, address: IpAddr, now: Instant) -> (MatchId, HostTicket) {
-        let (entry, ticket) = directory
+        let Created {
+            entry, host_ticket, ..
+        } = directory
             .create(
                 CreateMatch {
                     name: name("Night raid"),
@@ -819,42 +935,42 @@ mod tests {
                     host_address: address,
                     mode: GameMode::Arena,
                     bot_skill: BotSkill::default(),
+                    server: None,
                 },
                 now,
                 0,
             )
             .expect("create should succeed");
 
-        (entry.id, ticket)
+        (entry.id, host_ticket)
     }
 
     #[test]
     fn a_match_nobody_joined_is_taken_away_and_its_port_returned() {
-        let directory = directory_over(7000..=7000);
+        let (directory, server) = directory_over(7000..=7000);
         let start = Instant::now();
         make(&directory, caller(1), start);
 
         // The pool holds exactly one port, so a second create can only succeed if the
         // first match really gave its port back.
-        let reaped = directory.reap(start + Duration::from_secs(301), lifetimes());
+        let reaped = reap_at(&directory, server, start + Duration::from_secs(301));
 
         assert_eq!(reaped.len(), 1);
         assert_eq!(reaped[0].reason, ReapReason::NobodyJoined);
         assert!(directory.open_matches().is_empty());
-        directory.observe_instance(7000, start + Duration::from_secs(302));
         make(&directory, caller(2), start + Duration::from_secs(302));
     }
 
     #[test]
     fn a_match_someone_joined_is_left_alone() {
-        let directory = directory_over(7000..=7001);
+        let (directory, server) = directory_over(7000..=7001);
         let start = Instant::now();
         let id = make(&directory, caller(1), start);
         directory
             .join(id, name("Sam"))
             .expect("join should succeed");
 
-        let reaped = directory.reap(start + Duration::from_secs(301), lifetimes());
+        let reaped = reap_at(&directory, server, start + Duration::from_secs(301));
 
         assert!(reaped.is_empty(), "a match with players in it was reaped");
     }
@@ -865,7 +981,7 @@ mod tests {
         // instance, so it has nothing to heartbeat with. Judging it on silence would
         // delete every match on a lobby whose game servers do not exist yet, which is
         // exactly the state of this project.
-        let directory = directory_over(7000..=7001);
+        let (directory, server) = directory_over(7000..=7001);
         let start = Instant::now();
         let id = make(&directory, caller(1), start);
         directory
@@ -873,33 +989,30 @@ mod tests {
             .expect("join should succeed");
 
         let long_after = start + Duration::from_secs(899);
-        assert!(directory.reap(long_after, lifetimes()).is_empty());
+        assert!(reap_at(&directory, server, long_after).is_empty());
     }
 
     #[test]
     fn a_match_never_started_is_reaped_at_its_deadline_even_with_players_in_it() {
-        let directory = directory_over(7000..=7000);
+        let (directory, server) = directory_over(7000..=7000);
         let start = Instant::now();
         let id = make(&directory, caller(1), start);
         directory
             .join(id, name("Sam"))
             .expect("join should succeed");
 
-        assert!(directory
-            .reap(start + Duration::from_secs(900), lifetimes())
-            .is_empty());
+        assert!(reap_at(&directory, server, start + Duration::from_secs(900)).is_empty());
 
-        let reaped = directory.reap(start + Duration::from_secs(901), lifetimes());
+        let reaped = reap_at(&directory, server, start + Duration::from_secs(901));
 
         assert_eq!(reaped.len(), 1);
         assert_eq!(reaped[0].reason, ReapReason::NeverStarted);
-        directory.observe_instance(7000, start + Duration::from_secs(902));
         make(&directory, caller(2), start + Duration::from_secs(902));
     }
 
     #[test]
     fn a_started_match_is_not_held_to_the_waiting_deadline() {
-        let directory = directory_over(7000..=7000);
+        let (directory, server) = directory_over(7000..=7000);
         let start = Instant::now();
         let (id, ticket) = made(&directory, caller(1), start);
         seat_a_guest(&directory, id);
@@ -907,17 +1020,15 @@ mod tests {
             .start(id, ticket, start + Duration::from_secs(890))
             .expect("start should succeed");
         directory
-            .heartbeat(id, start + Duration::from_secs(1_000))
+            .heartbeat(server, id, start + Duration::from_secs(1_000))
             .expect("heartbeat should succeed");
 
-        assert!(directory
-            .reap(start + Duration::from_secs(1_001), lifetimes())
-            .is_empty());
+        assert!(reap_at(&directory, server, start + Duration::from_secs(1_001)).is_empty());
     }
 
     #[test]
     fn a_running_match_whose_instance_went_quiet_is_reaped() {
-        let directory = directory_over(7000..=7000);
+        let (directory, server) = directory_over(7000..=7000);
         let start = Instant::now();
         let (id, ticket) = made(&directory, caller(1), start);
         seat_a_guest(&directory, id);
@@ -925,29 +1036,28 @@ mod tests {
             .start(id, ticket, start)
             .expect("start should succeed");
 
-        let reaped = directory.reap(start + Duration::from_secs(31), lifetimes());
+        let reaped = reap_at(&directory, server, start + Duration::from_secs(31));
 
         assert_eq!(reaped.len(), 1);
         assert_eq!(reaped[0].reason, ReapReason::InstanceWentSilent);
-        directory.observe_instance(7000, start + Duration::from_secs(32));
         make(&directory, caller(2), start + Duration::from_secs(32));
     }
 
     #[test]
     fn a_port_has_no_assignment_until_its_match_starts() {
-        let directory = directory_over(7000..=7000);
+        let (directory, server) = directory_over(7000..=7000);
         let start = Instant::now();
         let (id, ticket) = made(&directory, caller(1), start);
         seat_a_guest(&directory, id);
 
-        assert_eq!(directory.assignment(7000), None);
+        assert_eq!(directory.assignment(server, 7000), None);
 
         directory
             .start(id, ticket, start)
             .expect("start should succeed");
 
         assert_eq!(
-            directory.assignment(7000),
+            directory.assignment(server, 7000),
             Some(Assignment {
                 match_id: id,
                 players: 4,
@@ -961,7 +1071,7 @@ mod tests {
 
     #[test]
     fn a_port_nobody_was_given_has_no_assignment() {
-        let directory = directory_over(7000..=7001);
+        let (directory, server) = directory_over(7000..=7001);
         let start = Instant::now();
         let (id, ticket) = made(&directory, caller(1), start);
         seat_a_guest(&directory, id);
@@ -969,27 +1079,27 @@ mod tests {
             .start(id, ticket, start)
             .expect("start should succeed");
 
-        assert_eq!(directory.assignment(7001), None);
-        assert_eq!(directory.assignment(9999), None);
+        assert_eq!(directory.assignment(server, 7001), None);
+        assert_eq!(directory.assignment(server, 9999), None);
     }
 
     #[test]
     fn a_finished_match_releases_its_assignment() {
-        let directory = directory_over(7000..=7000);
+        let (directory, server) = directory_over(7000..=7000);
         let start = Instant::now();
         let (id, ticket) = made(&directory, caller(1), start);
         seat_a_guest(&directory, id);
         directory
             .start(id, ticket, start)
             .expect("start should succeed");
-        directory.finish(id).expect("finish should succeed");
+        directory.finish(server, id).expect("finish should succeed");
 
-        assert_eq!(directory.assignment(7000), None);
+        assert_eq!(directory.assignment(server, 7000), None);
     }
 
     #[test]
     fn starting_late_still_leaves_the_instance_its_grace_window() {
-        let directory = directory_over(7000..=7000);
+        let (directory, server) = directory_over(7000..=7000);
         let start = Instant::now();
         let (id, ticket) = made(&directory, caller(1), start);
         seat_a_guest(&directory, id);
@@ -1002,21 +1112,17 @@ mod tests {
             .start(id, ticket, started_at)
             .expect("start should succeed");
 
-        assert!(directory.reap(started_at, lifetimes()).is_empty());
-        assert!(directory
-            .reap(started_at + Duration::from_secs(29), lifetimes())
-            .is_empty());
+        assert!(reap_at(&directory, server, started_at).is_empty());
+        assert!(reap_at(&directory, server, started_at + Duration::from_secs(29)).is_empty());
         assert_eq!(
-            directory
-                .reap(started_at + Duration::from_secs(31), lifetimes())
-                .len(),
+            reap_at(&directory, server, started_at + Duration::from_secs(31)).len(),
             1
         );
     }
 
     #[test]
     fn a_heartbeat_keeps_a_running_match_alive() {
-        let directory = directory_over(7000..=7001);
+        let (directory, server) = directory_over(7000..=7001);
         let start = Instant::now();
         let (id, ticket) = made(&directory, caller(1), start);
         seat_a_guest(&directory, id);
@@ -1025,20 +1131,18 @@ mod tests {
             .expect("start should succeed");
 
         directory
-            .heartbeat(id, start + Duration::from_secs(25))
+            .heartbeat(server, id, start + Duration::from_secs(25))
             .expect("heartbeat should succeed");
 
         assert!(
-            directory
-                .reap(start + Duration::from_secs(31), lifetimes())
-                .is_empty(),
+            reap_at(&directory, server, start + Duration::from_secs(31)).is_empty(),
             "a match that reported in was reaped anyway"
         );
     }
 
     #[test]
     fn one_address_may_only_hold_so_many_matches() {
-        let directory = directory_over(7000..=7010);
+        let (directory, _) = directory_over(7000..=7010);
         let now = Instant::now();
 
         for _ in 0..2 {
@@ -1051,6 +1155,7 @@ mod tests {
                         host_address: caller(1),
                         mode: GameMode::Arena,
                         bot_skill: BotSkill::default(),
+                        server: None,
                     },
                     now,
                     2,
@@ -1066,6 +1171,7 @@ mod tests {
                 host_address: caller(1),
                 mode: GameMode::Arena,
                 bot_skill: BotSkill::default(),
+                server: None,
             },
             now,
             2,
@@ -1081,10 +1187,175 @@ mod tests {
                     host_address: caller(2),
                     mode: GameMode::Arena,
                     bot_skill: BotSkill::default(),
+                    server: None,
                 },
                 now,
                 2,
             )
             .expect("a different address was punished for the first one");
+    }
+
+    fn create_on(
+        directory: &MatchDirectory,
+        server: Option<ServerChoice>,
+        now: Instant,
+    ) -> Result<Created, LobbyError> {
+        directory.create(
+            CreateMatch {
+                name: name("Garage night"),
+                host: name("Bryan"),
+                max_players: 2,
+                host_address: caller(1),
+                mode: GameMode::Arena,
+                bot_skill: BotSkill::default(),
+                server,
+            },
+            now,
+            0,
+        )
+    }
+
+    fn registered(directory: &MatchDirectory, listed: bool, now: Instant) -> Registered {
+        let server = directory
+            .register_server(
+                RegisterServer {
+                    first_port: 7000,
+                    slots: 1,
+                    listed,
+                    address: SERVER_ADDRESS,
+                },
+                now,
+                0,
+            )
+            .expect("registration should succeed");
+        prove(directory, server.id, 7000, now);
+        server
+    }
+
+    #[test]
+    fn two_servers_on_the_same_port_never_see_each_others_match() {
+        let directory = MatchDirectory::new();
+        let now = Instant::now();
+        let first = registered(&directory, true, now);
+        let second = registered(&directory, true, now);
+
+        let created = create_on(
+            &directory,
+            Some(ServerChoice {
+                id: first.id,
+                key: None,
+            }),
+            now,
+        )
+        .unwrap();
+        seat_a_guest(&directory, created.entry.id);
+        directory
+            .start(created.entry.id, created.host_ticket, now)
+            .unwrap();
+
+        assert!(directory.assignment(first.id, 7000).is_some());
+        assert_eq!(directory.assignment(second.id, 7000), None);
+    }
+
+    #[test]
+    fn a_server_cannot_heartbeat_or_release_another_servers_match() {
+        let directory = MatchDirectory::new();
+        let now = Instant::now();
+        let owner = registered(&directory, true, now);
+        let stranger = registered(&directory, true, now);
+        let created = create_on(
+            &directory,
+            Some(ServerChoice {
+                id: owner.id,
+                key: None,
+            }),
+            now,
+        )
+        .unwrap();
+
+        assert_eq!(
+            directory.heartbeat(stranger.id, created.entry.id, now),
+            Err(LobbyError::MatchNotFound)
+        );
+        assert_eq!(
+            directory.finish(stranger.id, created.entry.id),
+            Err(LobbyError::MatchNotFound)
+        );
+        assert!(directory.get(created.entry.id).is_some());
+        directory
+            .finish(owner.id, created.entry.id)
+            .expect("its own server may release it");
+    }
+
+    #[test]
+    fn only_the_holder_of_its_key_puts_a_match_on_an_unlisted_server() {
+        let directory = MatchDirectory::new();
+        let now = Instant::now();
+        let server = registered(&directory, false, now);
+
+        assert_eq!(
+            create_on(&directory, None, now).err(),
+            Some(LobbyError::NoCapacity)
+        );
+        assert_eq!(
+            create_on(
+                &directory,
+                Some(ServerChoice {
+                    id: server.id,
+                    key: None
+                }),
+                now
+            )
+            .err(),
+            Some(LobbyError::Unauthorized)
+        );
+
+        let created = create_on(
+            &directory,
+            Some(ServerChoice {
+                id: server.id,
+                key: Some(server.key),
+            }),
+            now,
+        )
+        .expect("the server's own key opens it");
+        assert_eq!(created.entry.server, server.id);
+    }
+
+    #[test]
+    fn choosing_a_server_that_does_not_exist_is_a_not_found() {
+        let directory = MatchDirectory::new();
+
+        assert_eq!(
+            create_on(
+                &directory,
+                Some(ServerChoice {
+                    id: serde_json::from_str(&format!("\"{}\"", Uuid::new_v4())).unwrap(),
+                    key: None
+                }),
+                Instant::now()
+            )
+            .err(),
+            Some(LobbyError::ServerNotFound)
+        );
+    }
+
+    #[test]
+    fn every_match_on_a_server_that_went_away_is_reaped() {
+        let directory = MatchDirectory::new();
+        let start = Instant::now();
+        let server = registered(&directory, true, start);
+        let created = create_on(&directory, None, start).unwrap();
+        seat_a_guest(&directory, created.entry.id);
+
+        let later = start + crate::servers::SERVER_SILENT_TTL + Duration::from_secs(1);
+        let reaped = directory.reap(later, lifetimes());
+
+        assert_eq!(reaped.len(), 1);
+        assert_eq!(reaped[0].reason, ReapReason::ServerWentAway);
+        assert_eq!(
+            directory.authenticate_server(&server.key),
+            Err(LobbyError::Unauthorized)
+        );
     }
 }

@@ -9,7 +9,6 @@ namespace Blastlands.Core.Net
     public sealed class GameTicketVerifier
     {
         public const int MinKeyBytes = 32;
-        public const string SecretVariable = "BLASTLANDS_TICKET_SECRET";
 
         private const string Format = "v1";
         private const string FormatWithCharacter = "v2";
@@ -30,28 +29,6 @@ namespace Blastlands.Core.Net
 
             this.key = (byte[])key.Clone();
             this.matchId = matchId ?? throw new ArgumentNullException(nameof(matchId));
-        }
-
-        public static bool TryReadKey(Func<string, string> environment, out byte[] key, out string error)
-        {
-            string raw = environment == null ? null : environment(SecretVariable);
-            key = string.IsNullOrEmpty(raw) ? null : Encoding.UTF8.GetBytes(raw.Trim());
-
-            if (key == null || key.Length == 0)
-            {
-                error = $"{SecretVariable} is required.";
-                return false;
-            }
-
-            if (key.Length < MinKeyBytes)
-            {
-                error = $"{SecretVariable} must be at least {MinKeyBytes} bytes.";
-                key = null;
-                return false;
-            }
-
-            error = null;
-            return true;
         }
 
         public TicketVerdict Admit(

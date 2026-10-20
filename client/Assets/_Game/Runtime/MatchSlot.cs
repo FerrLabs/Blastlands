@@ -1,8 +1,8 @@
-#if UNITY_SERVER
 using System;
 using System.Collections;
 using System.Globalization;
 using Blastlands.Core;
+using Blastlands.Core.Lobby;
 using Blastlands.Core.Net;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -33,28 +33,47 @@ namespace Blastlands.Runtime
 
         private int port;
         private HostOptions host;
-        private byte[] ticketKey;
+        private LobbyRegistrar registrar;
+        private ProbeListener probe;
         private GameObject running;
         private string finishedMatch;
         private string taking;
         private bool draining;
+        private int polledGeneration = -1;
+        private float polledAt;
 
         public bool Busy
         {
             get { return running != null; }
         }
 
-        public void Watch(int slotPort, HostOptions hostOptions, byte[] key)
+        public float SecondsSincePoll
+        {
+            get
+            {
+                return registrar != null && polledGeneration == registrar.Credentials.Generation
+                    ? Time.realtimeSinceStartup - polledAt
+                    : float.PositiveInfinity;
+            }
+        }
+
+        public void Watch(int slotPort, HostOptions hostOptions, LobbyRegistrar lobbyRegistrar)
         {
             port = slotPort;
             host = hostOptions;
-            ticketKey = key;
+            registrar = lobbyRegistrar;
+            probe = new ProbeListener(slotPort);
             StartCoroutine(Polling());
         }
 
         public void Drain()
         {
             draining = true;
+        }
+
+        private void OnDestroy()
+        {
+            probe?.Dispose();
         }
 
         private IEnumerator Polling()
@@ -74,11 +93,20 @@ namespace Blastlands.Runtime
 
         private IEnumerator Asking()
         {
-            string url = $"{host.LobbyUrl.TrimEnd('/')}/internal/instances/{port}";
+            ServerCredentials credentials = registrar.Credentials;
+            if (!credentials.Ready)
+            {
+                yield break;
+            }
+
+            int generation = credentials.Generation;
+            probe.Listen();
+            probe.Drain();
+            string url = $"{host.LobbyUrl.TrimEnd('/')}/internal/instances/{port}{SlotProbe.Query(probe.Nonce)}";
 
             using (UnityWebRequest request = UnityWebRequest.Get(url))
             {
-                request.SetRequestHeader("Authorization", "Bearer " + host.InstanceToken);
+                request.SetRequestHeader("Authorization", "Bearer " + credentials.Current.Key);
                 request.timeout = RequestTimeoutSeconds;
 
                 UnityWebRequestAsyncOperation sending = LobbyReporter.Begin(request);
@@ -88,6 +116,19 @@ namespace Blastlands.Runtime
                 }
 
                 yield return sending;
+
+                if (RegistrationPolicy.LobbyForgotUs(request.responseCode))
+                {
+                    Debug.LogWarning($"Blastlands server: the lobby no longer knows this server (port {port}), registering again");
+                    registrar.Rejected(generation);
+                    yield break;
+                }
+
+                if (request.responseCode == 204 || request.responseCode == 200)
+                {
+                    polledGeneration = generation;
+                    polledAt = Time.realtimeSinceStartup;
+                }
 
                 switch (request.responseCode)
                 {
@@ -118,6 +159,7 @@ namespace Blastlands.Runtime
         private void TakeSafely(string body)
         {
             taking = null;
+            probe.Dispose();
 
             try
             {
@@ -181,7 +223,6 @@ namespace Blastlands.Runtime
             if (!ServerOptions.TryCreate(
                     port,
                     host.LobbyUrl,
-                    host.InstanceToken,
                     assignment.match_id,
                     assignment.players.ToString(CultureInfo.InvariantCulture),
                     assignment.humans > 0 ? assignment.humans.ToString(CultureInfo.InvariantCulture) : null,
@@ -221,7 +262,11 @@ namespace Blastlands.Runtime
 
             string matchId = options.MatchId;
             running.AddComponent<ServerLoop>().Run(
-                state, options, new GameTicketVerifier(ticketKey, matchId), clean => Ended(matchId, clean));
+                state,
+                options,
+                registrar,
+                new GameTicketVerifier(registrar.Credentials.Current.TicketKey, matchId),
+                clean => Ended(matchId, clean));
         }
 
         private void Ended(string matchId, bool clean)
@@ -256,4 +301,3 @@ namespace Blastlands.Runtime
         }
     }
 }
-#endif

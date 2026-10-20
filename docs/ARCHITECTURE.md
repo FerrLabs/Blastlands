@@ -1,19 +1,22 @@
 # Architecture
 
-## Why dedicated servers
+## Who runs the game servers
 
-The alternative was host-client with relay (one player hosts, everyone else connects
-through a relay). It was rejected:
+FerrLabs runs the lobby and nothing else. Every match is played on a game server a player
+runs: either the Dedicated Server build on their own machine or VPS, or the game client
+itself through **Host on this PC**, which runs one slot inside the player's own process. Both
+register themselves with the lobby. The lobby keeps the directory of servers and matches and signs who may join; it
+never carries a game packet.
 
-- The host's upload bandwidth and CPU become everyone's ceiling. A bomber game is
-  latency-sensitive — a bad host ruins the match for seven other people.
-- The host is authoritative, so the host can trivially cheat.
-- The host leaving kills the match, and host migration in a simulation-heavy game means
-  re-syncing full state under time pressure.
+The server stays authoritative, and it is the same Unity project as the client, so the
+simulation exists once. What moving it to players costs, and was accepted:
 
-We have a VPS, and a bomber match is cheap to simulate: an 8-player match on a 15×13 grid
-at 30 Hz is a rounding error of CPU. Running the simulation server-side costs little and
-removes all three problems.
+- Whoever runs the server can cheat: it decides who died. Play on servers you trust.
+- The server's upload and CPU are every player's ceiling, and a server that quits ends
+  its matches.
+- Its UDP ports have to be reachable from the internet. There is no relay, so a server
+  behind NAT needs those ports forwarded. The lobby probes each slot over UDP before
+  sending it strangers' matches (see Deployment), but cannot fix an unreachable one.
 
 ## Components
 
@@ -30,8 +33,22 @@ Responsibilities:
   (`landing.html`).
 - `GET /v1/client/{version}/installer` — redirect to the release's `Blastlands-Setup-<tag>.exe`, like
   `.../download` does for the zip. Only the published version has one, and only if the release carries it.
+- `POST /v1/servers` — a game server registers: `{"port": 7777, "slots": 2, "listed": true}`
+  with the build's `x-blastlands-version`. The address is the one the request came from,
+  never one the caller names, so nobody can point players at somebody else's machine. The
+  answer is the server's `id`, a `key` it presents as `Authorization: Bearer` on every
+  `/internal/*` call, and its own `ticket_secret`. One address may register
+  `BLASTLANDS_LOBBY_SERVERS_PER_ADDRESS` servers (3), and registrations share the create
+  rate limit. A server the lobby has not heard from for 60 s is forgotten with its key and
+  its matches, and has to register again (`401` tells it so).
+- `GET /v1/server/{version}/download` — the published Linux server build
+  (`Blastlands-<tag>-server-linux.zip`), redirected like the client download.
 - `GET /v1/matches` — public list of matches accepting players.
-- `POST /v1/matches` — create a match, allocate a game server instance, return its endpoint.
+- `POST /v1/matches` — create a match on a free slot of a registered server, return its
+  endpoint. Without `server` the lobby picks any listed server with a free slot; with
+  `"server": "<id>"` it uses that one. A server registered with `"listed": false` is never
+  picked and only takes a match from a caller presenting its key, which is how a player
+  keeps a server to themselves.
   The body may name a `mode`, `arena` (the default), `classic`, `classic_blinded` or `survival`. It is on
   every listing, in the create response, and in the instance's assignment, which the
   slot serving it reads. A client builds the same rules from the mode in its invite, since
@@ -68,8 +85,9 @@ v1.<match id>.<player name, hex of its UTF-8>.<expiry, unix seconds>.<nonce>.<HM
 v2.<match id>.<player name, hex of its UTF-8>.<character>.<expiry, unix seconds>.<nonce>.<HMAC-SHA256, hex>
 ```
 
-The HMAC covers every field before it and uses `BLASTLANDS_TICKET_SECRET` (at least 32
-bytes), which the lobby and every game server instance share.
+The HMAC covers every field before it and uses the `ticket_secret` the lobby gave the
+server the match is on, as UTF-8 bytes. Every server gets its own at registration, so a
+server can admit players to its own matches and to nobody else's.
 
 The character is optional in both `POST /v1/matches` and `POST /v1/matches/{id}/join`
 (`"character": "demolisher" | "runner" | "grenadier" | "sapper"`). Without one the lobby
@@ -84,17 +102,17 @@ is tied to the match rather than to the player: a match that has not started wit
 ticket lives that long plus two minutes to connect. Any ticket for a match that can still
 start is therefore still valid when it does.
 
-Match state is in-memory for now. It is intentionally not in Postgres: a match's lifetime
+Match and server state is in-memory for now. It is intentionally not in Postgres: a match's lifetime
 is minutes, nothing about it is worth surviving a restart, and a restart during a match
 only costs the lobby listing — running matches keep running because clients already hold
-their server endpoint. If persistence is ever needed (stats, history), that is a separate
+their server endpoint, and each server registers again on its next `401`. If persistence is ever needed (stats, history), that is a separate
 store, not this one.
 
 ### Game server (`client/`, Unity Dedicated Server build)
 
 The same Unity project as the client, built for the Dedicated Server platform (headless
-Linux, no rendering). One process per pod, carrying up to `BLASTLANDS_MATCHES_PER_SERVER`
-matches side by side, one per port.
+Linux, no rendering), run by players. One process carries up to 16 matches side by side,
+one per port.
 
 It runs the authoritative simulation and is the only thing allowed to decide that a player
 died. Clients send inputs; the server sends state. Bots are just players whose inputs come
@@ -108,8 +126,10 @@ forever.
 
 It starts itself. `ServerBootstrap` runs on load in a server build, so there is no scene to
 wire and no inspector to fill in. What stays the same for the life of the process comes from
-`HostOptions`: the first port (`--port` or `BLASTLANDS_PORT`, or `BLASTLANDS_PORT_BASE` with
-the pod's ordinal), how many slots it carries, the lobby and the instance token. An argument
+`HostOptions`: the first port (`--port` or `BLASTLANDS_PORT`, 7777 by default), how many
+slots it carries (`--slots` or `BLASTLANDS_MATCHES_PER_SERVER`) and the lobby (`--lobby` or
+`BLASTLANDS_LOBBY`, the FerrLabs lobby by default). Its key and ticket secret come from
+registering on startup, and again whenever the lobby answers `401`. An argument
 beats the environment, and a bad value refuses to start rather than guessing: a wrong port
 collides with a neighbour. What changes from one match to the next, the match id, the seats,
 the mode and the bots, arrives with each assignment and is checked by
@@ -124,9 +144,43 @@ named messages go through each manager's own `CustomMessagingManager`, so a matc
 hears its own clients.
 
 The guard is `UNITY_SERVER`, which Unity defines for the Dedicated Server subtarget itself,
-rather than a hand-added `SERVER` define somebody has to keep in step with `build.yml`.
-`LocalMatchDriver` switches itself off under it, and since the view, HUD, camera and fog are
-only ever built when that driver binds them, the client scene sits inert and nothing renders.
+rather than a hand-added `SERVER` define somebody has to keep in step with `build.yml`. It
+only covers what is specific to a headless process: `ServerBootstrap` starting the server on
+load, and `LocalMatchDriver` switching itself off, which leaves the client scene inert since
+the view, HUD, camera and fog are only ever built when that driver binds them. The server
+itself (`ServerHost`, `MatchSlot`, `ServerLoop`, `LobbyRegistrar`, `LobbyReporter`) is in
+every build, because the client runs it too.
+
+What separates the two is `HostOptions.Role`, decided at runtime. `Dedicated`, the only role
+`ServerBootstrap` builds, owns the process: it pins `Application.targetFrameRate` to the tick
+rate, watches the drain file and calls `Application.Quit` once drained or when the lobby
+refuses its registration. `InGame` owns none of that, because the process belongs to a
+player who is also rendering a match: a refused registration is recorded as
+`LobbyRegistrar.Problem` and shown in the lobby instead.
+
+#### Host on this PC
+
+The client's **Host on this PC** button (on the setup page, next to **Create**, which still
+means "any listed server") builds `HostOptions.InGame()`: one slot on `--port` or
+`BLASTLANDS_PORT` (7777 by default), against the same lobby, never drained. Then:
+
+1. `InGameServer.Ensure` starts a `ServerHost` on a `DontDestroyOnLoad` object, once per
+   process, and keeps it for the next match. It registers with `"listed": false`.
+2. The lobby offers a slot only after it has polled, so the client waits for the slot's
+   first `GET /internal/instances/{port}` under the current registration.
+   `LocalHostDecision` makes that call: create once registered and polled within the
+   lobby's readiness window, give up on a refused registration, on a slot still playing the
+   previous match, or after 30 s.
+3. `POST /v1/matches` carries `"server": "<id>"` and the server key as
+   `Authorization: Bearer`, which is what an unlisted server requires.
+4. The host's own client dials `127.0.0.1` rather than the endpoint the lobby returns
+   (`MatchInvite.Via`): that endpoint is the public address, and many routers do not loop a
+   LAN client back through its own public IP. Everybody else joins from the list as usual.
+
+The server and the host's client are two `NetworkManager`s in one process, the same
+arrangement as several slots in one dedicated process, with one manager connecting to the
+other over loopback. The server object survives the Lobby to Match scene load because it
+lives on a `DontDestroyOnLoad` root. Closing the game ends the match for everyone in it.
 
 Exit codes are what a supervisor reads: 0 for a match that resolved, 1 for options it would
 not start on, 2 for a match that failed to start or ran out its clock without resolving.
@@ -206,18 +260,25 @@ Determinism rules for anything under `Core/`:
 
 ## Match lifecycle
 
-```
-client                    lobby                     game server
-  │                         │                            │
-  ├─ POST /v1/matches ─────▶│                            │
-  │                         ├─ allocate instance ───────▶│ (container starts)
-  │                         │◀─ ready, host:port ────────┤
-  │◀─ match + endpoint ─────┤                            │
-  │                                                      │
-  ├─ connect (UDP, join ticket) ────────────────────────▶│
-  │◀════════ authoritative state, 30 Hz ════════════════▶│
-  │                         │◀─ heartbeat / final score ─┤
-  │                         │◀─ instance exits ──────────┤
+```mermaid
+sequenceDiagram
+    participant S as Game server (a player's)
+    participant L as Lobby (FerrLabs)
+    participant C as Client
+    S->>L: POST /v1/servers (port, slots)
+    L-->>S: id, key, ticket_secret
+    loop every 2 s while idle
+        S->>L: GET /internal/instances/{port}
+        L-->>S: 204
+    end
+    C->>L: POST /v1/matches
+    L-->>C: endpoint (server address:port), game ticket signed with its secret
+    C->>L: POST /v1/matches/{id}/start
+    S->>L: GET /internal/instances/{port}
+    L-->>S: 200 assignment
+    C->>S: connect (UDP, game ticket)
+    S-->>C: authoritative state, 30 Hz
+    S->>L: heartbeat every 10 s, DELETE when the match is over
 ```
 
 Other clients see the match via `GET /v1/matches` between creation and start, and join the
@@ -235,8 +296,8 @@ The game server admits a connection only through Netcode's connection approval, 
 game ticket as connection data. `GameTicketVerifier` refuses a ticket that is malformed,
 signed with another key, issued for another match, past its expiry, or already used by an
 earlier connection. Expiry is the one place the game server reads the wall clock; it
-decides who gets in, not what happens in the simulation. The instance refuses to start
-without `BLASTLANDS_TICKET_SECRET`.
+decides who gets in, not what happens in the simulation. The key is the `ticket_secret`
+from the server's registration, and changes when it registers again.
 
 ## Updating the client
 
@@ -372,41 +433,33 @@ sequenceDiagram
 
 ## Deployment
 
-Both images run on the FerrLabs Kubernetes cluster, from `products/blastlands/` in
-[FerrLabs/Infra](https://github.com/FerrLabs/Infra): the lobby as a Deployment behind
-Traefik, the instances as a StatefulSet whose UDP ports are NodePort Services. This
-section used to say "single VPS, both images under Docker on the same host", which was
-the plan and never what shipped.
+**FerrLabs runs the lobby only.** `ghcr.io/ferrlabs/blastlands/lobby` is a Deployment behind
+Traefik in `products/blastlands/` of [FerrLabs/Infra](https://github.com/FerrLabs/Infra),
+built and published by `docker.yml`. There is no game server in the cluster and no UDP port
+on it.
 
-- `ghcr.io/ferrlabs/blastlands/lobby` — one container, behind TLS, public HTTP. Built and
-  published by `docker.yml`.
-- `ghcr.io/ferrlabs/blastlands/server` — the Unity dedicated server. Built by the
-  `Server image` job in `build.yml`, which wraps the Linux artifact of the same run
-  rather than rebuilding it, so the image and the client published beside it come out
-  of one build.
+**Running a server.** A release carries `Blastlands-<tag>-server-linux.zip`, downloadable
+through the lobby at `/v1/server/<version>/download`. Unzipped, `./Blastlands.x86_64
+-batchmode -nographics --port 7777 --slots 2` registers with
+`https://api.blastlands.ferrlabs.com` and serves two matches at once on UDP 7777 and 7778,
+which have to be reachable from the internet. `build.yml` still wraps the same build in
+`ghcr.io/ferrlabs/blastlands/server` for whoever prefers a container.
 
-**The lobby allocates a port, not an instance.** This section used to say allocation starts
-as "the lobby runs a container and tracks the port". It does not, and never did. What
-`PortPool` hands out is a number from `BLASTLANDS_PORT_RANGE`, which the lobby returns to
-the client as `BLASTLANDS_GAME_SERVER_HOST:port` and then assumes something is already
-listening on. The crate has no process spawning and no container client at all: its whole
-dependency list is axum, serde, thiserror, tokio, tower-http, tracing and uuid, and the only
-`spawn` in it is the tokio task that reaps silent matches.
-
-**A warm pool, and each slot asks which match it has.** Instances are not created per
-match. The StatefulSet's pods run permanently, each carrying `BLASTLANDS_MATCHES_PER_SERVER`
-slots, and each slot owns one port of the range for good: pod `n` serves
-`BLASTLANDS_PORT_BASE + n * slots` and the next `slots - 1` ports. What changes from one match
-to the next is which match a port is serving, so the slot is the one that asks:
+**Each slot asks which match it has.** A process carries up to 16 slots, each owning one
+port for the life of the process. What changes from one match to the next is which match a
+port is serving, so the slot is the one that asks, with its server's key:
 
 ```
-GET /internal/instances/{port}   Authorization: Bearer <BLASTLANDS_INSTANCE_TOKEN>
+GET /internal/instances/{port}   Authorization: Bearer <key>
   204  nothing assigned yet, ask again
   200  {"match_id": "...", "players": 4, "humans": 3}
+  401  the lobby forgot this server: register again
 ```
 
-Only a started match answers. Before the host presses start there is nobody to play
-against, and an instance booted early would spend its grace window on an empty arena.
+The key names the server and the path the port, so two servers on the same port never see
+each other's match. Only a started match answers. Before the host presses start there is
+nobody to play against, and an instance booted early would spend its grace window on an
+empty arena.
 
 `players` is every seat the host opened and `humans` how many joined. The instance builds
 all of them, waits for the humans only, and a bot plays any seat nobody is connected to:
@@ -421,9 +474,7 @@ fails silently: the snapshot refuses a board of a different size rather than wri
 into the wrong rows, so the match looks connected and stands perfectly still.
 
 `MatchSlot` is that loop, inside the process: it polls, and on an answer builds the match
-and runs it on its port. The lobby cannot tell whether two ports belong to one process or to
-two, so capacity is pods times slots, and the lobby's `BLASTLANDS_PORT_RANGE` has to cover
-exactly those ports. How many slots a process can carry is a question of CPU as much as
+and runs it on its port. How many slots a process can carry is a question of CPU as much as
 memory: every match in it ticks on the one main thread.
 
 ```mermaid
@@ -439,61 +490,47 @@ stateDiagram-v2
 ```
 
 A slot that is `Playing` or `Releasing` when the drain file appears finishes first, then
-reaches `Idle` and stops there, which is what the process waits for.
+reaches `Idle` and stops there, which is what the process waits for. In the container, the
+entrypoint writes `BLASTLANDS_DRAIN_FILE` on `SIGTERM`, so stopping it lets the matches it
+is playing finish.
 
-**A rollout waits for the match, and the pool only offers live instances.** Two rules keep
-a deploy from cancelling what is being played.
+**A listed slot proves it is reachable first.** Every HTTPS call a server makes goes
+outbound, so a server whose UDP ports nobody can reach would register, poll and heartbeat
+like any other and soak up public matches nobody can join. While an idle slot is unproven,
+each poll makes the lobby send a datagram `blastlands-probe:<nonce>` to the server's public
+address on that port. The idle slot listens on its own port (`ProbeListener`, closed before
+the match binds the port) and sends the nonce back on its next poll as
+`?probe=<nonce>`. Only then does `POST /v1/matches` without a `server` put a match on it.
+The nonce is per registration; the probe tests the same inbound UDP path players use, and the
+lobby only ever sends, so the cluster needs no UDP ingress. A server somebody chose by id,
+an unlisted one included, is not held to it: whoever chose it may still try.
 
-On `SIGTERM` the entrypoint, which is PID 1 and the only process the signal reaches, writes
-`BLASTLANDS_DRAIN_FILE`. The server sees it within a second, every slot stops taking new
-matches, and the ones playing finish; once none is busy, the process exits 0. An image bump
-therefore drains a pod instead of killing its matches mid-round, and
-`terminationGracePeriodSeconds` on the StatefulSet is the ceiling on that wait rather than a
-delay: an idle pod leaves at once, and a busy one leaves when its longest match does. A match that is assigned while a pod is draining is left
-for its replacement, which picks it up on the same port, because an assignment belongs to the
-port and not to the pod. That handover is bounded by the lobby's `silent_ttl` (30 s by
-default), not by how fast the pod comes back: the declined match is already running with its
-`last_seen` set when it started, so a replacement that takes longer than that to pull its
-image and start heartbeating finds the match reaped. Raise `silent_ttl` if that starts to bite.
-
-`PortPool` only hands out a port whose instance polled for an assignment within
-`INSTANCE_READY_TTL`. A slot polls every two seconds while idle and not at all while it is
-running a match, so a port with no pod behind it, or one whose slot is busy, is not offered.
-The two numbers are coupled: the widest gap between two polls is `BLASTLANDS_POLL_SECONDS` (2)
-plus the request's 10 s timeout, and `INSTANCE_READY_TTL` (15 s) has to stay above it.
-`HostOptions` refuses an interval above 4 s for that reason; past it, every create would
-answer `no_capacity` with nothing in the logs pointing at the poll. This is what makes the pool survive a lobby
-restart: the lobby keeps its directory in memory, so it comes back believing every port is
-free, and without the rule it would put a new match on a port where a match is still being
-played.
+**The lobby only offers live slots.** A slot polls every two seconds while idle and not at
+all while it is running a match, and the lobby only hands out a port whose slot polled within
+`INSTANCE_READY_TTL` (15 s), so a busy slot or one whose process died is not offered.
+Registering does not count as one: after a lobby restart a server registers again while some
+of its slots may still be playing a match the lobby forgot. The widest gap between two polls is
+`BLASTLANDS_POLL_SECONDS` (2) plus the request's 10 s timeout, and `HostOptions` refuses an
+interval above 4 s to stay under the TTL. A running match heartbeats every 10 s, which keeps
+its server registered while none of its slots polls.
 
 A finished match returns its slot to polling rather than ending anything, so the process
-and its container outlive every match they play. `restartPolicy: Always` would restart a
-process that quit after each match, but through kubelet's backoff, which reaches five minutes
-after a few short matches and leaves the lobby handing out a port nobody is listening on. A
-match that goes wrong, a bind failure or one that ran out its 600 s ceiling, is released,
-logged as an error, and its slot carries on; the other slots never notice. A crash of the
-process, meaning any non-zero exit, does end the container: that is the case where the
-backoff is what you want.
+outlives every match it plays. A match that goes wrong, a bind failure or one that ran out
+its 600 s ceiling, is released, logged as an error, and its slot carries on; the other slots
+never notice. A crash of the process, meaning any non-zero exit, ends it.
 
-**The instance reaches the lobby over HTTPS**, `BLASTLANDS_LOBBY=https://api.blastlands.ferrlabs.com`,
-even from a pod next to the lobby's own Service. `insecureHttpOption` is `NotAllowed` in the
-project settings, so the player refuses a cleartext URL and fails every heartbeat before it
-connects. An internal `http://` therefore gives an instance whose slots cannot even ask for a
-match, with an error in the log saying the call was refused outright. The
-`/internal/*` routes are served publicly on purpose for the same reason, and guarded by
-`BLASTLANDS_INSTANCE_TOKEN`.
+**The server reaches the lobby over HTTPS.** `insecureHttpOption` is `NotAllowed` in the
+project settings, so the player refuses a cleartext URL. That is why the `/internal/*`
+routes are public, and why they are guarded by each server's key.
 
 A slot also refuses the match it has just finished. Seeing the same id again means the
 release never landed, and replaying it would run a finished game on a loop; stalling instead
 lets the lobby's reaper free the port. An assignment it cannot start, a seat count the board
 cannot hold or a mode it does not know, is refused the same way and logged with the reason.
 
-This is why the lobby needs no Kubernetes client and no RBAC: it decides which port serves
-what, and says so when asked.
-
-Worth keeping in mind whichever way that goes: the client already treats the game server
-endpoint as opaque, so it is the only part of this that needs no changes.
+The lobby needs no Kubernetes client and no RBAC: it decides which slot serves what, and
+says so when asked. The client treats the game server endpoint as opaque, so where a server
+runs never reaches it.
 
 Nothing here touches `FerrLabs-Cloud/api` or the `Kit` crates. Like FerrGames, Blastlands is
 standalone: its own service, its own state, no shared back-office, no accounts. It is a

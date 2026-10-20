@@ -1,7 +1,7 @@
-#if UNITY_SERVER
 using System;
 using System.Collections;
 using Blastlands.Core;
+using Blastlands.Core.Lobby;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -24,11 +24,13 @@ namespace Blastlands.Runtime
         private const int TimeoutSeconds = 5;
 
         private ServerOptions options;
+        private LobbyRegistrar registrar;
         private bool releasing;
 
-        public void Configure(ServerOptions serverOptions)
+        public void Configure(ServerOptions serverOptions, LobbyRegistrar lobbyRegistrar)
         {
             options = serverOptions;
+            registrar = lobbyRegistrar;
             StartCoroutine(Beating());
         }
 
@@ -59,12 +61,24 @@ namespace Blastlands.Runtime
 
             while (!releasing)
             {
+                if (!registrar.Credentials.Ready)
+                {
+                    yield return wait;
+                    continue;
+                }
+
+                int generation = registrar.Credentials.Generation;
                 UnityWebRequest beat = Post(Url("heartbeat"));
                 UnityWebRequestAsyncOperation sending = Begin(beat);
 
                 if (sending != null)
                 {
                     yield return sending;
+
+                    if (RegistrationPolicy.LobbyForgotUs(beat.responseCode))
+                    {
+                        registrar.Rejected(generation);
+                    }
 
                     // Warned about and carried on. A missed beat is not worth abandoning
                     // a match over: the lobby allows three, and the players in this one
@@ -82,6 +96,8 @@ namespace Blastlands.Runtime
 
         private IEnumerator Releasing(Action done)
         {
+            int generation = registrar.Credentials.Generation;
+
             using (UnityWebRequest release = UnityWebRequest.Delete(Url(null)))
             {
                 Authorise(release);
@@ -95,6 +111,11 @@ namespace Blastlands.Runtime
                 }
 
                 yield return sending;
+
+                if (RegistrationPolicy.LobbyForgotUs(release.responseCode))
+                {
+                    registrar.Rejected(generation);
+                }
 
                 if (release.result == UnityWebRequest.Result.Success)
                 {
@@ -150,7 +171,7 @@ namespace Blastlands.Runtime
 
         private void Authorise(UnityWebRequest request)
         {
-            request.SetRequestHeader("Authorization", "Bearer " + options.InstanceToken);
+            request.SetRequestHeader("Authorization", "Bearer " + registrar.Credentials.Current.Key);
         }
 
         private string Url(string suffix)
@@ -168,4 +189,3 @@ namespace Blastlands.Runtime
         }
     }
 }
-#endif

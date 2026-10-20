@@ -90,6 +90,17 @@ impl Releases {
         }
     }
 
+    pub fn server_for(&self, version: ClientVersion) -> Result<String, LobbyError> {
+        match self.published() {
+            None => Err(LobbyError::ReleaseUnknown),
+            Some(client) if client.version == version => client
+                .server
+                .map(|server| server.asset_url)
+                .ok_or(LobbyError::ReleaseNotFound),
+            Some(_) => Err(LobbyError::ReleaseNotFound),
+        }
+    }
+
     pub fn asset_for(&self, version: ClientVersion) -> Result<String, LobbyError> {
         match self.published() {
             None => Err(LobbyError::ReleaseUnknown),
@@ -142,12 +153,13 @@ mod tests {
             asset_url: format!("https://api.github.com/assets/{version}"),
             sha256: "ab".repeat(32),
             installer: None,
+            server: None,
         }
     }
 
     fn with_installer(version: &str) -> PublishedClient {
         PublishedClient {
-            installer: Some(crate::github::Installer {
+            installer: Some(crate::github::ReleaseAsset {
                 asset_url: format!("https://api.github.com/assets/{version}-setup"),
                 sha256: "cd".repeat(32),
             }),
@@ -298,6 +310,30 @@ mod tests {
         assert_eq!(
             releases.asset_for("26.9.19".parse().unwrap()),
             Ok("https://api.github.com/assets/26.9.19".to_owned())
+        );
+    }
+
+    #[test]
+    fn only_the_published_versions_server_build_can_be_asked_for() {
+        let releases = Releases::new(
+            "26.8.0".parse().unwrap(),
+            "https://api.blastlands.test".to_owned(),
+        );
+        releases.publish(PublishedClient {
+            server: Some(crate::github::ReleaseAsset {
+                asset_url: "https://api.github.com/assets/server".to_owned(),
+                sha256: "ef".repeat(32),
+            }),
+            ..published("26.9.5")
+        });
+
+        assert_eq!(
+            releases.server_for("26.9.5".parse().unwrap()).unwrap(),
+            "https://api.github.com/assets/server"
+        );
+        assert_eq!(
+            releases.server_for("26.9.4".parse().unwrap()),
+            Err(LobbyError::ReleaseNotFound)
         );
     }
 }

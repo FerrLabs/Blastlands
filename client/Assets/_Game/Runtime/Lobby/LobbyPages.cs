@@ -141,21 +141,33 @@ namespace Blastlands.Runtime
             GameMode mode,
             int seats,
             BotSkill bots,
+            int hostPort,
             Action<GameMode> pickMode,
             Action<int> pickSeats,
             Action<BotSkill> pickBots,
             Action create,
+            Action hostHere,
             Action back)
         {
-            RectTransform panel = LobbyChrome.Panel(root, art, "Setup", new Vector2(900f, 700f));
-            LobbyChrome.Label(panel, art, "HOST A MATCH", true, new Vector2(0f, 250f), 800f);
-            Modes(panel, art, mode, pickMode, new Vector2(0f, 150f));
-            Stepper(panel, art, "Seats: " + seats, new Vector2(0f, 55f),
+            RectTransform panel = LobbyChrome.Panel(root, art, "Setup", new Vector2(900f, 900f));
+            LobbyChrome.Label(panel, art, "HOST A MATCH", true, new Vector2(0f, 350f), 800f);
+            Modes(panel, art, mode, pickMode, new Vector2(0f, 250f));
+            Stepper(panel, art, "Seats: " + seats, new Vector2(0f, 155f),
                 () => pickSeats(Seats.Step(seats, -1)), () => pickSeats(Seats.Step(seats, 1)));
-            Stepper(panel, art, "Bots: " + Named(bots), new Vector2(0f, -40f),
+            Stepper(panel, art, "Bots: " + Named(bots), new Vector2(0f, 60f),
                 () => pickBots(BotSkills.Step(bots, -1)), () => pickBots(BotSkills.Step(bots, 1)));
-            LobbyChrome.Press(panel, art, "Create", new Vector2(0f, -155f), WideButton, create);
-            LobbyChrome.Press(panel, art, "Back", new Vector2(0f, -265f), WideButton, back);
+            LobbyChrome.Press(panel, art, "Create", new Vector2(0f, -55f), WideButton, create);
+            LobbyChrome.Press(panel, art, "Host on this PC", new Vector2(0f, -165f), WideButton, hostHere);
+            LobbyChrome.Label(panel, art, HostHereWarning(hostPort), false, new Vector2(0f, -260f), 820f);
+            LobbyChrome.Press(panel, art, "Back", new Vector2(0f, -365f), WideButton, back);
+        }
+
+        private static string HostHereWarning(int port)
+        {
+            string forwarded = port > 0
+                ? "Forward UDP port " + port + " to this PC so others can join."
+                : "The host port setting is invalid, see the log.";
+            return forwarded + " Closing the game ends the match.";
         }
 
         public static void Settings(
@@ -404,6 +416,10 @@ namespace Blastlands.Runtime
                     return "The lobby did not take your word for that.";
                 case LobbyFailure.InvalidRequest:
                     return "The lobby refused that. Check your name and try again.";
+                case LobbyFailure.ServerNotFound:
+                    return "The lobby lost track of that game server. Try again.";
+                case LobbyFailure.HostNotReady:
+                    return "Could not host on this PC. Check the port setting and your connection.";
                 default:
                     return "The lobby said something this build did not understand.";
             }

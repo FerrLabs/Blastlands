@@ -194,16 +194,5 @@ namespace Blastlands.Core.Tests
             Assert.That(verifier.Admit(SignedWithAnUnknownCharacter, IssuedBefore, out _, out _, out _), Is.EqualTo(TicketVerdict.Malformed));
             Assert.That(verifier.Admit(LobbyVectorWithCharacter, IssuedBefore, out _, out _, out _), Is.EqualTo(TicketVerdict.Admitted));
         }
-
-        [Test]
-        public void TheSecretIsRequiredAndLongEnough()
-        {
-            Assert.That(GameTicketVerifier.TryReadKey(_ => null, out _, out string missing), Is.False);
-            Assert.That(missing, Does.Contain(GameTicketVerifier.SecretVariable));
-
-            Assert.That(GameTicketVerifier.TryReadKey(_ => new string('k', GameTicketVerifier.MinKeyBytes - 1), out _, out _), Is.False);
-            Assert.That(GameTicketVerifier.TryReadKey(_ => new string('k', GameTicketVerifier.MinKeyBytes), out byte[] key, out _), Is.True);
-            Assert.That(key.Length, Is.EqualTo(GameTicketVerifier.MinKeyBytes));
-        }
     }
 }

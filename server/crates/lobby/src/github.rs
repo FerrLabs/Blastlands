@@ -27,7 +27,7 @@ pub struct Asset {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Installer {
+pub struct ReleaseAsset {
     pub asset_url: String,
     pub sha256: String,
 }
@@ -37,7 +37,8 @@ pub struct PublishedClient {
     pub version: ClientVersion,
     pub asset_url: String,
     pub sha256: String,
-    pub installer: Option<Installer>,
+    pub installer: Option<ReleaseAsset>,
+    pub server: Option<ReleaseAsset>,
 }
 
 #[derive(Debug, Error)]
@@ -63,15 +64,22 @@ fn published_client(release: &Release) -> Option<PublishedClient> {
     let (asset_url, sha256) = checked_asset(release, &archive)?;
 
     let setup = format!("Blastlands-Setup-{}.exe", release.tag_name);
-    let installer =
-        checked_asset(release, &setup).map(|(asset_url, sha256)| Installer { asset_url, sha256 });
+    let installer = optional_asset(release, &setup);
+
+    let server = format!("Blastlands-{}-server-linux.zip", release.tag_name);
+    let server = optional_asset(release, &server);
 
     Some(PublishedClient {
         version,
         asset_url,
         sha256,
         installer,
+        server,
     })
+}
+
+fn optional_asset(release: &Release, name: &str) -> Option<ReleaseAsset> {
+    checked_asset(release, name).map(|(asset_url, sha256)| ReleaseAsset { asset_url, sha256 })
 }
 
 fn checked_asset(release: &Release, name: &str) -> Option<(String, String)> {
@@ -175,6 +183,26 @@ mod tests {
 
     fn sha(digest: &str) -> String {
         format!("sha256:{digest}")
+    }
+
+    #[test]
+    fn a_release_with_a_server_build_carries_it_along() {
+        let client = newest(json!([release(
+            "v26.9.18",
+            json!([
+                windows_asset("v26.9.18", Some(&sha(DIGEST))),
+                {
+                    "name": "Blastlands-v26.9.18-server-linux.zip",
+                    "url": "https://api.github.com/assets/v26.9.18-server",
+                    "digest": sha(DIGEST),
+                }
+            ])
+        )]))
+        .expect("the release is usable");
+
+        let server = client.server.expect("the server build is published");
+        assert!(server.asset_url.ends_with("v26.9.18-server"));
+        assert_eq!(client.installer, None);
     }
 
     #[test]
