@@ -30,6 +30,14 @@ tricher sur celles-là. Le lobby borne ce qu'il peut faire ailleurs : il s'annon
 adresse réelle (jamais celle qu'il déclare), sa clé et son secret ne valent que pour ses
 propres parties, et une adresse ne peut inscrire que quelques serveurs.
 
+**Host on this PC** ne change rien à ce modèle : le client qui héberge fait tourner un
+serveur ordinaire, inscrit avec `"listed": false`, et reste l'autorité de sa partie comme
+n'importe quel serveur de joueur. Un serveur non listé ne reçoit une partie que si la
+requête de création présente sa clé (`Authorization: Bearer`), et cette clé ne quitte
+jamais le processus qui l'a reçue. Personne d'autre ne peut donc poser une partie sur le
+PC d'un joueur. Le client de l'hôte se connecte en `127.0.0.1` avec un ticket comme les
+autres, il ne passe pas par une porte dérobée.
+
 ## Ce qui reste à protéger
 
 Ces points sont réels et suivis comme des issues, pas comme des acquis.

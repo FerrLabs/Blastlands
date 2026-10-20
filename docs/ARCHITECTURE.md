@@ -3,8 +3,9 @@
 ## Who runs the game servers
 
 FerrLabs runs the lobby and nothing else. Every match is played on a game server a player
-runs: the Dedicated Server build on their own machine or VPS, which registers itself with
-the lobby. The lobby keeps the directory of servers and matches and signs who may join; it
+runs: either the Dedicated Server build on their own machine or VPS, or the game client
+itself through **Host on this PC**, which runs one slot inside the player's own process. Both
+register themselves with the lobby. The lobby keeps the directory of servers and matches and signs who may join; it
 never carries a game packet.
 
 The server stays authoritative, and it is the same Unity project as the client, so the
@@ -143,9 +144,43 @@ named messages go through each manager's own `CustomMessagingManager`, so a matc
 hears its own clients.
 
 The guard is `UNITY_SERVER`, which Unity defines for the Dedicated Server subtarget itself,
-rather than a hand-added `SERVER` define somebody has to keep in step with `build.yml`.
-`LocalMatchDriver` switches itself off under it, and since the view, HUD, camera and fog are
-only ever built when that driver binds them, the client scene sits inert and nothing renders.
+rather than a hand-added `SERVER` define somebody has to keep in step with `build.yml`. It
+only covers what is specific to a headless process: `ServerBootstrap` starting the server on
+load, and `LocalMatchDriver` switching itself off, which leaves the client scene inert since
+the view, HUD, camera and fog are only ever built when that driver binds them. The server
+itself (`ServerHost`, `MatchSlot`, `ServerLoop`, `LobbyRegistrar`, `LobbyReporter`) is in
+every build, because the client runs it too.
+
+What separates the two is `HostOptions.Role`, decided at runtime. `Dedicated`, the only role
+`ServerBootstrap` builds, owns the process: it pins `Application.targetFrameRate` to the tick
+rate, watches the drain file and calls `Application.Quit` once drained or when the lobby
+refuses its registration. `InGame` owns none of that, because the process belongs to a
+player who is also rendering a match: a refused registration is recorded as
+`LobbyRegistrar.Problem` and shown in the lobby instead.
+
+#### Host on this PC
+
+The client's **Host on this PC** button (on the setup page, next to **Create**, which still
+means "any listed server") builds `HostOptions.InGame()`: one slot on `--port` or
+`BLASTLANDS_PORT` (7777 by default), against the same lobby, never drained. Then:
+
+1. `InGameServer.Ensure` starts a `ServerHost` on a `DontDestroyOnLoad` object, once per
+   process, and keeps it for the next match. It registers with `"listed": false`.
+2. The lobby offers a slot only after it has polled, so the client waits for the slot's
+   first `GET /internal/instances/{port}` under the current registration.
+   `LocalHostDecision` makes that call: create once registered and polled within the
+   lobby's readiness window, give up on a refused registration, on a slot still playing the
+   previous match, or after 30 s.
+3. `POST /v1/matches` carries `"server": "<id>"` and the server key as
+   `Authorization: Bearer`, which is what an unlisted server requires.
+4. The host's own client dials `127.0.0.1` rather than the endpoint the lobby returns
+   (`MatchInvite.Via`): that endpoint is the public address, and many routers do not loop a
+   LAN client back through its own public IP. Everybody else joins from the list as usual.
+
+The server and the host's client are two `NetworkManager`s in one process, the same
+arrangement as several slots in one dedicated process, with one manager connecting to the
+other over loopback. The server object survives the Lobby to Match scene load because it
+lives on a `DontDestroyOnLoad` root. Closing the game ends the match for everyone in it.
 
 Exit codes are what a supervisor reads: 0 for a match that resolved, 1 for options it would
 not start on, 2 for a match that failed to start or ran out its clock without resolving.

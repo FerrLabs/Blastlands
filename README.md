@@ -16,7 +16,8 @@ Download the Windows installer from [blastlands.ferrlabs.com](https://blastlands
   that machine, so the next launch goes straight to the match list; Change next to your name
   goes back to edit it.
 - **Host a match** asks for the mode, how many seats (2 to 8) and how hard the bots are, then
-  lists the match publicly. Both choices are remembered like the mode. Others join from the
+  lists the match publicly. **Create** puts it on any listed player-run server; **Host on this
+  PC** runs the server inside your game instead (see [Hosting from the game](#hosting-from-the-game)). Both choices are remembered like the mode. Others join from the
   list, the host can **Add bot** to fill seats, and starts whenever they like; every seat
   nobody took goes to a bot.
 - Matches are played on servers players run themselves (see [Hosting a server](#hosting-a-server)):
@@ -199,6 +200,14 @@ on UDP 7777 and the ports after it. Those ports must be reachable from the inter
 them on your router, there is no relay. Whoever runs a server is authoritative over the
 matches on it, so play on servers you trust. Keep it on the latest release: a build below the
 lobby's minimum is refused.
+
+### Hosting from the game
+
+**Host on this PC** on the setup page runs one match's server inside your client, so you host
+and play from the same window. It needs the same thing a dedicated server does: UDP 7777
+forwarded to your PC on your router, or whatever port you pass with `--port` (or
+`BLASTLANDS_PORT`) when starting the game. The server is not listed on its own, so only the
+match you create lands on it. Closing the game ends the match for everybody in it.
 
 ## Status
 
