@@ -258,6 +258,32 @@ jobs:
 
           gh release upload "${TAG}" "${ARCHIVE}" --clobber --repo "${GITHUB_REPOSITORY}"
 
+      - if: runner.environment == 'github-hosted'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: Linux dedicated server
+          path: server-build
+
+      - if: runner.environment == 'self-hosted'
+        uses: ./.github/actions/build-relay
+        with:
+          mode: get
+          path: server-build
+          name: StandaloneLinux64
+          s3-key: ${{ secrets.SCCACHE_S3_KEY }}
+          s3-secret: ${{ secrets.SCCACHE_S3_SECRET }}
+
+      - name: Package the dedicated server and attach
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          chmod +x server-build/StandaloneLinux64/Blastlands.x86_64
+          ARCHIVE="Blastlands-${TAG}-server-linux.zip"
+          (cd server-build/StandaloneLinux64 && zip -qr "../../${ARCHIVE}" . -x '*_BurstDebugInformation_DoNotShip/*')
+          gh release upload "${TAG}" "${ARCHIVE}" --clobber --repo "${GITHUB_REPOSITORY}"
+
       - name: Build the installer and attach
         env:
           GH_TOKEN: ${{ github.token }}
