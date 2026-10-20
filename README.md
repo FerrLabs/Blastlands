@@ -1,6 +1,6 @@
 # Blastlands
 
-Multiplayer arena bomber: low-poly 3D, dedicated servers, up to 8 players per match.
+Multiplayer arena bomber: low-poly 3D, player-hosted servers, up to 8 players per match.
 
 Drop bombs, blow up soft blocks, grab power-ups, be the last one standing. Anyone can
 open a match; it shows up in the public lobby list and fills with players (or bots) until
@@ -19,8 +19,9 @@ Download the Windows installer from [blastlands.ferrlabs.com](https://blastlands
   lists the match publicly. Both choices are remembered like the mode. Others join from the
   list, the host can **Add bot** to fill seats, and starts whenever they like; every seat
   nobody took goes to a bot.
-- The lobby hands each player a dedicated server instance. The server runs the simulation,
-  clients only send their inputs.
+- Matches are played on servers players run themselves (see [Hosting a server](#hosting-a-server)):
+  the lobby picks one with a free slot. The server runs the simulation, clients only send their
+  inputs.
 - A player who drops out mid-round is taken over by a bot.
 - The game checks for a new version on launch. When one is out, an icon and a card appear at
   the bottom right of the lobby, and F5 installs it and restarts.
@@ -136,10 +137,10 @@ The design reasoning and the numbers behind the tuning are in
 
 | Path | What |
 |---|---|
-| `client/` | Unity 6 project. Builds the player client **and** the headless dedicated server (same codebase, `SERVER` define). |
+| `client/` | Unity 6 project. Builds the player client **and** the headless dedicated server (same codebase, `UNITY_SERVER` define). |
 | `client/Assets/_Game/Core/` | Engine-free deterministic simulation (grid, bombs, explosions, bots). No `UnityEngine` references, so it compiles under plain .NET. |
 | `client/Assets/_Game/Runtime/` | Unity glue: presentation, input, Netcode for GameObjects wiring. |
-| `server/` | Rust + axum lobby service. Holds the match directory and allocates game server instances. |
+| `server/` | Rust + axum lobby service. Holds the directory of registered game servers and their matches. |
 | `tests/` | .NET test project that compiles the sim core outside Unity so CI can run it without a Unity licence. |
 | `docs/` | [Architecture](docs/ARCHITECTURE.md) and [gameplay design](docs/GAMEPLAY.md). |
 
@@ -149,17 +150,16 @@ The design reasoning and the numbers behind the tuning are in
                    ┌──────────────────────┐
    Unity client ───▶│  lobby (Rust/axum)   │  list / create / join matches
                    │  api.blastlands.*    │
-                   └──────────┬───────────┘
-                              │ allocates
-                              ▼
-                   ┌──────────────────────┐
-   Unity client ══▶│ game server instance │  authoritative simulation, UDP
+                   └──────────▲───────────┘
+                              │ registers, polls for matches (HTTPS)
+                   ┌──────────┴───────────┐
+   Unity client ══▶│ game server          │  run by a player, authoritative, UDP
         (UTP)      │ Unity Dedicated Srv  │  several matches per process, one port each
                    └──────────────────────┘
 ```
 
-The lobby never sees gameplay traffic: it hands the client a `host:port` and gets out of
-the way. The game server is authoritative: clients send inputs, never positions.
+FerrLabs runs the lobby only. It never sees gameplay traffic: it hands the client the
+`host:port` of a registered server and gets out of the way. The game server is authoritative: clients send inputs, never positions.
 
 ## Running it
 
@@ -183,6 +183,22 @@ The repo tracks `Packages/manifest.json`, `ProjectVersion.txt` and `Assets/`; Un
 the rest of `ProjectSettings/` on first open and resolves the packages from the manifest.
 After the first open you still need to create the URP asset and assign it in Graphics and
 Quality settings: the manifest pulls the package, not the configuration.
+
+## Hosting a server
+
+Download the Linux server build of the current release from
+`https://api.blastlands.ferrlabs.com/v1/server/<version>/download` (the version is the
+`latest` of `/v1/version`), unzip it and run:
+
+```bash
+./Blastlands.x86_64 -batchmode -nographics --port 7777 --slots 2
+```
+
+It registers with the FerrLabs lobby from your public address and serves one match per slot,
+on UDP 7777 and the ports after it. Those ports must be reachable from the internet: forward
+them on your router, there is no relay. Whoever runs a server is authoritative over the
+matches on it, so play on servers you trust. Keep it on the latest release: a build below the
+lobby's minimum is refused.
 
 ## Status
 

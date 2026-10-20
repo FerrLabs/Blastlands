@@ -5,7 +5,8 @@ spécifique au projet.
 
 ## Ce que c'est
 
-Jeu de bomber multijoueur en arène, 2 à 8 joueurs, serveurs dédiés. Pas Steam, pas de
+Jeu de bomber multijoueur en arène, 2 à 8 joueurs, serveurs dédiés hébergés par les joueurs
+(FerrLabs ne fait tourner que le lobby). Pas Steam, pas de
 compte obligatoire. Lire [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) avant de toucher au
 réseau ou au déploiement, et [`docs/GAMEPLAY.md`](docs/GAMEPLAY.md) avant de toucher aux
 règles de jeu.

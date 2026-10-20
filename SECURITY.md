@@ -20,12 +20,15 @@ l'abus du lobby, l'automatisation côté client, et le déni de service.
 | Poser plus de bombes que sa capacité | La capacité est de l'état serveur. Un input « poser une bombe » invalide est ignoré, pas appliqué. |
 | Rejouer / accélérer le temps | Le temps est un compteur de ticks côté serveur. Un client qui tourne trop vite envoie juste des inputs qui seront traités au rythme du serveur. |
 | Save scumming, rollback | Il n'y a pas de save locale qui compte. |
-| Se connecter sans passer par le lobby | Le serveur de jeu n'admet une connexion qu'avec un ticket signé par le lobby (HMAC-SHA256, clé partagée `BLASTLANDS_TICKET_SECRET`), lié à la partie et au joueur, avec une expiration, et utilisable une seule fois. Voir `docs/ARCHITECTURE.md`. |
+| Se connecter sans passer par le lobby | Le serveur de jeu n'admet une connexion qu'avec un ticket signé par le lobby (HMAC-SHA256, avec le secret propre à ce serveur, reçu à son inscription), lié à la partie et au joueur, avec une expiration, et utilisable une seule fois. Un serveur ne peut admettre personne dans la partie d'un autre. Voir `docs/ARCHITECTURE.md`. |
 | Flood d'inputs | Chaque siège a un budget de paquets (`InputRateGate`) : une rafale d'une seconde passe, un débit soutenu au-delà de deux paquets par tick est refusé, et un siège qui dépasse pendant une seconde entière est déconnecté. Les inputs pour un tick passé ou trop lointain sont refusés par `InputBuffer`. |
 
-C'est la raison pour laquelle le serveur dédié a été choisi plutôt qu'un host-client relay
-(voir [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)) : en host-client, l'hôte *est* le
-serveur autoritaire, donc tout ce tableau tombe.
+Ce tableau protège un joueur contre les autres joueurs, pas contre le serveur. Les serveurs
+de jeu sont hébergés par les joueurs (voir [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)) :
+celui qui fait tourner un serveur *est* l'autorité des parties qui s'y jouent, et peut
+tricher sur celles-là. Le lobby borne ce qu'il peut faire ailleurs : il s'annonce à son
+adresse réelle (jamais celle qu'il déclare), sa clé et son secret ne valent que pour ses
+propres parties, et une adresse ne peut inscrire que quelques serveurs.
 
 ## Ce qui reste à protéger
 
