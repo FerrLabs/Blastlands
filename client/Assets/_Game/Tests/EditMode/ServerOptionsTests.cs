@@ -19,7 +19,7 @@ namespace Blastlands.Core.Tests
             string bots = null)
         {
             return ServerOptions.TryCreate(
-                7001, "https://lobby.example.com", "shared-secret", match, players, humans, mode, bots, out options, out error);
+                7001, "https://lobby.example.com", match, players, humans, mode, bots, out options, out error);
         }
 
         [Test]
@@ -31,7 +31,6 @@ namespace Blastlands.Core.Tests
             Assert.That(options.MatchId, Is.EqualTo("abc123"));
             Assert.That(options.ExpectedPlayers, Is.EqualTo(4));
             Assert.That(options.LobbyUrl, Is.EqualTo("https://lobby.example.com"));
-            Assert.That(options.InstanceToken, Is.EqualTo("shared-secret"));
         }
 
         [Test]

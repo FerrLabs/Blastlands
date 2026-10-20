@@ -7,7 +7,7 @@
 # client and the server are the same project by design.
 FROM ubuntu:26.04
 
-# ca-certificates because the instance calls the lobby over HTTPS in production, and
+# ca-certificates because the server calls the lobby over HTTPS, and
 # without them every heartbeat and the final release fail on the certificate rather than
 # on anything to do with the match.
 RUN apt-get update \
@@ -26,10 +26,9 @@ RUN rm -rf /app/*_BurstDebugInformation_DoNotShip \
 
 USER blastlands
 
-# No port is exposed. The ports this instance serves come from BLASTLANDS_PORT, or from
-# BLASTLANDS_PORT_BASE, the pod's ordinal and BLASTLANDS_MATCHES_PER_SERVER, which is how
-# the lobby's range is laid out, so a number baked in here would be a second answer that
-# is wrong most of the time.
+# No port is exposed. The server registers with the lobby on startup and serves
+# BLASTLANDS_PORT (default 7777) and the BLASTLANDS_MATCHES_PER_SERVER - 1 ports after it.
+# BLASTLANDS_LOBBY is optional and defaults to the public lobby.
 #
 # The entrypoint is a thin supervisor rather than the player itself, so SIGTERM reaches a
 # shell that turns it into a drain instead of reaching the server and cutting short the

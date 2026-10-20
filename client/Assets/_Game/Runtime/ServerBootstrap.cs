@@ -1,7 +1,6 @@
 #if UNITY_SERVER
 using System;
 using Blastlands.Core;
-using Blastlands.Core.Net;
 using UnityEngine;
 
 namespace Blastlands.Runtime
@@ -34,15 +33,9 @@ namespace Blastlands.Runtime
                 return;
             }
 
-            if (!GameTicketVerifier.TryReadKey(Environment.GetEnvironmentVariable, out byte[] ticketKey, out problem))
-            {
-                Fail(problem);
-                return;
-            }
-
             var host = new GameObject("Blastlands Server");
             UnityEngine.Object.DontDestroyOnLoad(host);
-            host.AddComponent<ServerHost>().Run(options, ticketKey);
+            host.AddComponent<ServerHost>().Run(options);
         }
 
         private static void Fail(string reason)

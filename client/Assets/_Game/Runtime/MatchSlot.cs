@@ -3,6 +3,7 @@ using System;
 using System.Collections;
 using System.Globalization;
 using Blastlands.Core;
+using Blastlands.Core.Lobby;
 using Blastlands.Core.Net;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -33,7 +34,7 @@ namespace Blastlands.Runtime
 
         private int port;
         private HostOptions host;
-        private byte[] ticketKey;
+        private LobbyRegistrar registrar;
         private GameObject running;
         private string finishedMatch;
         private string taking;
@@ -44,11 +45,11 @@ namespace Blastlands.Runtime
             get { return running != null; }
         }
 
-        public void Watch(int slotPort, HostOptions hostOptions, byte[] key)
+        public void Watch(int slotPort, HostOptions hostOptions, LobbyRegistrar lobbyRegistrar)
         {
             port = slotPort;
             host = hostOptions;
-            ticketKey = key;
+            registrar = lobbyRegistrar;
             StartCoroutine(Polling());
         }
 
@@ -74,11 +75,18 @@ namespace Blastlands.Runtime
 
         private IEnumerator Asking()
         {
+            ServerCredentials credentials = registrar.Credentials;
+            if (!credentials.Ready)
+            {
+                yield break;
+            }
+
+            int generation = credentials.Generation;
             string url = $"{host.LobbyUrl.TrimEnd('/')}/internal/instances/{port}";
 
             using (UnityWebRequest request = UnityWebRequest.Get(url))
             {
-                request.SetRequestHeader("Authorization", "Bearer " + host.InstanceToken);
+                request.SetRequestHeader("Authorization", "Bearer " + credentials.Current.Key);
                 request.timeout = RequestTimeoutSeconds;
 
                 UnityWebRequestAsyncOperation sending = LobbyReporter.Begin(request);
@@ -88,6 +96,13 @@ namespace Blastlands.Runtime
                 }
 
                 yield return sending;
+
+                if (RegistrationPolicy.LobbyForgotUs(request.responseCode))
+                {
+                    Debug.LogWarning($"Blastlands server: the lobby no longer knows this server (port {port}), registering again");
+                    registrar.Rejected(generation);
+                    yield break;
+                }
 
                 switch (request.responseCode)
                 {
@@ -181,7 +196,6 @@ namespace Blastlands.Runtime
             if (!ServerOptions.TryCreate(
                     port,
                     host.LobbyUrl,
-                    host.InstanceToken,
                     assignment.match_id,
                     assignment.players.ToString(CultureInfo.InvariantCulture),
                     assignment.humans > 0 ? assignment.humans.ToString(CultureInfo.InvariantCulture) : null,
@@ -221,7 +235,11 @@ namespace Blastlands.Runtime
 
             string matchId = options.MatchId;
             running.AddComponent<ServerLoop>().Run(
-                state, options, new GameTicketVerifier(ticketKey, matchId), clean => Ended(matchId, clean));
+                state,
+                options,
+                registrar,
+                new GameTicketVerifier(registrar.Credentials.Current.TicketKey, matchId),
+                clean => Ended(matchId, clean));
         }
 
         private void Ended(string matchId, bool clean)

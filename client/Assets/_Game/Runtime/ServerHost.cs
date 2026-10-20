@@ -18,12 +18,13 @@ namespace Blastlands.Runtime
         private const float DrainCheckSeconds = 1f;
 
         private HostOptions options;
+        private LobbyRegistrar registrar;
         private MatchSlot[] slots;
         private float sinceDrainCheck;
         private bool draining;
         private bool quitting;
 
-        public void Run(HostOptions hostOptions, byte[] ticketKey)
+        public void Run(HostOptions hostOptions)
         {
             options = hostOptions;
 
@@ -38,13 +39,16 @@ namespace Blastlands.Runtime
                 $"Blastlands server: {options.Slots} slots on ports {options.FirstPort} to {options.PortOf(options.Slots - 1)}, "
                 + $"lobby {options.LobbyUrl}");
 
+            registrar = gameObject.AddComponent<LobbyRegistrar>();
+            registrar.Begin(options);
+
             slots = new MatchSlot[options.Slots];
             for (int i = 0; i < slots.Length; i++)
             {
                 var slot = new GameObject("Slot " + options.PortOf(i));
                 slot.transform.SetParent(transform, false);
                 slots[i] = slot.AddComponent<MatchSlot>();
-                slots[i].Watch(options.PortOf(i), options, ticketKey);
+                slots[i].Watch(options.PortOf(i), options, registrar);
             }
         }
 

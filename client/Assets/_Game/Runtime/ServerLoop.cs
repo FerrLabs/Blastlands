@@ -32,7 +32,12 @@ namespace Blastlands.Runtime
         // `onEnded` hears whether the match ended cleanly, once the lobby has been told it
         // is over. A process that plays several matches keeps running after this one, so
         // the end of a match is a callback rather than the end of the process.
-        public void Run(MatchState matchState, ServerOptions options, GameTicketVerifier tickets, Action<bool> onEnded)
+        public void Run(
+            MatchState matchState,
+            ServerOptions options,
+            LobbyRegistrar registrar,
+            GameTicketVerifier tickets,
+            Action<bool> onEnded)
         {
             state = matchState;
             ended = onEnded;
@@ -63,7 +68,7 @@ namespace Blastlands.Runtime
             // counting from the moment it allocated this match, so an instance that
             // waited until it had something to report would be reaped on its way up.
             lobby = gameObject.AddComponent<LobbyReporter>();
-            lobby.Configure(options);
+            lobby.Configure(options, registrar);
         }
 
         private const int MaxMatchSeconds = 600;

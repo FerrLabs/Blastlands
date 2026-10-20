@@ -1,10 +1,6 @@
 #!/bin/sh
 set -eu
 
-: "${BLASTLANDS_LOBBY:?is required}"
-: "${BLASTLANDS_INSTANCE_TOKEN:?is required}"
-: "${BLASTLANDS_TICKET_SECRET:?is required}"
-
 # The server asks the lobby for its matches itself, one slot per port, and keeps
 # running between them. What is left here is the part a process cannot do for itself:
 # hearing SIGTERM without dying of it. PID 1 gets the signal, the server does not, and

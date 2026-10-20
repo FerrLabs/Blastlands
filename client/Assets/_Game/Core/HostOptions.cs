@@ -4,38 +4,23 @@ using System.Globalization;
 
 namespace Blastlands.Core
 {
-    // What a server process is told when it starts, and keeps for its whole life: which
-    // ports it serves, where the lobby is, and how to prove to it who is asking.
-    //
-    // A process runs `Slots` matches side by side, one per port, from `FirstPort` up. The
-    // lobby hands matches out by port and cannot tell whether two ports belong to one
-    // process or to two, so how many a process carries is a deployment choice made here
-    // and nowhere else.
-    //
-    // The ports come either from BLASTLANDS_PORT, the first of the run, or from a base
-    // and the ordinal at the end of the pod's name. The ordinal is scaled by the slot
-    // count, so pod 2 with four slots serves base + 8 to base + 11, and one slot per pod
-    // lays the ports out exactly as they were before a process could carry more.
     public readonly struct HostOptions
     {
         public const string PortFlag = "--port";
         public const string LobbyFlag = "--lobby";
-        public const string TokenFlag = "--token";
+        public const string SlotsFlag = "--slots";
 
         public const string PortVariable = "BLASTLANDS_PORT";
-        public const string PortBaseVariable = "BLASTLANDS_PORT_BASE";
-        public const string PodNameVariable = "BLASTLANDS_POD_NAME";
         public const string SlotsVariable = "BLASTLANDS_MATCHES_PER_SERVER";
         public const string LobbyVariable = "BLASTLANDS_LOBBY";
         public const string PollVariable = "BLASTLANDS_POLL_SECONDS";
         public const string DrainFileVariable = "BLASTLANDS_DRAIN_FILE";
 
-        // The same name the lobby reads it under, because it is the same secret. Two
-        // names for one value is how they end up different on one host.
-        public const string TokenVariable = "BLASTLANDS_INSTANCE_TOKEN";
+        private const string SlotsName = SlotsFlag + " or " + SlotsVariable;
 
+        public const int DefaultPort = 7777;
         public const int DefaultSlots = 1;
-        public const int MaxSlots = 32;
+        public const int MaxSlots = 16;
         public const int DefaultPollSeconds = 2;
 
         // A slot's poll is also how it tells the lobby it is free: PortPool only offers a
@@ -45,12 +30,11 @@ namespace Blastlands.Core
         public const int MaxPollSeconds = 4;
 
         public HostOptions(
-            int firstPort, int slots, string lobbyUrl, string instanceToken, int pollSeconds, string drainFile)
+            int firstPort, int slots, string lobbyUrl, int pollSeconds, string drainFile)
         {
             FirstPort = firstPort;
             Slots = slots;
             LobbyUrl = lobbyUrl;
-            InstanceToken = instanceToken;
             PollSeconds = pollSeconds;
             DrainFile = drainFile;
         }
@@ -60,8 +44,6 @@ namespace Blastlands.Core
         public int Slots { get; }
 
         public string LobbyUrl { get; }
-
-        public string InstanceToken { get; }
 
         public int PollSeconds { get; }
 
@@ -88,7 +70,12 @@ namespace Blastlands.Core
         {
             options = default;
 
-            if (!TrySlots(Read(null, environment, null, SlotsVariable), out int slots, out error))
+            if (!TryNoDanglingFlag(arguments, out error))
+            {
+                return false;
+            }
+
+            if (!TrySlots(Read(arguments, environment, SlotsFlag, SlotsVariable), out int slots, out error))
             {
                 return false;
             }
@@ -103,11 +90,6 @@ namespace Blastlands.Core
                 return false;
             }
 
-            if (!TryToken(Read(arguments, environment, TokenFlag, TokenVariable), out string token, out error))
-            {
-                return false;
-            }
-
             if (!TryPoll(Read(null, environment, null, PollVariable), out int poll, out error))
             {
                 return false;
@@ -116,7 +98,7 @@ namespace Blastlands.Core
             string drain = Read(null, environment, null, DrainFileVariable);
             drain = string.IsNullOrWhiteSpace(drain) ? null : drain.Trim();
 
-            options = new HostOptions(firstPort, slots, lobby, token, poll, drain);
+            options = new HostOptions(firstPort, slots, lobby, poll, drain);
             error = null;
             return true;
         }
@@ -131,14 +113,14 @@ namespace Blastlands.Core
                 return true;
             }
 
-            if (!TryNumber(raw, SlotsVariable, out slots, out error))
+            if (!TryNumber(raw, SlotsName, out slots, out error))
             {
                 return false;
             }
 
             if (slots < 1 || slots > MaxSlots)
             {
-                error = $"{SlotsVariable} must be between 1 and {MaxSlots}, not {slots}.";
+                error = $"{SlotsName} must be between 1 and {MaxSlots}, not {slots}.";
                 return false;
             }
 
@@ -148,17 +130,10 @@ namespace Blastlands.Core
         private static bool TryFirstPort(
             IReadOnlyList<string> arguments, Func<string, string> environment, int slots, out int port, out string error)
         {
-            port = 0;
+            port = DefaultPort;
             string raw = Read(arguments, environment, PortFlag, PortVariable);
 
-            if (!string.IsNullOrWhiteSpace(raw))
-            {
-                if (!TryNumber(raw, PortFlag, out port, out error))
-                {
-                    return false;
-                }
-            }
-            else if (!TryPortFromPod(environment, slots, out port, out error))
+            if (!string.IsNullOrWhiteSpace(raw) && !TryNumber(raw, PortFlag, out port, out error))
             {
                 return false;
             }
@@ -176,36 +151,6 @@ namespace Blastlands.Core
             }
 
             error = null;
-            return true;
-        }
-
-        private static bool TryPortFromPod(Func<string, string> environment, int slots, out int port, out string error)
-        {
-            port = 0;
-            string rawBase = Read(null, environment, null, PortBaseVariable);
-            string pod = Read(null, environment, null, PodNameVariable);
-
-            if (string.IsNullOrWhiteSpace(rawBase) || string.IsNullOrWhiteSpace(pod))
-            {
-                error = $"{PortFlag} is required, either as an argument, as {PortVariable}, "
-                    + $"or as {PortBaseVariable} with {PodNameVariable}.";
-                return false;
-            }
-
-            if (!TryNumber(rawBase, PortBaseVariable, out int portBase, out error))
-            {
-                return false;
-            }
-
-            pod = pod.Trim();
-            string suffix = pod.Substring(pod.LastIndexOf('-') + 1);
-            if (!int.TryParse(suffix, NumberStyles.None, CultureInfo.InvariantCulture, out int ordinal))
-            {
-                error = $"{PodNameVariable}={pod} does not end in an ordinal.";
-                return false;
-            }
-
-            port = portBase + (ordinal * slots);
             return true;
         }
 
@@ -235,13 +180,7 @@ namespace Blastlands.Core
 
         private static bool TryLobby(string raw, out string lobby, out string error)
         {
-            lobby = raw == null ? null : raw.Trim();
-
-            if (string.IsNullOrEmpty(lobby))
-            {
-                error = Missing(LobbyFlag, LobbyVariable);
-                return false;
-            }
+            lobby = string.IsNullOrWhiteSpace(raw) ? ClientOptions.DefaultLobby : raw.Trim();
 
             if (!lobby.StartsWith("http://", StringComparison.Ordinal)
                 && !lobby.StartsWith("https://", StringComparison.Ordinal))
@@ -254,17 +193,22 @@ namespace Blastlands.Core
             return true;
         }
 
-        private static bool TryToken(string raw, out string token, out string error)
+        private static bool TryNoDanglingFlag(IReadOnlyList<string> arguments, out string error)
         {
-            token = raw == null ? null : raw.Trim();
+            error = null;
 
-            if (string.IsNullOrEmpty(token))
+            if (arguments == null || arguments.Count == 0)
             {
-                error = Missing(TokenFlag, TokenVariable);
+                return true;
+            }
+
+            string last = arguments[arguments.Count - 1];
+            if (last == PortFlag || last == LobbyFlag || last == SlotsFlag)
+            {
+                error = $"{last} needs a value.";
                 return false;
             }
 
-            error = null;
             return true;
         }
 
@@ -280,11 +224,6 @@ namespace Blastlands.Core
 
             error = null;
             return true;
-        }
-
-        private static string Missing(string flag, string variable)
-        {
-            return $"{flag} is required, either as an argument or as {variable}.";
         }
 
         private static string Read(
