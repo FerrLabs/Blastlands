@@ -15,11 +15,6 @@ namespace Blastlands.Runtime
     // to keep in step with the workflow.
     public static class ServerBootstrap
     {
-        // The exit code a supervisor reads. Anything non-zero has to mean the process
-        // failed, or a crash loop looks like a clean shutdown.
-        public const int Ok = 0;
-        public const int BadConfiguration = 1;
-
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Begin()
         {
@@ -41,7 +36,7 @@ namespace Blastlands.Runtime
         private static void Fail(string reason)
         {
             Debug.LogError("Blastlands server: " + reason);
-            Application.Quit(BadConfiguration);
+            Application.Quit(ServerExit.BadConfiguration);
         }
     }
 }

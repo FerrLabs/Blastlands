@@ -144,6 +144,7 @@ namespace Blastlands.Runtime
             }
 
             network = Build("0.0.0.0", port);
+            DontDestroyOnLoad(networkHost);
             network.NetworkConfig.ConnectionApproval = true;
             network.ConnectionApprovalCallback = Approve;
             network.OnClientConnectedCallback += OnClientConnected;

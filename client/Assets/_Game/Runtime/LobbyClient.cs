@@ -203,16 +203,24 @@ namespace Blastlands.Runtime
             CharacterKind character,
             GameMode mode,
             BotSkill bots,
+            ServerRegistration onServer,
             Action<LobbyResult<MatchHosting>> done)
         {
             string body = "{\"name\":\"" + Escape(name)
                 + "\",\"host\":\"" + Escape(host)
                 + "\",\"max_players\":" + maxPlayers + Character(character)
                 + ",\"mode\":\"" + GameModeTokens.Write(mode)
-                + "\",\"bot_skill\":\"" + BotSkills.Write(bots) + "\"}";
+                + "\",\"bot_skill\":\"" + BotSkills.Write(bots) + "\""
+                + (onServer == null ? string.Empty : ",\"server\":\"" + Escape(onServer.Id) + "\"")
+                + "}";
 
             using (UnityWebRequest request = Post("/v1/matches", body))
             {
+                if (onServer != null)
+                {
+                    request.SetRequestHeader("Authorization", "Bearer " + onServer.Key);
+                }
+
                 yield return request.SendWebRequest();
 
                 LobbyFailure failure;

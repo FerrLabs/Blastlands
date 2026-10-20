@@ -1,4 +1,3 @@
-#if UNITY_SERVER
 using System;
 using System.Collections;
 using Blastlands.Core;
@@ -190,4 +189,3 @@ namespace Blastlands.Runtime
         }
     }
 }
-#endif

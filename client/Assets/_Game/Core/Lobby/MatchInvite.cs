@@ -28,6 +28,11 @@ namespace Blastlands.Core.Lobby
         // lands: prediction steps the local player with them from the first tick.
         public GameMode Mode { get; }
 
+        public MatchInvite Via(string host)
+        {
+            return new MatchInvite(MatchId, host, Port, Ticket, Mode);
+        }
+
         public bool CanConnect
         {
             get

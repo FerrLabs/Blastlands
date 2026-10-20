@@ -43,7 +43,13 @@ namespace Blastlands.Core.Tests
         [Test]
         public void TheBodyIsTheJsonTheLobbyExpects()
         {
-            Assert.That(RegistrationPolicy.Body(7777, 3), Is.EqualTo("{\"port\":7777,\"slots\":3,\"listed\":true}"));
+            Assert.That(RegistrationPolicy.Body(7777, 3, true), Is.EqualTo("{\"port\":7777,\"slots\":3,\"listed\":true}"));
+        }
+
+        [Test]
+        public void AnUnlistedServerSaysSo()
+        {
+            Assert.That(RegistrationPolicy.Body(7777, 1, false), Is.EqualTo("{\"port\":7777,\"slots\":1,\"listed\":false}"));
         }
 
         [Test]

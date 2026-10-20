@@ -1,4 +1,3 @@
-#if UNITY_SERVER
 using System;
 using System.Collections;
 using System.Text;
@@ -37,6 +36,8 @@ namespace Blastlands.Runtime
             get { return credentials; }
         }
 
+        public string Problem { get; private set; }
+
         public void Begin(HostOptions hostOptions)
         {
             host = hostOptions;
@@ -54,7 +55,7 @@ namespace Blastlands.Runtime
         private IEnumerator Registering()
         {
             string url = $"{host.LobbyUrl.TrimEnd('/')}/v1/servers";
-            byte[] body = Encoding.UTF8.GetBytes(RegistrationPolicy.Body(host.FirstPort, host.Slots));
+            byte[] body = Encoding.UTF8.GetBytes(RegistrationPolicy.Body(host.FirstPort, host.Slots, host.Listed));
 
             for (int attempt = 0; ; attempt++)
             {
@@ -151,11 +152,15 @@ namespace Blastlands.Runtime
             return LobbyReporter.Describe(request);
         }
 
-        private static void Stop(string reason)
+        private void Stop(string reason)
         {
             Debug.LogError("Blastlands server: " + reason);
-            Application.Quit(ServerBootstrap.BadConfiguration);
+            Problem = reason;
+
+            if (host.OwnsProcess)
+            {
+                Application.Quit(ServerExit.BadConfiguration);
+            }
         }
     }
 }
-#endif

@@ -30,13 +30,26 @@ namespace Blastlands.Core
         public const int MaxPollSeconds = 4;
 
         public HostOptions(
-            int firstPort, int slots, string lobbyUrl, int pollSeconds, string drainFile)
+            int firstPort, int slots, string lobbyUrl, int pollSeconds, string drainFile, ServerRole role)
         {
+            Role = role;
             FirstPort = firstPort;
             Slots = slots;
             LobbyUrl = lobbyUrl;
             PollSeconds = pollSeconds;
             DrainFile = drainFile;
+        }
+
+        public ServerRole Role { get; }
+
+        public bool Listed
+        {
+            get { return Role == ServerRole.Dedicated; }
+        }
+
+        public bool OwnsProcess
+        {
+            get { return Role == ServerRole.Dedicated; }
         }
 
         public int FirstPort { get; }
@@ -54,6 +67,11 @@ namespace Blastlands.Core
         public int PortOf(int slot)
         {
             return FirstPort + slot;
+        }
+
+        public HostOptions InGame()
+        {
+            return new HostOptions(FirstPort, 1, LobbyUrl, PollSeconds, null, ServerRole.InGame);
         }
 
         // Arguments win over the environment. The environment is how a host is
@@ -98,7 +116,7 @@ namespace Blastlands.Core
             string drain = Read(null, environment, null, DrainFileVariable);
             drain = string.IsNullOrWhiteSpace(drain) ? null : drain.Trim();
 
-            options = new HostOptions(firstPort, slots, lobby, poll, drain);
+            options = new HostOptions(firstPort, slots, lobby, poll, drain, ServerRole.Dedicated);
             error = null;
             return true;
         }

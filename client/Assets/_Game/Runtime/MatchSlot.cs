@@ -1,4 +1,3 @@
-#if UNITY_SERVER
 using System;
 using System.Collections;
 using System.Globalization;
@@ -39,10 +38,22 @@ namespace Blastlands.Runtime
         private string finishedMatch;
         private string taking;
         private bool draining;
+        private int polledGeneration = -1;
+        private float polledAt;
 
         public bool Busy
         {
             get { return running != null; }
+        }
+
+        public float SecondsSincePoll
+        {
+            get
+            {
+                return registrar != null && polledGeneration == registrar.Credentials.Generation
+                    ? Time.realtimeSinceStartup - polledAt
+                    : float.PositiveInfinity;
+            }
         }
 
         public void Watch(int slotPort, HostOptions hostOptions, LobbyRegistrar lobbyRegistrar)
@@ -102,6 +113,12 @@ namespace Blastlands.Runtime
                     Debug.LogWarning($"Blastlands server: the lobby no longer knows this server (port {port}), registering again");
                     registrar.Rejected(generation);
                     yield break;
+                }
+
+                if (request.responseCode == 204 || request.responseCode == 200)
+                {
+                    polledGeneration = generation;
+                    polledAt = Time.realtimeSinceStartup;
                 }
 
                 switch (request.responseCode)
@@ -274,4 +291,3 @@ namespace Blastlands.Runtime
         }
     }
 }
-#endif

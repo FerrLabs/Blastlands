@@ -56,6 +56,9 @@ namespace Blastlands.Runtime
         private int generation;
         private float sinceStatus;
         private string draft = string.Empty;
+        private HostOptions hostOptions;
+        private string hostProblem;
+        private int hostPort;
 
         private void Awake()
         {
@@ -77,6 +80,7 @@ namespace Blastlands.Runtime
             // leaving it in charge means a build ignores --lobby and the environment
             // and quietly dials whatever was saved in the scene.
             lobby.Use(ClientOptions.Lobby(Environment.GetCommandLineArgs()));
+            ReadHostOptions();
             SettingsChoice.Apply();
 
             badge = UpdateBadge.For(Application.version, UpdateVerdict.Unknown, UpdateStage.Idle, default);
@@ -155,8 +159,8 @@ namespace Blastlands.Runtime
                         PickVolume, PickShake, PickHud, Rebind, ResetKeys, CloseSettings);
                     break;
                 case LobbyScreen.Browse when settingUp:
-                    LobbyPages.Setup(root, art, ModeChoice.Current, HostChoice.SeatCount, HostChoice.Bots,
-                        PickMode, PickSeats, PickBots, Host, StopSettingUp);
+                    LobbyPages.Setup(root, art, ModeChoice.Current, HostChoice.SeatCount, HostChoice.Bots, hostPort,
+                        PickMode, PickSeats, PickBots, Host, HostHere, StopSettingUp);
                     break;
                 case LobbyScreen.Browse:
                     LobbyPages.Browse(root, art, flow, CharacterChoice.Current, stage.Texture, ModeChoice.Current, Pick, PickMode, Join, Create, Practise, Rename, OpenSettings);
@@ -397,7 +401,38 @@ namespace Blastlands.Runtime
             }
 
             settingUp = false;
-            Asked(Creating());
+            Asked(Creating(null, null));
+        }
+
+        private void HostHere()
+        {
+            if (busy)
+            {
+                return;
+            }
+
+            if (hostProblem != null)
+            {
+                Debug.LogError("Blastlands lobby: cannot host on this PC, " + hostProblem);
+                flow.Refused(LobbyFailure.HostNotReady);
+                Redraw();
+                return;
+            }
+
+            settingUp = false;
+            Asked(HostingHere(InGameServer.Ensure(hostOptions)));
+        }
+
+        private void ReadHostOptions()
+        {
+            if (HostOptions.TryRead(
+                    Environment.GetCommandLineArgs(),
+                    Environment.GetEnvironmentVariable,
+                    out hostOptions,
+                    out hostProblem))
+            {
+                hostPort = hostOptions.FirstPort;
+            }
         }
 
         private void Practise()
@@ -462,13 +497,48 @@ namespace Blastlands.Runtime
             });
         }
 
-        private IEnumerator Creating()
+        private IEnumerator HostingHere(ServerHost server)
         {
-            yield return lobby.Create(DefaultMatchName, flow.Player, HostChoice.SeatCount, CharacterChoice.Current, ModeChoice.Current, HostChoice.Bots, result =>
+            float waited = 0f;
+
+            while (true)
+            {
+                LocalHostStep step = LocalHostDecision.For(
+                    server.Credentials.Ready,
+                    server.Problem != null,
+                    server.SlotBusy,
+                    server.SecondsSinceSlotPolled,
+                    waited);
+
+                if (step == LocalHostStep.Create)
+                {
+                    yield return Creating(server.Credentials.Current, LocalHostDecision.Loopback);
+                    yield break;
+                }
+
+                if (step == LocalHostStep.GiveUp)
+                {
+                    Debug.LogError(
+                        "Blastlands lobby: the game server on this PC is not ready, "
+                        + (server.Problem ?? (server.SlotBusy ? "it is still playing a match" : "it never reached the lobby")));
+                    flow.Refused(LobbyFailure.HostNotReady);
+                    Redraw();
+                    yield break;
+                }
+
+                yield return null;
+                waited += Time.unscaledDeltaTime;
+            }
+        }
+
+        private IEnumerator Creating(ServerRegistration onServer, string dialInstead)
+        {
+            yield return lobby.Create(DefaultMatchName, flow.Player, HostChoice.SeatCount, CharacterChoice.Current, ModeChoice.Current, HostChoice.Bots, onServer, result =>
             {
                 if (result.Ok && result.Value.CanStart)
                 {
-                    flow.Created(result.Value.Invite, result.Value.HostTicket);
+                    MatchInvite invite = result.Value.Invite;
+                    flow.Created(dialInstead == null ? invite : invite.Via(dialInstead), result.Value.HostTicket);
                     flow.Listed(new List<MatchListing> { result.Value.Listing });
                 }
                 else

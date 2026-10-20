@@ -35,13 +35,14 @@ namespace Blastlands.Core.Lobby
             return status == 401;
         }
 
-        public static string Body(int firstPort, int slots)
+        public static string Body(int firstPort, int slots, bool listed)
         {
             return string.Format(
                 CultureInfo.InvariantCulture,
-                "{{\"port\":{0},\"slots\":{1},\"listed\":true}}",
+                "{{\"port\":{0},\"slots\":{1},\"listed\":{2}}}",
                 firstPort,
-                slots);
+                slots,
+                listed ? "true" : "false");
         }
 
         public static int RetrySeconds(int attempt)
