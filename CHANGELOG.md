@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.10.20] - 2026-10-20
+
+### Breaking Changes
+
+- feat(lobby)!: player-hosted game servers (#196)
+
 ## [26.10.9] - 2026-10-11
 
 ### Bug Fixes
