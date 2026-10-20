@@ -43,6 +43,10 @@ namespace Blastlands.Core.Lobby
         // look before trying again, but the lobby does not say which field it was.
         InvalidRequest = 15,
 
+        ServerNotFound = 16,
+
+        HostNotReady = 17,
+
         // The lobby refused with a code this build has never heard of, which happens
         // when the server is ahead of the client.
         Unknown = 11
@@ -80,6 +84,8 @@ namespace Blastlands.Core.Lobby
                     return LobbyFailure.NotEnoughPlayers;
                 case "invalid_request":
                     return LobbyFailure.InvalidRequest;
+                case "server_not_found":
+                    return LobbyFailure.ServerNotFound;
                 default:
                     return LobbyFailure.Unknown;
             }

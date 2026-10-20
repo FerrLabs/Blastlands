@@ -29,6 +29,35 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
+        public void ARunServerIsDedicatedAndListed()
+        {
+            Assert.That(HostOptions.TryRead(Complete, NoEnvironment, out HostOptions options, out string error), Is.True, error);
+
+            Assert.That(options.Role, Is.EqualTo(ServerRole.Dedicated));
+            Assert.That(options.Listed, Is.True);
+            Assert.That(options.OwnsProcess, Is.True);
+        }
+
+        [Test]
+        public void InGameKeepsThePortAndLobbyButServesOneUnlistedSlotAndNeverDrains()
+        {
+            Func<string, string> environment = Environment(
+                HostOptions.SlotsVariable, "4",
+                HostOptions.DrainFileVariable, "/run/drain");
+            Assert.That(HostOptions.TryRead(Complete, environment, out HostOptions dedicated, out string error), Is.True, error);
+
+            HostOptions inGame = dedicated.InGame();
+
+            Assert.That(inGame.Role, Is.EqualTo(ServerRole.InGame));
+            Assert.That(inGame.FirstPort, Is.EqualTo(7000));
+            Assert.That(inGame.LobbyUrl, Is.EqualTo("https://lobby.example.com"));
+            Assert.That(inGame.Slots, Is.EqualTo(1));
+            Assert.That(inGame.DrainFile, Is.Null);
+            Assert.That(inGame.Listed, Is.False);
+            Assert.That(inGame.OwnsProcess, Is.False);
+        }
+
+        [Test]
         public void AFullCommandLineIsRead()
         {
             Assert.That(HostOptions.TryRead(Complete, NoEnvironment, out HostOptions options, out string error), Is.True, error);

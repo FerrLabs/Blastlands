@@ -25,6 +25,7 @@ namespace Blastlands.Core.Tests
             Assert.That(
                 LobbyFailures.FromCode("not_enough_players"), Is.EqualTo(LobbyFailure.NotEnoughPlayers));
             Assert.That(LobbyFailures.FromCode("invalid_request"), Is.EqualTo(LobbyFailure.InvalidRequest));
+            Assert.That(LobbyFailures.FromCode("server_not_found"), Is.EqualTo(LobbyFailure.ServerNotFound));
         }
 
         [Test]

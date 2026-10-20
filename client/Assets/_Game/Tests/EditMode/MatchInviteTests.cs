@@ -19,6 +19,19 @@ namespace Blastlands.Core.Tests
         }
 
         [Test]
+        public void ViaChangesOnlyWhereTheClientDials()
+        {
+            var invite = new MatchInvite("m", "203.0.113.7", 7777, "t", GameMode.Classic);
+            MatchInvite local = invite.Via("127.0.0.1");
+
+            Assert.That(local.Host, Is.EqualTo("127.0.0.1"));
+            Assert.That(local.MatchId, Is.EqualTo("m"));
+            Assert.That(local.Port, Is.EqualTo(7777));
+            Assert.That(local.Ticket, Is.EqualTo("t"));
+            Assert.That(local.Mode, Is.EqualTo(GameMode.Classic));
+        }
+
+        [Test]
         public void HostingTakesBothTickets()
         {
             var listing = new MatchListing("m", "Name", "Host", 1, 0, 4, GameMode.Arena);

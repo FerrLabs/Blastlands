@@ -1,4 +1,3 @@
-#if UNITY_SERVER
 using System;
 using Blastlands.Core;
 using Blastlands.Core.Net;
@@ -224,4 +223,3 @@ namespace Blastlands.Runtime
         }
     }
 }
-#endif
