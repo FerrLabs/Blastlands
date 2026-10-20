@@ -10,7 +10,9 @@ use uuid::Uuid;
 use crate::error::LobbyError;
 use crate::modes::GameMode;
 use crate::names::DisplayName;
-use crate::servers::{RegisterServer, Registered, ServerId, ServerKey, ServerRegistry, Slot};
+use crate::servers::{
+    Probe, RegisterServer, Registered, ServerId, ServerKey, ServerRegistry, Slot,
+};
 use crate::skills::BotSkill;
 use crate::tickets::TicketKey;
 
@@ -373,8 +375,14 @@ impl MatchDirectory {
         Ok(())
     }
 
-    pub fn observe_slot(&self, server: ServerId, port: u16, now: Instant) {
-        self.write().servers.observe_slot(server, port, now);
+    pub fn observe_slot(
+        &self,
+        server: ServerId,
+        port: u16,
+        echoed: Option<&str>,
+        now: Instant,
+    ) -> Option<Probe> {
+        self.write().servers.observe_slot(server, port, echoed, now)
     }
 
     /// What the instance owning `port` should run, once there is something to run.
@@ -532,7 +540,7 @@ mod tests {
             .expect("registration should succeed")
             .id;
         for port in range.clone() {
-            directory.observe_slot(server, port, now);
+            prove(directory, server, port, now);
         }
         server
     }
@@ -541,8 +549,14 @@ mod tests {
         directory_over(7000..=7001)
     }
 
+    fn prove(directory: &MatchDirectory, server: ServerId, port: u16, now: Instant) {
+        if let Some(probe) = directory.observe_slot(server, port, None, now) {
+            directory.observe_slot(server, port, Some(&probe.nonce), now);
+        }
+    }
+
     fn reap_at(directory: &MatchDirectory, server: ServerId, at: Instant) -> Vec<Reaped> {
-        directory.observe_slot(server, 7000, at);
+        prove(directory, server, 7000, at);
         directory.reap(at, lifetimes())
     }
 
@@ -1214,7 +1228,7 @@ mod tests {
                 0,
             )
             .expect("registration should succeed");
-        directory.observe_slot(server.id, 7000, now);
+        prove(directory, server.id, 7000, now);
         server
     }
 

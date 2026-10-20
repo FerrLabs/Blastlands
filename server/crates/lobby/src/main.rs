@@ -6,6 +6,7 @@ use blastlands_lobby::config::{Config, Limits};
 use blastlands_lobby::download::{DownloadLinks, LINK_LIFETIME};
 use blastlands_lobby::github::Github;
 use blastlands_lobby::matches::{Lifetimes, MatchDirectory, ReapReason};
+use blastlands_lobby::probe::Prober;
 use blastlands_lobby::release::Releases;
 use blastlands_lobby::routes::{app, AppState, ClientAddress};
 use blastlands_lobby::throttle::RateLimiter;
@@ -38,6 +39,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let state = AppState {
         directory: Arc::clone(&directory),
+        prober: Arc::new(Prober::bind()?),
         tickets: Arc::new(TicketSigner::new(limits.waiting_ttl + CONNECT_GRACE)),
         release: Arc::clone(&releases),
         downloads: Arc::new(DownloadLinks::new(Arc::clone(&github), LINK_LIFETIME)),

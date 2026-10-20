@@ -15,8 +15,8 @@ simulation exists once. What moving it to players costs, and was accepted:
 - The server's upload and CPU are every player's ceiling, and a server that quits ends
   its matches.
 - Its UDP ports have to be reachable from the internet. There is no relay, so a server
-  behind NAT needs those ports forwarded. The lobby only ever sees the server over HTTPS
-  and cannot tell whether players can reach it.
+  behind NAT needs those ports forwarded. The lobby probes each slot over UDP before
+  sending it strangers' matches (see Deployment), but cannot fix an unreachable one.
 
 ## Components
 
@@ -493,6 +493,17 @@ A slot that is `Playing` or `Releasing` when the drain file appears finishes fir
 reaches `Idle` and stops there, which is what the process waits for. In the container, the
 entrypoint writes `BLASTLANDS_DRAIN_FILE` on `SIGTERM`, so stopping it lets the matches it
 is playing finish.
+
+**A listed slot proves it is reachable first.** Every HTTPS call a server makes goes
+outbound, so a server whose UDP ports nobody can reach would register, poll and heartbeat
+like any other and soak up public matches nobody can join. While an idle slot is unproven,
+each poll makes the lobby send a datagram `blastlands-probe:<nonce>` to the server's public
+address on that port. The idle slot listens on its own port (`ProbeListener`, closed before
+the match binds the port) and sends the nonce back on its next poll as
+`?probe=<nonce>`. Only then does `POST /v1/matches` without a `server` put a match on it.
+The nonce is per registration; the probe tests the same inbound UDP path players use, and the
+lobby only ever sends, so the cluster needs no UDP ingress. A server somebody chose by id,
+an unlisted one included, is not held to it: whoever chose it may still try.
 
 **The lobby only offers live slots.** A slot polls every two seconds while idle and not at
 all while it is running a match, and the lobby only hands out a port whose slot polled within

@@ -2,7 +2,7 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use axum::extract::{ConnectInfo, FromRequest, Path, Request, State};
+use axum::extract::{ConnectInfo, FromRequest, Path, Query, Request, State};
 use axum::http::{header, HeaderMap, StatusCode};
 use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::routing::{delete, get, post};
@@ -21,6 +21,7 @@ use crate::matches::{
 };
 use crate::modes::GameMode;
 use crate::names::DisplayName;
+use crate::probe::Prober;
 use crate::release::{ReleaseInfo, Releases};
 use crate::servers::{RegisterServer, Registered, ServerId, ServerKey, TicketSecret};
 use crate::skills::BotSkill;
@@ -55,6 +56,7 @@ pub enum ClientAddress {
 #[derive(Clone)]
 pub struct AppState {
     pub directory: Arc<MatchDirectory>,
+    pub prober: Arc<Prober>,
     pub tickets: Arc<TicketSigner>,
     pub release: Arc<Releases>,
     pub downloads: Arc<DownloadLinks>,
@@ -524,13 +526,28 @@ async fn add_bot_to_match(
 //
 // 204 rather than 404 while nothing is assigned, because an idle instance polling an
 // empty slot is the normal state, not a mistake to log.
+#[derive(Debug, Deserialize)]
+pub struct SlotPoll {
+    pub probe: Option<String>,
+}
+
 async fn instance_assignment(
     State(state): State<AppState>,
     Path(port): Path<u16>,
+    Query(poll): Query<SlotPoll>,
     headers: HeaderMap,
 ) -> Result<Response, LobbyError> {
     let server = authenticated(&state, &headers)?;
-    state.directory.observe_slot(server, port, Instant::now());
+    let unproven =
+        state
+            .directory
+            .observe_slot(server, port, poll.probe.as_deref(), Instant::now());
+
+    if let Some(probe) = unproven {
+        if let Err(error) = state.prober.send(&probe).await {
+            tracing::debug!(%error, target = %probe.target, "could not send the reachability probe");
+        }
+    }
 
     Ok(match state.directory.assignment(server, port) {
         Some(assignment) => Json(assignment).into_response(),
@@ -619,7 +636,9 @@ mod tests {
             )
             .expect("registration should succeed");
         for port in range {
-            directory.observe_slot(registered.id, port, Instant::now());
+            if let Some(probe) = directory.observe_slot(registered.id, port, None, Instant::now()) {
+                directory.observe_slot(registered.id, port, Some(&probe.nonce), Instant::now());
+            }
         }
         let key = serde_json::to_value(&registered.key).unwrap();
         (directory, key.as_str().unwrap().to_owned())
@@ -628,6 +647,7 @@ mod tests {
     fn state_over(directory: Arc<MatchDirectory>, release: Arc<Releases>) -> AppState {
         AppState {
             directory,
+            prober: Arc::new(Prober::bind().unwrap()),
             tickets: Arc::new(signer()),
             release,
             downloads: downloads(),
@@ -647,6 +667,7 @@ mod tests {
     fn router_with(release: Arc<Releases>) -> Router {
         app(AppState {
             directory: directory_with(7000..=7001).0,
+            prober: Arc::new(Prober::bind().unwrap()),
             tickets: Arc::new(signer()),
             release,
             downloads: downloads(),
@@ -667,6 +688,7 @@ mod tests {
     fn forwarded_router(creates: u32) -> Router {
         app(AppState {
             directory: directory_with(7000..=7010).0,
+            prober: Arc::new(Prober::bind().unwrap()),
             tickets: Arc::new(signer()),
             release: release(),
             downloads: downloads(),
@@ -695,6 +717,7 @@ mod tests {
     fn throttled_router(creates: u32, per_address: usize) -> Router {
         app(AppState {
             directory: directory_with(7000..=7010).0,
+            prober: Arc::new(Prober::bind().unwrap()),
             tickets: Arc::new(signer()),
             release: release(),
             downloads: downloads(),
@@ -1665,7 +1688,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn a_match_lands_on_a_server_once_one_registers() {
+    async fn a_listed_server_takes_strangers_matches_once_its_slot_echoed_the_probe() {
         let router = app(state_over(Arc::new(MatchDirectory::new()), release()));
         let create = || {
             post_json(
@@ -1674,43 +1697,49 @@ mod tests {
             )
         };
 
-        let refused = router.clone().oneshot(create()).await.unwrap();
-        assert_eq!(refused.status(), StatusCode::SERVICE_UNAVAILABLE);
-        assert_eq!(body_json(refused).await["code"], "no_capacity");
-
-        let registered = router
-            .clone()
-            .oneshot(post_json(
-                "/v1/servers",
-                json!({ "port": 7777, "slots": 1 }),
-            ))
+        let slot = tokio::net::UdpSocket::bind((Ipv4Addr::UNSPECIFIED, 0))
             .await
             .unwrap();
-        assert_eq!(registered.status(), StatusCode::CREATED);
-        let registered = body_json(registered).await;
+        let port = slot.local_addr().unwrap().port();
+        let registered = body_json(
+            router
+                .clone()
+                .oneshot(post_json(
+                    "/v1/servers",
+                    json!({ "port": port, "slots": 1 }),
+                ))
+                .await
+                .unwrap(),
+        )
+        .await;
         let key = registered["key"].as_str().unwrap();
-        assert!(!key.is_empty());
         assert!(registered["ticket_secret"]
             .as_str()
             .is_some_and(|secret| secret.len() >= crate::tickets::MIN_KEY_BYTES));
 
-        let unpolled = router.clone().oneshot(create()).await.unwrap();
         assert_eq!(
-            unpolled.status(),
+            router.clone().oneshot(create()).await.unwrap().status(),
             StatusCode::SERVICE_UNAVAILABLE,
             "a slot nobody has heard from may be busy with a match the lobby forgot"
         );
 
-        let polled = router
-            .clone()
-            .oneshot(instance_get("/internal/instances/7777", key))
-            .await
-            .unwrap();
-        assert_eq!(polled.status(), StatusCode::NO_CONTENT);
+        assert_eq!(poll(&router, port, key, None).await, StatusCode::NO_CONTENT);
+        let unproven = router.clone().oneshot(create()).await.unwrap();
+        assert_eq!(
+            body_json(unproven).await["code"],
+            "no_capacity",
+            "polling over HTTPS proves nothing about UDP"
+        );
+
+        let nonce = received_probe(&slot).await;
+        assert_eq!(
+            poll(&router, port, key, Some(&nonce)).await,
+            StatusCode::NO_CONTENT
+        );
 
         let created = router.clone().oneshot(create()).await.unwrap();
         assert_eq!(created.status(), StatusCode::CREATED);
-        assert_eq!(body_json(created).await["endpoint"]["port"], 7777);
+        assert_eq!(body_json(created).await["endpoint"]["port"], port);
     }
 
     #[tokio::test]
@@ -1991,25 +2020,65 @@ mod tests {
         );
     }
 
-    async fn register_on(router: &Router, body: Value) -> Value {
+    struct ReachableServer {
+        registered: Value,
+        port: u16,
+    }
+
+    async fn poll(router: &Router, port: u16, key: &str, probe: Option<&str>) -> StatusCode {
+        let query = probe
+            .map(|nonce| format!("?probe={nonce}"))
+            .unwrap_or_default();
+        router
+            .clone()
+            .oneshot(instance_get(
+                &format!("/internal/instances/{port}{query}"),
+                key,
+            ))
+            .await
+            .unwrap()
+            .status()
+    }
+
+    async fn received_probe(slot: &tokio::net::UdpSocket) -> String {
+        let mut buffer = [0u8; 128];
+        let (read, _) = tokio::time::timeout(Duration::from_secs(5), slot.recv_from(&mut buffer))
+            .await
+            .expect("the lobby probes an unproven slot")
+            .unwrap();
+        String::from_utf8(buffer[..read].to_vec())
+            .unwrap()
+            .strip_prefix(crate::probe::PREFIX)
+            .expect("a probe datagram")
+            .to_owned()
+    }
+
+    async fn register_on(router: &Router, listed: bool) -> ReachableServer {
+        let slot = tokio::net::UdpSocket::bind((Ipv4Addr::UNSPECIFIED, 0))
+            .await
+            .unwrap();
+        let port = slot.local_addr().unwrap().port();
+
         let response = router
             .clone()
-            .oneshot(post_json("/v1/servers", body.clone()))
+            .oneshot(post_json(
+                "/v1/servers",
+                json!({ "port": port, "slots": 1, "listed": listed }),
+            ))
             .await
             .unwrap();
         assert_eq!(response.status(), StatusCode::CREATED);
         let registered = body_json(response).await;
+        let key = registered["key"].as_str().unwrap().to_owned();
 
-        let polled = router
-            .clone()
-            .oneshot(instance_get(
-                &format!("/internal/instances/{}", body["port"]),
-                registered["key"].as_str().unwrap(),
-            ))
-            .await
-            .unwrap();
-        assert_eq!(polled.status(), StatusCode::NO_CONTENT);
-        registered
+        assert_eq!(poll(router, port, &key, None).await, StatusCode::NO_CONTENT);
+        let nonce = received_probe(&slot).await;
+        assert_eq!(
+            poll(router, port, &key, Some(&nonce)).await,
+            StatusCode::NO_CONTENT
+        );
+
+        ReachableServer { registered, port }
     }
 
     #[tokio::test]
@@ -2018,7 +2087,7 @@ mod tests {
         use sha2::Sha256;
 
         let router = app(state_over(Arc::new(MatchDirectory::new()), release()));
-        let server = register_on(&router, json!({ "port": 7777, "slots": 1 })).await;
+        let server = register_on(&router, true).await.registered;
         let created = create_match_on(&router, "Garage night").await;
 
         let ticket = created["game_ticket"].as_str().unwrap();
@@ -2039,11 +2108,8 @@ mod tests {
     #[tokio::test]
     async fn an_unlisted_server_takes_a_match_only_with_its_own_key() {
         let router = app(state_over(Arc::new(MatchDirectory::new()), release()));
-        let server = register_on(
-            &router,
-            json!({ "port": 7777, "slots": 1, "listed": false }),
-        )
-        .await;
+        let reachable = register_on(&router, false).await;
+        let server = reachable.registered;
         let id = server["id"].as_str().unwrap();
         let key = server["key"].as_str().unwrap();
         let body =
@@ -2063,7 +2129,7 @@ mod tests {
         );
         let owned = router.clone().oneshot(request).await.unwrap();
         assert_eq!(owned.status(), StatusCode::CREATED);
-        assert_eq!(body_json(owned).await["endpoint"]["port"], 7777);
+        assert_eq!(body_json(owned).await["endpoint"]["port"], reachable.port);
     }
 
     #[tokio::test]

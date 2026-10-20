@@ -9,6 +9,7 @@ pub mod matches;
 pub mod modes;
 pub mod names;
 pub mod ports;
+pub mod probe;
 pub mod release;
 pub mod routes;
 pub mod servers;

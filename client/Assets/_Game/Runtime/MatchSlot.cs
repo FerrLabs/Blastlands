@@ -34,6 +34,7 @@ namespace Blastlands.Runtime
         private int port;
         private HostOptions host;
         private LobbyRegistrar registrar;
+        private ProbeListener probe;
         private GameObject running;
         private string finishedMatch;
         private string taking;
@@ -61,12 +62,18 @@ namespace Blastlands.Runtime
             port = slotPort;
             host = hostOptions;
             registrar = lobbyRegistrar;
+            probe = new ProbeListener(slotPort);
             StartCoroutine(Polling());
         }
 
         public void Drain()
         {
             draining = true;
+        }
+
+        private void OnDestroy()
+        {
+            probe?.Dispose();
         }
 
         private IEnumerator Polling()
@@ -93,7 +100,9 @@ namespace Blastlands.Runtime
             }
 
             int generation = credentials.Generation;
-            string url = $"{host.LobbyUrl.TrimEnd('/')}/internal/instances/{port}";
+            probe.Listen();
+            probe.Drain();
+            string url = $"{host.LobbyUrl.TrimEnd('/')}/internal/instances/{port}{SlotProbe.Query(probe.Nonce)}";
 
             using (UnityWebRequest request = UnityWebRequest.Get(url))
             {
@@ -150,6 +159,7 @@ namespace Blastlands.Runtime
         private void TakeSafely(string body)
         {
             taking = null;
+            probe.Dispose();
 
             try
             {

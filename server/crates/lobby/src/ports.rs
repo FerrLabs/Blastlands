@@ -28,12 +28,24 @@ impl PortPool {
         }
     }
 
+    pub fn contains(&self, port: u16) -> bool {
+        self.range.contains(&port)
+    }
+
     pub fn acquire(&mut self, now: Instant) -> Result<u16, LobbyError> {
+        self.acquire_where(now, |_| true)
+    }
+
+    pub fn acquire_where(
+        &mut self,
+        now: Instant,
+        eligible: impl Fn(u16) -> bool,
+    ) -> Result<u16, LobbyError> {
         let port = self
             .available
             .iter()
             .copied()
-            .find(|port| self.has_ready_instance(*port, now))
+            .find(|port| eligible(*port) && self.has_ready_instance(*port, now))
             .ok_or(LobbyError::NoCapacity)?;
 
         self.available.remove(&port);

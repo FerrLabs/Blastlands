@@ -197,7 +197,8 @@ Download the Linux server build of the current release from
 
 It registers with the FerrLabs lobby from your public address and serves one match per slot,
 on UDP 7777 and the ports after it. Those ports must be reachable from the internet: forward
-them on your router, there is no relay. Whoever runs a server is authoritative over the
+them on your router, there is no relay. Until the lobby's UDP probe gets through, it sends your
+server no public match. Whoever runs a server is authoritative over the
 matches on it, so play on servers you trust. Keep it on the latest release: a build below the
 lobby's minimum is refused.
 

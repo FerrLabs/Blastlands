@@ -1,6 +1,6 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
-use std::net::IpAddr;
+use std::net::{IpAddr, SocketAddr};
 use std::ops::RangeInclusive;
 use std::time::{Duration, Instant};
 
@@ -90,7 +90,15 @@ struct GameServer {
     key: ServerKey,
     ticket_key: TicketKey,
     ports: PortPool,
+    probe: String,
+    reachable: HashSet<u16>,
     last_seen: Instant,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Probe {
+    pub target: SocketAddr,
+    pub nonce: String,
 }
 
 #[derive(Debug)]
@@ -145,6 +153,8 @@ impl ServerRegistry {
                 key: key.clone(),
                 ticket_key,
                 ports: PortPool::new(ports),
+                probe: Uuid::new_v4().simple().to_string(),
+                reachable: HashSet::new(),
                 last_seen: now,
             },
         );
@@ -174,11 +184,25 @@ impl ServerRegistry {
         }
     }
 
-    pub fn observe_slot(&mut self, id: ServerId, port: u16, now: Instant) {
-        if let Some(server) = self.servers.get_mut(&id) {
-            server.last_seen = now;
-            server.ports.observe_instance(port, now);
+    pub fn observe_slot(
+        &mut self,
+        id: ServerId,
+        port: u16,
+        echoed: Option<&str>,
+        now: Instant,
+    ) -> Option<Probe> {
+        let server = self.servers.get_mut(&id)?;
+        server.last_seen = now;
+        server.ports.observe_instance(port, now);
+
+        if echoed == Some(server.probe.as_str()) && server.ports.contains(port) {
+            server.reachable.insert(port);
         }
+
+        (server.ports.contains(port) && !server.reachable.contains(&port)).then(|| Probe {
+            target: SocketAddr::new(server.address, port),
+            nonce: server.probe.clone(),
+        })
     }
 
     pub fn acquire_on(
@@ -209,11 +233,16 @@ impl ServerRegistry {
             .iter_mut()
             .filter(|(_, server)| server.listed)
             .find_map(|(id, server)| {
-                server.ports.acquire(now).ok().map(|port| Slot {
-                    server: *id,
-                    address: server.address,
-                    port,
-                })
+                let reachable = &server.reachable;
+                server
+                    .ports
+                    .acquire_where(now, |port| reachable.contains(&port))
+                    .ok()
+                    .map(|port| Slot {
+                        server: *id,
+                        address: server.address,
+                        port,
+                    })
             })
             .ok_or(LobbyError::NoCapacity)
     }
@@ -266,6 +295,60 @@ mod tests {
         IpAddr::V4(Ipv4Addr::new(198, 51, 100, last))
     }
 
+    fn prove(registry: &mut ServerRegistry, id: ServerId, port: u16, now: Instant) {
+        if let Some(probe) = registry.observe_slot(id, port, None, now) {
+            registry.observe_slot(id, port, Some(&probe.nonce), now);
+        }
+    }
+
+    #[test]
+    fn a_polling_slot_is_probed_at_its_public_address_until_it_echoes() {
+        let mut registry = ServerRegistry::default();
+        let now = Instant::now();
+        let server = registry.register(request(7777, 1, true), now, 0).unwrap();
+
+        let probe = registry
+            .observe_slot(server.id, 7777, None, now)
+            .expect("an unproven slot is probed");
+        assert_eq!(probe.target, SocketAddr::new(address(1), 7777));
+        assert!(registry
+            .observe_slot(server.id, 7777, Some("wrong"), now)
+            .is_some());
+
+        assert_eq!(
+            registry.observe_slot(server.id, 7777, Some(&probe.nonce), now),
+            None
+        );
+        assert_eq!(registry.acquire_any(now).unwrap().port, 7777);
+    }
+
+    #[test]
+    fn a_listed_slot_that_never_echoed_is_not_offered_to_strangers() {
+        let mut registry = ServerRegistry::default();
+        let now = Instant::now();
+        let server = registry.register(request(7777, 1, true), now, 0).unwrap();
+        registry.observe_slot(server.id, 7777, None, now);
+
+        assert!(matches!(
+            registry.acquire_any(now),
+            Err(LobbyError::NoCapacity)
+        ));
+        assert_eq!(
+            registry.acquire_on(server.id, None, now).unwrap().port,
+            7777,
+            "whoever chose this server may still try it"
+        );
+    }
+
+    #[test]
+    fn a_port_outside_the_server_is_never_probed() {
+        let mut registry = ServerRegistry::default();
+        let now = Instant::now();
+        let server = registry.register(request(7777, 1, true), now, 0).unwrap();
+
+        assert_eq!(registry.observe_slot(server.id, 53, None, now), None);
+    }
+
     fn polled(
         registry: &mut ServerRegistry,
         first_port: u16,
@@ -277,7 +360,7 @@ mod tests {
             .register(request(first_port, slots, listed), now, 0)
             .unwrap();
         for port in slot_ports(first_port, slots).unwrap() {
-            registry.observe_slot(server.id, port, now);
+            prove(registry, server.id, port, now);
         }
         server
     }
@@ -293,7 +376,7 @@ mod tests {
             Err(LobbyError::NoCapacity)
         ));
 
-        registry.observe_slot(server.id, 7778, now);
+        prove(&mut registry, server.id, 7778, now);
 
         assert_eq!(registry.acquire_any(now).unwrap().port, 7778);
     }
@@ -450,7 +533,7 @@ mod tests {
         let server = registry.register(request(7777, 1, true), now, 0).unwrap();
         let later = now + SERVER_SILENT_TTL;
 
-        registry.observe_slot(server.id, 7777, later);
+        registry.observe_slot(server.id, 7777, None, later);
 
         assert!(registry.expire(later + Duration::from_secs(1)).is_empty());
     }
