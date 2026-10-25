@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.10.25] - 2026-10-25
+
+### Bug Fixes
+
+- fix(lobby): cache download links per asset and share concurrent fetches (#212)
+
 ## [26.10.20] - 2026-10-20
 
 ### Breaking Changes
