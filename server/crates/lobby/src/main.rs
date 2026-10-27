@@ -46,6 +46,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         creates: Arc::clone(&creates),
         joins: Arc::clone(&joins),
         matches_per_address: limits.matches_per_address,
+        seats_per_address: limits.seats_per_address,
         servers_per_address: limits.servers_per_address,
         address_source: if limits.trust_forwarded_for {
             ClientAddress::Forwarded

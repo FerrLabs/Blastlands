@@ -60,6 +60,11 @@ Ces points sont réels et suivis comme des issues, pas comme des acquis.
   requête non authentifiée par partie. Le lobby retient maintenant le ticket qu'il a
   remis à l'hôte et exige qu'il soit présenté pour démarrer.
 
+  Les sièges sont aussi bornés : un pseudo déjà assis dans une partie ne peut pas reprendre
+  un second siège (`name_taken`), et une adresse ne tient qu'un nombre limité de sièges par
+  partie, hôte compris (`BLASTLANDS_LOBBY_SEATS_PER_ADDRESS`, 2 par défaut, 0 désactive).
+  Sans cela, un script remplissait une partie de faux joueurs sous le rate limit des joins.
+
   Une réserve à connaître avant d'exposer le service : l'adresse retenue est celle du
   socket, sauf si `BLASTLANDS_LOBBY_TRUST_FORWARDED_FOR` est activé. Derrière un reverse
   proxy sans ce réglage, tout le trafic partage un seul compteur ; avec ce réglage sur un

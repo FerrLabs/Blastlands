@@ -15,6 +15,12 @@ pub enum LobbyError {
     #[error("match is full")]
     MatchFull,
 
+    #[error("that name is already seated in this match")]
+    NameTaken,
+
+    #[error("one address may hold at most {max} seats in a match")]
+    TooManySeats { max: usize },
+
     #[error("match has already started")]
     MatchAlreadyStarted,
 
@@ -91,15 +97,17 @@ impl LobbyError {
             Self::MatchNotFound | Self::ServerNotFound | Self::ReleaseNotFound => {
                 StatusCode::NOT_FOUND
             }
-            Self::MatchFull | Self::MatchAlreadyStarted | Self::NotEnoughPlayers { .. } => {
-                StatusCode::CONFLICT
-            }
+            Self::MatchFull
+            | Self::NameTaken
+            | Self::MatchAlreadyStarted
+            | Self::NotEnoughPlayers { .. } => StatusCode::CONFLICT,
             Self::NoCapacity | Self::ReleaseUnknown => StatusCode::SERVICE_UNAVAILABLE,
             Self::DownloadUnavailable => StatusCode::BAD_GATEWAY,
             Self::Unauthorized => StatusCode::UNAUTHORIZED,
-            Self::RateLimited | Self::TooManyMatches { .. } | Self::TooManyServers { .. } => {
-                StatusCode::TOO_MANY_REQUESTS
-            }
+            Self::RateLimited
+            | Self::TooManyMatches { .. }
+            | Self::TooManySeats { .. }
+            | Self::TooManyServers { .. } => StatusCode::TOO_MANY_REQUESTS,
             Self::InvalidName(_)
             | Self::InvalidPlayerCount { .. }
             | Self::InvalidSlots { .. }
@@ -115,6 +123,8 @@ impl LobbyError {
         match self {
             Self::MatchNotFound => "match_not_found",
             Self::MatchFull => "match_full",
+            Self::NameTaken => "name_taken",
+            Self::TooManySeats { .. } => "too_many_seats",
             Self::MatchAlreadyStarted => "match_already_started",
             Self::NotEnoughPlayers { .. } => "not_enough_players",
             Self::NoCapacity => "no_capacity",

@@ -52,6 +52,7 @@ pub struct Match {
     pub name: DisplayName,
     pub host: DisplayName,
     pub players: Vec<DisplayName>,
+    pub seat_addresses: Vec<IpAddr>,
     pub max_players: u8,
     pub mode: GameMode,
     pub bot_skill: BotSkill,
@@ -233,6 +234,7 @@ impl MatchDirectory {
             id: MatchId(Uuid::new_v4()),
             name: request.name,
             players: vec![request.host.clone()],
+            seat_addresses: vec![request.host_address],
             host: request.host,
             max_players: request.max_players,
             mode: request.mode,
@@ -276,7 +278,13 @@ impl MatchDirectory {
         open
     }
 
-    pub fn join(&self, id: MatchId, player: DisplayName) -> Result<Admitted, LobbyError> {
+    pub fn join(
+        &self,
+        id: MatchId,
+        player: DisplayName,
+        address: IpAddr,
+        max_seats_per_address: usize,
+    ) -> Result<Admitted, LobbyError> {
         let mut state = self.write();
         let DirectoryState { matches, servers } = &mut *state;
         let entry = matches.get_mut(&id).ok_or(LobbyError::MatchNotFound)?;
@@ -289,12 +297,31 @@ impl MatchDirectory {
             return Err(LobbyError::MatchFull);
         }
 
+        if entry.players.contains(&player) {
+            return Err(LobbyError::NameTaken);
+        }
+
+        if max_seats_per_address > 0 {
+            let held = entry
+                .seat_addresses
+                .iter()
+                .filter(|seated| **seated == address)
+                .count();
+
+            if held >= max_seats_per_address {
+                return Err(LobbyError::TooManySeats {
+                    max: max_seats_per_address,
+                });
+            }
+        }
+
         let ticket_key = servers
             .ticket_key(entry.server)
             .cloned()
             .ok_or(LobbyError::MatchNotFound)?;
 
         entry.players.push(player);
+        entry.seat_addresses.push(address);
 
         Ok(Admitted {
             endpoint: entry.endpoint.clone(),
@@ -684,7 +711,7 @@ mod tests {
         let entry = create(&directory, 4);
 
         let admitted = directory
-            .join(entry.id, name("Alex"))
+            .join(entry.id, name("Alex"), caller(9), 0)
             .expect("join should succeed");
 
         assert_eq!(admitted.endpoint, entry.endpoint);
@@ -697,14 +724,56 @@ mod tests {
         let entry = create(&directory, 2);
 
         directory
-            .join(entry.id, name("Alex"))
+            .join(entry.id, name("Alex"), caller(9), 0)
             .expect("second seat is free");
 
         assert_eq!(
-            directory.join(entry.id, name("Sam")).err(),
+            directory.join(entry.id, name("Sam"), caller(9), 0).err(),
             Some(LobbyError::MatchFull)
         );
         assert!(directory.open_matches().is_empty());
+    }
+
+    #[test]
+    fn a_name_already_seated_cannot_take_a_second_seat() {
+        let (directory, _) = directory();
+        let entry = create(&directory, 4);
+
+        assert_eq!(
+            directory
+                .join(entry.id, entry.host.clone(), caller(9), 0)
+                .err(),
+            Some(LobbyError::NameTaken)
+        );
+        directory
+            .join(entry.id, name("Alex"), caller(9), 0)
+            .expect("a seat is free");
+        assert_eq!(
+            directory.join(entry.id, name("Alex"), caller(8), 0).err(),
+            Some(LobbyError::NameTaken)
+        );
+        assert_eq!(directory.get(entry.id).expect("exists").players.len(), 2);
+    }
+
+    #[test]
+    fn one_address_may_only_hold_so_many_seats_in_a_match() {
+        let (directory, _) = directory();
+        let entry = create(&directory, 8);
+
+        directory
+            .join(entry.id, name("Alex"), caller(9), 2)
+            .expect("under the cap");
+        directory
+            .join(entry.id, name("Sam"), caller(9), 2)
+            .expect("still under the cap");
+        assert_eq!(
+            directory.join(entry.id, name("Kim"), caller(9), 2).err(),
+            Some(LobbyError::TooManySeats { max: 2 })
+        );
+        directory
+            .join(entry.id, name("Kim"), caller(8), 2)
+            .expect("a different address was punished");
+        assert_eq!(directory.get(entry.id).expect("exists").players.len(), 4);
     }
 
     #[test]
@@ -718,7 +787,7 @@ mod tests {
 
         assert_eq!(updated.bots, 1);
         assert_eq!(
-            directory.join(entry.id, name("Alex")).err(),
+            directory.join(entry.id, name("Alex"), caller(9), 0).err(),
             Some(LobbyError::MatchFull)
         );
         assert!(directory.open_matches().is_empty());
@@ -791,7 +860,9 @@ mod tests {
     /// `start` refuses a lobby below `MIN_PLAYERS`, so every test that wants a running
     /// match needs a guest in it. The host holds the first seat.
     fn seat_a_guest(directory: &MatchDirectory, id: MatchId) {
-        directory.join(id, name("Alex")).expect("a seat is free");
+        directory
+            .join(id, name("Alex"), caller(9), 0)
+            .expect("a seat is free");
     }
 
     #[test]
@@ -806,7 +877,7 @@ mod tests {
 
         assert!(directory.open_matches().is_empty());
         assert_eq!(
-            directory.join(entry.id, name("Alex")).err(),
+            directory.join(entry.id, name("Alex"), caller(9), 0).err(),
             Some(LobbyError::MatchAlreadyStarted)
         );
     }
@@ -852,7 +923,7 @@ mod tests {
         let entry = create(&directory, 4);
         seat_a_guest(&directory, entry.id);
         directory
-            .join(entry.id, name("Sam"))
+            .join(entry.id, name("Sam"), caller(9), 0)
             .expect("a third seat is free");
 
         directory
@@ -891,7 +962,7 @@ mod tests {
         let unknown = MatchId(Uuid::new_v4());
 
         assert_eq!(
-            directory.join(unknown, name("Alex")).err(),
+            directory.join(unknown, name("Alex"), caller(9), 0).err(),
             Some(LobbyError::MatchNotFound)
         );
         assert_eq!(
@@ -967,7 +1038,7 @@ mod tests {
         let start = Instant::now();
         let id = make(&directory, caller(1), start);
         directory
-            .join(id, name("Sam"))
+            .join(id, name("Sam"), caller(9), 0)
             .expect("join should succeed");
 
         let reaped = reap_at(&directory, server, start + Duration::from_secs(301));
@@ -985,7 +1056,7 @@ mod tests {
         let start = Instant::now();
         let id = make(&directory, caller(1), start);
         directory
-            .join(id, name("Sam"))
+            .join(id, name("Sam"), caller(9), 0)
             .expect("join should succeed");
 
         let long_after = start + Duration::from_secs(899);
@@ -998,7 +1069,7 @@ mod tests {
         let start = Instant::now();
         let id = make(&directory, caller(1), start);
         directory
-            .join(id, name("Sam"))
+            .join(id, name("Sam"), caller(9), 0)
             .expect("join should succeed");
 
         assert!(reap_at(&directory, server, start + Duration::from_secs(900)).is_empty());
