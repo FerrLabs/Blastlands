@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.10.28] - 2026-10-27
+
+### Bug Fixes
+
+- fix(lobby): refuse duplicate names and cap seats per address on join (#216)
+
 ## [26.10.27] - 2026-10-27
 
 ### Bug Fixes
