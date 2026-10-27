@@ -18,6 +18,7 @@ namespace Blastlands.Runtime
     public sealed class ClientUpdater : MonoBehaviour
     {
         private const string DataSuffix = "_Data";
+        private const long MaxDownloadBytes = 1L << 30;
 
         public UpdateStage Stage { get; private set; } = UpdateStage.Idle;
 
@@ -86,7 +87,18 @@ namespace Blastlands.Runtime
             using (UnityWebRequest request = UnityWebRequest.Get(release.DownloadUrl))
             {
                 request.downloadHandler = new DownloadHandlerFile(archive) { removeFileOnAbort = true };
-                yield return request.SendWebRequest();
+                UnityWebRequestAsyncOperation download = request.SendWebRequest();
+                while (!download.isDone)
+                {
+                    if ((long)request.downloadedBytes > MaxDownloadBytes)
+                    {
+                        request.Abort();
+                        Fail("the update is larger than " + MaxDownloadBytes + " bytes");
+                        yield break;
+                    }
+
+                    yield return null;
+                }
 
                 if (request.result != UnityWebRequest.Result.Success)
                 {
@@ -167,6 +179,11 @@ namespace Blastlands.Runtime
                         }
 
                         string destination = Path.Combine(layout.Staged, entry.FullName);
+                        if (!ArchivePath.IsInside(layout.Staged, destination))
+                        {
+                            return "the archive contains an entry outside the game: " + entry.FullName;
+                        }
+
                         if (entry.Name.Length == 0)
                         {
                             Directory.CreateDirectory(destination);

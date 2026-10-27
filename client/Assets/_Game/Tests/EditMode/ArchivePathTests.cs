@@ -1,4 +1,5 @@
 using Blastlands.Core.Update;
+using System.IO;
 using NUnit.Framework;
 
 namespace Blastlands.Core.Tests
@@ -43,6 +44,35 @@ namespace Blastlands.Core.Tests
         {
             Assert.That(ArchivePath.IsSafe(""), Is.False);
             Assert.That(ArchivePath.IsSafe(null), Is.False);
+        }
+
+        [Test]
+        public void ADestinationInsideTheRootIsAccepted()
+        {
+            string root = Path.Combine(Path.GetTempPath(), "staged");
+            Assert.That(ArchivePath.IsInside(root, Path.Combine(root, "Blastlands_Data", "level0")), Is.True);
+        }
+
+        [Test]
+        public void ADestinationResolvingOutsideTheRootIsRefused()
+        {
+            string root = Path.Combine(Path.GetTempPath(), "staged");
+            Assert.That(ArchivePath.IsInside(root, Path.Combine(root, "..", "evil.dll")), Is.False);
+            Assert.That(ArchivePath.IsInside(root, Path.Combine(root, "a", "..", "..", "evil.dll")), Is.False);
+        }
+
+        [Test]
+        public void ASiblingDirectorySharingTheRootPrefixIsRefused()
+        {
+            string root = Path.Combine(Path.GetTempPath(), "staged");
+            Assert.That(ArchivePath.IsInside(root, root + "-evil" + Path.DirectorySeparatorChar + "x.dll"), Is.False);
+        }
+
+        [Test]
+        public void TheRootItselfIsNotAFileDestination()
+        {
+            string root = Path.Combine(Path.GetTempPath(), "staged");
+            Assert.That(ArchivePath.IsInside(root, root), Is.False);
         }
     }
 }
