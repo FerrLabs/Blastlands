@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.10.27] - 2026-10-27
+
+### Bug Fixes
+
+- fix(client): cap update download size and check extraction path (#215)
+
 ## [26.10.25] - 2026-10-25
 
 ### Bug Fixes
