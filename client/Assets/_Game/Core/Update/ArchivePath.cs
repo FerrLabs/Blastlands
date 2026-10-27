@@ -1,3 +1,6 @@
+using System;
+using System.IO;
+
 namespace Blastlands.Core.Update
 {
     public static class ArchivePath
@@ -23,6 +26,13 @@ namespace Blastlands.Core.Update
             }
 
             return true;
+        }
+
+        public static bool IsInside(string root, string destination)
+        {
+            string prefix = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                + Path.DirectorySeparatorChar;
+            return Path.GetFullPath(destination).StartsWith(prefix, StringComparison.Ordinal);
         }
     }
 }
