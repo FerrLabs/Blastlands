@@ -27,6 +27,7 @@ pub enum ConfigError {
 const CREATES_PER_WINDOW: &str = "BLASTLANDS_LOBBY_CREATES_PER_WINDOW";
 const JOINS_PER_WINDOW: &str = "BLASTLANDS_LOBBY_JOINS_PER_WINDOW";
 const WINDOW_SECONDS: &str = "BLASTLANDS_LOBBY_RATE_WINDOW_SECONDS";
+const SEATS_PER_ADDRESS: &str = "BLASTLANDS_LOBBY_SEATS_PER_ADDRESS";
 const MATCHES_PER_ADDRESS: &str = "BLASTLANDS_LOBBY_MATCHES_PER_ADDRESS";
 const SERVERS_PER_ADDRESS: &str = "BLASTLANDS_LOBBY_SERVERS_PER_ADDRESS";
 const UNJOINED_TTL_SECONDS: &str = "BLASTLANDS_LOBBY_UNJOINED_TTL_SECONDS";
@@ -61,6 +62,7 @@ pub struct Limits {
     pub joins_per_window: u32,
     pub window: Duration,
     pub matches_per_address: usize,
+    pub seats_per_address: usize,
     pub servers_per_address: usize,
     pub unjoined_ttl: Duration,
     pub silent_ttl: Duration,
@@ -76,6 +78,7 @@ impl Default for Limits {
             joins_per_window: 30,
             window: Duration::from_secs(60),
             matches_per_address: 3,
+            seats_per_address: 2,
             servers_per_address: 3,
             // A lobby full of matches nobody joined is the cheapest denial of service
             // there is, so an empty one does not get to sit on a port for long.
@@ -115,6 +118,8 @@ impl Config {
                 MATCHES_PER_ADDRESS,
                 defaults.matches_per_address as u32,
             )? as usize,
+            seats_per_address: number::<u32>(SEATS_PER_ADDRESS, defaults.seats_per_address as u32)?
+                as usize,
             servers_per_address: number::<u32>(
                 SERVERS_PER_ADDRESS,
                 defaults.servers_per_address as u32,

@@ -63,6 +63,7 @@ pub struct AppState {
     pub creates: Arc<RateLimiter>,
     pub joins: Arc<RateLimiter>,
     pub matches_per_address: usize,
+    pub seats_per_address: usize,
     pub servers_per_address: usize,
     pub address_source: ClientAddress,
 }
@@ -433,7 +434,10 @@ async fn join_match(
         return Err(LobbyError::RateLimited);
     }
 
-    let admitted = state.directory.join(id, request.player.clone())?;
+    let admitted =
+        state
+            .directory
+            .join(id, request.player.clone(), address, state.seats_per_address)?;
     let ticket = state.tickets.issue(
         &admitted.ticket_key,
         id,
@@ -654,6 +658,7 @@ mod tests {
             creates: Arc::new(RateLimiter::new(0, Duration::from_secs(60))),
             joins: Arc::new(RateLimiter::new(0, Duration::from_secs(60))),
             matches_per_address: 0,
+            seats_per_address: 0,
             servers_per_address: 0,
             address_source: ClientAddress::Peer,
         }
@@ -677,6 +682,7 @@ mod tests {
             creates: Arc::new(RateLimiter::new(0, Duration::from_secs(60))),
             joins: Arc::new(RateLimiter::new(0, Duration::from_secs(60))),
             matches_per_address: 0,
+            seats_per_address: 0,
             servers_per_address: 0,
             address_source: ClientAddress::Peer,
         })
@@ -695,6 +701,7 @@ mod tests {
             creates: Arc::new(RateLimiter::new(creates, Duration::from_secs(60))),
             joins: Arc::new(RateLimiter::new(0, Duration::from_secs(60))),
             matches_per_address: 0,
+            seats_per_address: 0,
             servers_per_address: 0,
             address_source: ClientAddress::Forwarded,
         })
@@ -724,6 +731,7 @@ mod tests {
             creates: Arc::new(RateLimiter::new(creates, Duration::from_secs(60))),
             joins: Arc::new(RateLimiter::new(0, Duration::from_secs(60))),
             matches_per_address: per_address,
+            seats_per_address: 0,
             servers_per_address: 0,
             address_source: ClientAddress::Peer,
         })
