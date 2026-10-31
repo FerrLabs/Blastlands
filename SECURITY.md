@@ -102,5 +102,5 @@ persisté après la fin d'une partie. Toute évolution qui ajouterait de la pers
 
 Ouvrir une issue si c'est bénin. Pour quoi que ce soit d'exploitable à distance (RCE sur
 le lobby ou sur une instance, forge de ticket, crash serveur déclenchable par un paquet),
-passer par une [security advisory GitHub](https://github.com/FerrLabs/Blastlands/security/advisories/new)
-plutôt qu'une issue publique.
+écrire à [contact@ferrlabs.com](mailto:contact@ferrlabs.com) avec `SECURITY` dans l'objet,
+plutôt que d'ouvrir une issue publique.
