@@ -176,6 +176,8 @@ dotnet test tests/Blastlands.Core.Tests
 cargo run --manifest-path server/Cargo.toml
 ```
 
+Fuzz the lobby parsers (nightly toolchain, `cargo-fuzz`): `cd server/crates/lobby && cargo +nightly fuzz run <target>`, targets listed by `cargo +nightly fuzz list`.
+
 **Client**: Unity Hub, Add, Add project from disk, `client/`, with Unity `6000.4.2f1`.
 The licensed art is a private submodule at `client/Assets/Synty`: clone with
 `--recurse-submodules` and set up the LFS credentials described in [docs/assets.md](docs/assets.md).
