@@ -4,5 +4,5 @@ contact_links:
     url: https://github.com/FerrLabs/Blastlands/blob/main/docs/ARCHITECTURE.md
     about: Read the netcode topology and the gameplay rules before proposing a change to either.
   - name: Security issue
-    url: https://github.com/FerrLabs/Blastlands/security/advisories/new
+    url: https://github.com/FerrLabs/Blastlands/blob/main/SECURITY.md#signaler-une-faille
     about: Report anything remotely exploitable privately, not as a public issue.
