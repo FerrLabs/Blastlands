@@ -1,6 +1,18 @@
-# Blastlands
+<div align="center">
 
-Multiplayer arena bomber: low-poly 3D, player-hosted servers, up to 8 players per match.
+<h1><img src=".github/logo.png" alt="" width="48" height="48" align="absmiddle"> Blastlands</h1>
+
+**Multiplayer arena bomber.**
+
+Low-poly 3D, player-hosted servers, up to 8 players per match.
+
+[![Latest release](https://img.shields.io/github/v/release/FerrLabs/Blastlands)](https://github.com/FerrLabs/Blastlands/releases/latest)
+[![CI](https://github.com/FerrLabs/Blastlands/actions/workflows/ci.yml/badge.svg)](https://github.com/FerrLabs/Blastlands/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/FerrLabs/Blastlands)](LICENSE)
+
+[Download](https://blastlands.ferrlabs.com) | [FerrLabs](https://github.com/FerrLabs)
+
+</div>
 
 Drop bombs, blow up soft blocks, grab power-ups, be the last one standing. Anyone can
 open a match; it shows up in the public lobby list and fills with players (or bots) until
