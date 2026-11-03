@@ -4,6 +4,12 @@ All notable changes to `blastlands` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [26.11.2] - 2026-11-03
+
+### Bug Fixes
+
+- fix(deps): bump rustls, rustls-webpki, webpki-root-certs and ctutils (#222)
+
 ## [26.10.28] - 2026-10-27
 
 ### Bug Fixes
