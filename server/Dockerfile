@@ -1,4 +1,4 @@
-FROM docker.io/library/rust:1.99-bookworm AS builder
+FROM docker.io/library/rust:1.100-bookworm AS builder
 
 WORKDIR /src
 
