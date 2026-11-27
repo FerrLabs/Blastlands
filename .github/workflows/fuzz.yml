@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   fuzz:
-    uses: FerrLabs/.github/.github/workflows/reusable-fuzz-rust.yml@0a075f35954063ac01310b4e01543fd7009916e4 # main
+    uses: FerrLabs/.github/.github/workflows/reusable-fuzz-rust.yml@47ce918cb6fcd25f410d6e8155cba963d660a13f # main
     with:
       working-directory: server/crates/lobby
       max-total-time: 300
